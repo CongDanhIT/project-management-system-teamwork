@@ -1,0 +1,11 @@
+# AI Agent & Tools
+.agents/
+.agent/
+
+# Editor directories
+.vscode/
+.idea/
+
+# OS/System generated files
+.DS_Store
+Thumbs.db
