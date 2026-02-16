@@ -7,12 +7,20 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // 1. Định nghĩa định dạng chung "Dễ hiểu cho người Việt"
 const humanReadableFormat = winston.format.combine(
+    winston.format.errors({ stack: true }), // Tự động trích xuất stack trace từ đối tượng Error
     winston.format.timestamp({ format: 'DD/MM/YYYY HH:mm:ss' }),
-    winston.format.printf(({ timestamp, level, message, ...metadata }) => {
+    winston.format.printf(({ timestamp, level, message, stack, ...metadata }) => {
         let metaStr = "";
+        let stackStr = "";
+
+        // Nếu có stack trace, trình bày riêng cho dễ đọc
+        if (stack) {
+            stackStr = `\n[STACK TRACE]:\n${stack}`;
+        }
+
         if (Object.keys(metadata).length > 0) {
             const cleanMeta = { ...metadata };
-            // Xóa các ký hiệu kỹ thuật của Winston
+            // Xóa các ký hiệu kỹ thuật và các trường đã xử lý
             delete cleanMeta[Symbol.for('level') as any];
             delete cleanMeta[Symbol.for('message') as any];
             delete cleanMeta[Symbol.for('splat') as any];
@@ -21,8 +29,9 @@ const humanReadableFormat = winston.format.combine(
                 metaStr = `\n Dữ liệu phụ: ${JSON.stringify(cleanMeta, null, 2)}`;
             }
         }
+
         // Trình bày: [Thời gian] CẤP ĐỘ: Tin nhắn
-        return `[${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}\n${'-'.repeat(40)}`;
+        return `[${timestamp}] ${level.toUpperCase()}: ${message}${metaStr}${stackStr}\n${'-'.repeat(40)}`;
     })
 );
 

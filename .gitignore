@@ -9,3 +9,6 @@
 # OS/System generated files
 .DS_Store
 Thumbs.db
+
+# Personal Documentation
+personal-docs/
