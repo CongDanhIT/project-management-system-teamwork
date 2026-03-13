@@ -1,11 +1,12 @@
 import passport from "passport";
 import { Request } from "express";
 import { Strategy as GoogleStrategy, VerifyCallback, Profile } from "passport-google-oauth20";
+import { Strategy as LocalStrategy } from "passport-local";
 import { env } from "./env"
 import { NotFoundException } from "../utils/appError";
 import logger from "../utils/logger";
 import { ProviderEnum } from "../enums/count-provider.enum";
-import { loginOrCreateAccountService } from "../services/auth.service";
+import { loginOrCreateAccountService, verifyUserService } from "../services/auth.service";
 import { UserDocument } from "../models/user.model";
 
 /**
@@ -46,6 +47,20 @@ passport.use(new GoogleStrategy({
     }
 }));
 
+passport.use(new LocalStrategy({
+    usernameField: "email",
+    passwordField: "password",
+    session: true
+},
+    async (email, password, done) => {
+        try {
+            const user = await verifyUserService({ email, password })
+            return done(null, user)
+        } catch (error: any) {
+            return done(error, undefined, { message: error.message })
+        }
+    }
+));
 /**
  * serializeUser: Xác định dữ liệu nào của user sẽ được lưu vào session (trong trường hợp dùng cookie-session).
  * Chúng ta lưu toàn bộ UserDocument vì cookie-session mã hóa nó vào cookie.

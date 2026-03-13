@@ -7,12 +7,13 @@ import MemberModel from "../models/member.model";
 import RoleModel from "../models/role-permission.model";
 import { RoleEnum } from "../enums/role.enum";
 import { ProviderEnum, ProviderEnumType } from "../enums/count-provider.enum";
-import { BadRequestException } from "../utils/appError";
+import { BadRequestException, NotFoundException } from "../utils/appError";
 
 /**
  * Service xử lý đăng nhập hoặc tạo tài khoản mới qua OAuth (Google)
  * Không dùng 'session' từ passport, mà dùng 'session' từ Mongoose để quản lý Transaction.
  */
+//dùng cho google auth
 export const loginOrCreateAccountService = async (data: {
     provider: string;
     displayName: string;
@@ -100,7 +101,7 @@ export const loginOrCreateAccountService = async (data: {
         throw error;
     }
 };
-
+//dùng cho đăng ký email auth
 export const registerService = async (body: {
     name: string,
     email: string,
@@ -122,7 +123,7 @@ export const registerService = async (body: {
         await user.save({ session });
         const account = new AccountModel({
             provider: ProviderEnum.EMAIL,
-            providerId: user._id.toString(),
+            providerId: email,
             userId: user._id,
         })
         await account.save({ session });
@@ -164,3 +165,32 @@ export const registerService = async (body: {
     }
 
 }
+//dùng cho đăng nhập email auth
+export const verifyUserService = async ({
+    email,
+    password,
+    provider = ProviderEnum.EMAIL,
+}: {
+    email: string,
+    password: string,
+    provider?: ProviderEnumType
+}) => {
+    const account = await AccountModel.findOne({ provider, providerId: email })
+    if (!account) {
+        throw new NotFoundException("không tìm thấy tài khoản")
+    }
+    const user = await UserModel.findById(account.userId).select("+password")
+    if (!user) {
+        throw new NotFoundException("không tìm thấy tài khoản")
+    }
+    const isMatch = await user.comparePassword(password)
+    if (!isMatch) {
+        throw new BadRequestException("sai mật khẩu")
+    }
+    return user.omitPassword()
+}
+
+/**
+ * Service lấy thông tin người dùng hiện tại từ database dựa trên ID.
+ * Đảm bảo dữ liệu luôn mới nhất (Fresh Data).
+ */

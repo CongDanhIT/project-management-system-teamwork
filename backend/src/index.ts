@@ -13,6 +13,8 @@ import { connectDatabase } from './config/database.config';
 import HTTP_STATUS from './config/http.config';
 import { asyncHandler } from './middlewares/asyncHandle';
 import authRoutes from './routes/auth.route';
+import userRoutes from './routes/user.route';
+import { isAuthenticated } from './middlewares/isAuthenticated.middleware';
 dotenv.config();
 
 const app = express();
@@ -52,7 +54,9 @@ const startServer = async () => {
             next();
         });
 
+        // Khởi tạo Passport và cấu hình Middleware hỗ trợ Authentication
         app.use(passport.initialize());
+        // Cho phép Passport sử dụng Session (thông tin user sẽ được lưu vào req.user)
         app.use(passport.session());
 
         app.use(cors({
@@ -60,7 +64,9 @@ const startServer = async () => {
             credentials: true,
         }));
 
+        // Parser để đọc dữ liệu JSON từ body của request (gán vào req.body)
         app.use(express.json());
+        // Parser để đọc dữ liệu từ Form (định dạng x-www-form-urlencoded)
         app.use(express.urlencoded({ extended: true }));
 
         app.get('/', asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -72,7 +78,9 @@ const startServer = async () => {
         }));
 
         // TODO: app.use("/api/auth", authRoutes);
-        app.use(`${BASE_PATH}/auth`, authRoutes)
+        app.use(`${BASE_PATH}/auth`, authRoutes);
+        // TODO: app.use("/api/user", userRoutes);
+        app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
         app.use(errorHandler);
 
         app.listen(PORT, () => {
