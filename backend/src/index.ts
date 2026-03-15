@@ -15,6 +15,8 @@ import { asyncHandler } from './middlewares/asyncHandle';
 import authRoutes from './routes/auth.route';
 import userRoutes from './routes/user.route';
 import { isAuthenticated } from './middlewares/isAuthenticated.middleware';
+import workspaceRoutes from './routes/workspace.route';
+import memberRoutes from './routes/member.route';
 dotenv.config();
 
 const app = express();
@@ -81,6 +83,9 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/auth`, authRoutes);
         // TODO: app.use("/api/user", userRoutes);
         app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
+
+        app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
+        app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
         app.use(errorHandler);
 
         app.listen(PORT, () => {

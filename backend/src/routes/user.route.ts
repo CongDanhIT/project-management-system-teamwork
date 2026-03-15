@@ -6,4 +6,5 @@ const userRoutes = Router();
 // Endpoint: /api/v1/user/current
 userRoutes.get("/current", getCurrentUser);
 
+
 export default userRoutes;

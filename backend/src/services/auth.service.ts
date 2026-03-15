@@ -69,7 +69,7 @@ export const loginOrCreateAccountService = async (data: {
             // Bước E: Thêm User vào Workspace với vai trò OWNER
             const member = new MemberModel({
                 userId: user._id,
-                workspaceID: workspace._id, // Tên field trong schema là 'workspaceID'
+                workspaceId: workspace._id, // Tên field trong schema là 'workspaceId'
                 role: ownerRole._id, // Vai trò là ObjectId của Role OWNER
             });
             await member.save({ session: dbSession });
@@ -78,7 +78,6 @@ export const loginOrCreateAccountService = async (data: {
             await user.save({ session: dbSession })
             // 3. Commit toàn bộ thay đổi
             await dbSession.commitTransaction();
-            dbSession.endSession();
 
             logger.info("Hoàn tất tạo tài khoản và không gian làm việc cho người dùng mới.", { userId: user._id });
             return { user, isNew: true };
@@ -86,19 +85,19 @@ export const loginOrCreateAccountService = async (data: {
 
         // Nếu đã có User, hoàn tất transaction và trả về dữ liệu
         await dbSession.commitTransaction();
-        dbSession.endSession();
         logger.info("Đăng nhập thành công với người dùng hiện tại.", { userId: user._id });
         return { user, isNew: false };
 
     } catch (error: any) {
         // Hủy bỏ toàn bộ các bước nếu có lỗi xảy ra
         await dbSession.abortTransaction();
-        dbSession.endSession();
         logger.error("Lỗi trong quá trình loginOrCreateAccount, đã rollback dữ liệu!", {
             message: error.message,
             stack: error.stack
         });
         throw error;
+    } finally {
+        dbSession.endSession();
     }
 };
 //dùng cho đăng ký email auth
@@ -142,7 +141,7 @@ export const registerService = async (body: {
 
         const member = new MemberModel({
             userId: user._id,
-            workspaceID: workspace._id, // Tên field trong schema là 'workspaceID'
+            workspaceId: workspace._id, // Tên field trong schema là 'workspaceId'
             role: ownerRole._id, // Vai trò là ObjectId của Role OWNER
         });
         await member.save({ session });
@@ -151,17 +150,17 @@ export const registerService = async (body: {
         await user.save({ session });
 
         await session.commitTransaction();
-        session.endSession();
         logger.info("Đăng ký thành công", { userId: user._id });
         return { userId: user._id, workspaceId: workspace._id };
     } catch (error: any) {
         await session.abortTransaction();
-        session.endSession();
         logger.error("Lỗi trong quá trình registerService, đã rollback dữ liệu!", {
             message: error.message,
             stack: error.stack
         });
         throw error;
+    } finally {
+        session.endSession();
     }
 
 }

@@ -3,7 +3,7 @@ import { generateInviteCode } from "../utils/uuid";
 
 export interface WorkspaceDocument extends mongoose.Document {
     name: string;
-    description: string;
+    description?: string | null;
     owner: mongoose.Types.ObjectId;
     inviteCode: string;
     createdAt: Date;

@@ -23,10 +23,10 @@ export const RolePermissions: Record<RoleEnumType, PermissionEnumType[]> = {
     ],
     [RoleEnum.ADMIN]: [
         Permissions.ADD_MEMBER,
-        Permissions.REMOVE_MEMBER,
+        //Permissions.REMOVE_MEMBER,
 
-        Permissions.CREATE_PROJECT,
         Permissions.EDIT_PROJECT,
+        Permissions.CREATE_PROJECT,
         Permissions.DELETE_PROJECT,
 
         Permissions.CREATE_TASK,
