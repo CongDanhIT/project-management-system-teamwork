@@ -1,6 +1,18 @@
 import { Router } from "express";
-import { changeWorkSpaceMemberRoleController, createWorkspaceController, deleteWorkspaceByIdController, getAllWorkspaceIsMemberController, getWorkspaceAnalyticsController, getWorkspaceByIdController, getWorkspaceMemberController, updateWorkspaceByIdController } from "../controllers/workspace.controller";
+import {
+    changeWorkSpaceMemberRoleController,
+    createWorkspaceController,
+    deleteWorkspaceByIdController,
+    getAllWorkspaceIsMemberController,
+    getWorkspaceAnalyticsController,
+    getWorkspaceByIdController,
+    getWorkspaceMemberController,
+    updateWorkspaceByIdController,
+    resetInviteCodeController,
+    removeWorkspaceMemberController,
+} from "../controllers/workspace.controller";
 const workspaceRoutes = Router();
+
 // tạo workspace
 workspaceRoutes.post("/create/new", createWorkspaceController);
 // lấy tất cả workspace của user
@@ -17,6 +29,12 @@ workspaceRoutes.put("/change/member/role/:id", changeWorkSpaceMemberRoleControll
 workspaceRoutes.put("/update/:id", updateWorkspaceByIdController);
 // delete workspace
 workspaceRoutes.delete("/delete/:id", deleteWorkspaceByIdController);
+
+// [AI-ADDED] Tạo lại inviteCode mới (vô hiệu hóa code cũ)
+workspaceRoutes.put("/:id/invite-code", resetInviteCodeController);
+
+// [AI-ADDED] Xóa thành viên khỏi workspace
+workspaceRoutes.delete("/:id/member/:memberId", removeWorkspaceMemberController);
 
 
 export default workspaceRoutes;

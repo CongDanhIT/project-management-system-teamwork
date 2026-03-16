@@ -1,7 +1,18 @@
 import HTTP_STATUS from "../config/http.config";
 import { asyncHandler } from "../middlewares/asyncHandle";
 import { getMemberRoleInWorkspace } from "../services/member.service";
-import { changeMemberRoleService, createWorkspaceService, deleteWorkspaceByIdService, getAllWorkspaceIsMemberService, getWorkspaceAnalyticsService, getWorkspaceByIdService, getWorkspaceMemberService, updateWorkspaceByIdService } from "../services/workspace.service";
+import {
+    changeMemberRoleService,
+    createWorkspaceService,
+    deleteWorkspaceByIdService,
+    getAllWorkspaceIsMemberService,
+    getWorkspaceAnalyticsService,
+    getWorkspaceByIdService,
+    getWorkspaceMemberService,
+    updateWorkspaceByIdService,
+    resetInviteCodeService,
+    removeMemberFromWorkspaceService,
+} from "../services/workspace.service";
 import { roleGuard } from "../utils/roleGraud";
 import { changeWorkSpaceMemberRoleSchema, createWorkspaceSchema, updateWorkspaceSchema, WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
@@ -155,3 +166,41 @@ export const deleteWorkspaceByIdController = asyncHandler(
         });
     }
 );
+
+// [AI-ADDED] Tạo lại mã mời invite code (chỉ chủ sở hữu Workspace mới có quyền)
+export const resetInviteCodeController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        // Chỉ OWNER mới được tạo lại invite code
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(getRole.name, [Permissions.MANAGE_WORKSPACE_SETTINGS]);
+
+        const result = await resetInviteCodeService(workspaceId, userId);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Tạo lại mã mời vào workspace thành công",
+            inviteCode: result.inviteCode,
+        });
+    }
+);
+
+// [AI-ADDED] Xóa thành viên khỏi workspace (chỉ OWNER/ADMIN có quyền REMOVE_MEMBER)
+export const removeWorkspaceMemberController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const memberId = String(req.params.memberId); // Cast để đảm bảo string (Express 5 params type)
+        const userId = req.user?._id;
+
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(getRole.name, [Permissions.REMOVE_MEMBER]);
+
+        const result = await removeMemberFromWorkspaceService(workspaceId, memberId);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Xóa thành viên khỏi workspace thành công",
+            memberId: result.memberId,
+        });
+    }
+);

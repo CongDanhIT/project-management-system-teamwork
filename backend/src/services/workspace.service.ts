@@ -220,5 +220,39 @@ export const deleteWorkspaceByIdService = async (workspaceId: string, userId: st
         session.endSession();
     }
 };
+// [AI-ADDED] Tạo lại invite code mới cho workspace (dùng khi muốn vô hiệu hóa code cũ)
+export const resetInviteCodeService = async (workspaceId: string, requesterId: string) => {
+    const workspace = await WorkspaceModel.findById(workspaceId);
+    if (!workspace) {
+        throw new NotFoundException("Không tìm thấy workspace");
+    }
+    // Dùng method resetInviteCode đã có sẵn trên model
+    workspace.resetInviteCode();
+    await workspace.save();
+    return { inviteCode: workspace.inviteCode };
+};
 
+// [AI-ADDED] Xóa một thành viên khỏi workspace (kick member)
+export const removeMemberFromWorkspaceService = async (
+    workspaceId: string,
+    memberId: string
+) => {
+    const workspace = await WorkspaceModel.findById(workspaceId);
+    if (!workspace) {
+        throw new NotFoundException("Không tìm thấy workspace");
+    }
 
+    // Tìm bản ghi member theo userId (memberId ở đây là userId của người bị kick)
+    const member = await MemberModel.findOne({ workspaceId, userId: memberId });
+    if (!member) {
+        throw new NotFoundException("Thành viên không tồn tại trong workspace");
+    }
+
+    // Không cho phép kick owner của workspace
+    if (workspace.owner.toString() === memberId) {
+        throw new BadRequestException("Không thể xóa chủ sở hữu khỏi workspace");
+    }
+
+    await MemberModel.deleteOne({ workspaceId, userId: memberId });
+    return { memberId };
+};

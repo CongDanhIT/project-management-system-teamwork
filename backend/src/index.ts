@@ -17,8 +17,11 @@ import userRoutes from './routes/user.route';
 import { isAuthenticated } from './middlewares/isAuthenticated.middleware';
 import workspaceRoutes from './routes/workspace.route';
 import memberRoutes from './routes/member.route';
+import projectRoutes from './routes/project.route';
+import taskRoutes from './routes/task.route';
 dotenv.config();
 
+// Trigger restart
 const app = express();
 const BASE_PATH = env.BASE_PATH;
 
@@ -86,6 +89,9 @@ const startServer = async () => {
 
         app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
         app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
+        app.use(`${BASE_PATH}/project`, projectRoutes);
+        app.use(`${BASE_PATH}/task`, taskRoutes);
+
         app.use(errorHandler);
 
         app.listen(PORT, () => {
