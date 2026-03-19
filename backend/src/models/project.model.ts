@@ -19,7 +19,8 @@ const projectSchema = new Schema<ProjectDocument>({
     timestamps: true,
 });
 
-projectSchema.index({ workspaceId: 1, _id: 1 });
+projectSchema.index({ workspaceId: 1 });
+projectSchema.index({ createdBy: 1 });
 
 const ProjectModel = model<ProjectDocument>("Project", projectSchema);
 

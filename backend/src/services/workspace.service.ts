@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import logger from "../utils/logger";
+
 import { RoleEnum } from "../enums/role.enum";
 import MemberModel from "../models/member.model";
 import RoleModel from "../models/role-permission.model";
@@ -21,11 +23,16 @@ export const createWorkspaceService = async (userId: string, body: {
         // 2. Kiểm tra User tồn tại (sử dụng session)
         const user = await UserModel.findById(userId).session(session);
         if (!user) {
+            logger.error("Không tìm thấy user khi tạo workspace", { userId });
             throw new NotFoundException("User not found");
         }
 
         // 3. Lấy Role Owner (sử dụng session)
         const ownerRole = await RoleModel.findOne({ name: RoleEnum.OWNER }).session(session);
+        if (!ownerRole) {
+            logger.error("Không tìm thấy vai trò OWNER trong DB");
+            throw new NotFoundException("Vai trò OWNER không tồn tại");
+        }
 
         // 4. Tạo Workspace mới
         const workspace = new WorkspaceModel({
@@ -34,28 +41,32 @@ export const createWorkspaceService = async (userId: string, body: {
             owner: userId,
         });
         await workspace.save({ session });
+        logger.debug("Đã lưu workspace mới", { workspaceId: workspace._id });
 
         // 5. Tạo bản ghi Member (là người sở hữu workspace)
-        // Lưu ý: Các trường trong Schema là workspaceId, userId, joinedAt
         const member = new MemberModel({
             workspaceId: workspace._id,
             userId: userId,
-            role: ownerRole?._id,
+            role: ownerRole._id,
             joinedAt: new Date(),
         });
         await member.save({ session });
+        logger.debug("Đã lưu member owner");
 
         // 6. Cập nhật currentWorkspace cho User
         user.currentWorkspace = workspace._id as mongoose.Types.ObjectId;
         await user.save({ session });
+        logger.debug("Đã cập nhật currentWorkspace cho user");
 
         // 7. Chốt hạ Transaction thành công
         await session.commitTransaction();
+        logger.info("Tạo workspace thành công qua transaction", { workspaceId: workspace._id, userId });
 
         return workspace;
 
     } catch (error) {
         // 8. Nếu bất kỳ bước nào lỗi -> Rollback (Hủy) toàn bộ
+        logger.error("Lỗi trong transaction tạo workspace", { error });
         await session.abortTransaction();
         throw error;
     } finally {

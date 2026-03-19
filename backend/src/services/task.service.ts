@@ -42,7 +42,10 @@ export const createTaskService = async (
     });
 
     await task.save();
-    return task;
+    return task.populate([
+        { path: "assignedTo", select: "_id name email profilePicture" },
+        { path: "projectId", select: "_id name emoji" }
+    ]);
 };
 
 export const updateTaskService = async (
@@ -92,7 +95,10 @@ export const updateTaskService = async (
     if (assignedTo !== undefined) task.assignedTo = assignedTo ? new mongoose.Types.ObjectId(assignedTo) : null;
 
     await task.save();
-    return task;
+    return task.populate([
+        { path: "assignedTo", select: "_id name email profilePicture" },
+        { path: "projectId", select: "_id name emoji" }
+    ]);
 }
 
 export const getAllTasksService = async (

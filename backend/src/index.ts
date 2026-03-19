@@ -31,6 +31,16 @@ const startServer = async () => {
 
         const PORT = env.PORT;
 
+        // Parser để đọc dữ liệu JSON từ body của request (gán vào req.body)
+        app.use(express.json());
+        // Parser để đọc dữ liệu từ Form (định dạng x-www-form-urlencoded)
+        app.use(express.urlencoded({ extended: true }));
+
+        app.use(cors({
+            origin: env.FRONTEND_ORIGIN,
+            credentials: true,
+        }));
+
         // Quay lại dùng cookie-session (Kiến trúc cũ)
         app.use(session({
             name: "session",
@@ -40,9 +50,6 @@ const startServer = async () => {
             secure: env.isProd,
             sameSite: "lax",
         }))
-
-
-        // Vẫn giữ khởi tạo Passport để login Google hoạt động
 
         // Workaround: Patch cho cookie-session để tương thích với Passport 0.6+
         app.use((req: Request, res: Response, next: NextFunction) => {
@@ -64,21 +71,11 @@ const startServer = async () => {
         // Cho phép Passport sử dụng Session (thông tin user sẽ được lưu vào req.user)
         app.use(passport.session());
 
-        app.use(cors({
-            origin: env.FRONTEND_ORIGIN,
-            credentials: true,
-        }));
-
-        // Parser để đọc dữ liệu JSON từ body của request (gán vào req.body)
-        app.use(express.json());
-        // Parser để đọc dữ liệu từ Form (định dạng x-www-form-urlencoded)
-        app.use(express.urlencoded({ extended: true }));
-
         app.get('/', asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
             res.status(HTTP_STATUS.OK).json({
                 success: true,
-                message: "Server is running with cookie-session!",
-                user: req.user
+                message: "Server is running!",
+                version: "1.0.0"
             })
         }));
 
@@ -89,8 +86,8 @@ const startServer = async () => {
 
         app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
         app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
-        app.use(`${BASE_PATH}/project`, projectRoutes);
-        app.use(`${BASE_PATH}/task`, taskRoutes);
+        app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes); // 🔒 BẢO MẬT: bắt buộc auth
+        app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);       // 🔒 BẢO MẬT: bắt buộc auth
 
         app.use(errorHandler);
 

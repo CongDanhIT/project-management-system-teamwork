@@ -18,6 +18,10 @@ const envSchema = z.object({
 
     FRONTEND_ORIGIN: z.string().url(),
     FRONTEND_GOOGLE_CALLBACK_URL: z.string().url(),
+
+    CLOUDINARY_CLOUD_NAME: z.string().optional(),
+    CLOUDINARY_API_KEY: z.string().optional(),
+    CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);

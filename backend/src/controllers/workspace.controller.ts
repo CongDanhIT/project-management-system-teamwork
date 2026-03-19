@@ -1,4 +1,6 @@
 import HTTP_STATUS from "../config/http.config";
+import logger from "../utils/logger";
+
 import { asyncHandler } from "../middlewares/asyncHandle";
 import { getMemberRoleInWorkspace } from "../services/member.service";
 import {
@@ -20,10 +22,12 @@ import { Permissions } from "../enums/role.enum";
 
 export const createWorkspaceController = asyncHandler(
     async (req, res, next) => {
+        logger.info("Yêu cầu tạo workspace mới", { body: req.body, user: req.user?._id });
         const body = createWorkspaceSchema.parse(req.body);
 
         const userId = req.user?._id;
         const workspace = await createWorkspaceService(userId, body);
+        logger.info("Tạo workspace thành công", { workspaceId: workspace._id });
 
         return res.status(HTTP_STATUS.CREATED).json({
             success: true,

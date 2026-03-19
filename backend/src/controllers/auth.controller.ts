@@ -17,7 +17,7 @@ export const googleLoginCallback = asyncHandler(async (req, res, next) => {
     const currentWorkspaceId = req.user?.currentWorkspace;
 
     if (!currentWorkspaceId) {
-        return res.redirect(`${env.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure&message=authentication_failed`);
+        return res.redirect(`${env.FRONTEND_ORIGIN}/onboarding`);
     }
     return res.redirect(`${env.FRONTEND_ORIGIN}/workspace/${currentWorkspaceId}`);
 });
@@ -54,6 +54,7 @@ export const loginController = asyncHandler(async (req, res, next) => {
             return res.status(HTTP_STATUS.OK).json({
                 success: true,
                 message: "Đăng nhập thành công",
+                user: req.user,
             });
         });
     })(req, res, next);

@@ -1,6 +1,8 @@
 import HTTP_STATUS from "../config/http.config";
 import { asyncHandler } from "../middlewares/asyncHandle";
-import { NotFoundException } from "../utils/appError";
+import { BadRequestException, NotFoundException } from "../utils/appError";
+import cloudinary from "../config/cloudinary.config";
+import logger from "../utils/logger";
 import {
     getCurrentUserService,
     updateUserProfileService,
@@ -12,6 +14,37 @@ import {
     changePasswordSchema,
 } from "../validation/user.validation";
 import { WorkSpaceIdSchema } from "../validation/workspace.validation";
+
+/**
+ * [AI-ADDED] Controller upload avatar lên Cloudinary và trả về URL
+ * POST /api/v1/user/upload-avatar
+ */
+export const updateUserAvatarController = asyncHandler(async (req, res, next) => {
+    const file = req.file;
+    if (!file) {
+        throw new BadRequestException("Vui lòng tải lên một file ảnh!");
+    }
+
+    // Convert Buffer sang Base64 để gửi qua Cloudinary (hoặc dùng stream)
+    const b64 = Buffer.from(file.buffer).toString("base64");
+    const dataURI = "data:" + file.mimetype + ";base64," + b64;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+        resource_type: "auto",
+        folder: "teamflow/avatars",
+    });
+
+    logger.info("Avatar uploaded to Cloudinary successfully", {
+        userId: req.user?._id,
+        url: result.secure_url
+    });
+
+    return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Upload ảnh đại diện thành công",
+        url: result.secure_url,
+    });
+});
 
 /**
  * [ORIGINAL] Lấy thông tin user hiện tại đang đăng nhập
@@ -34,8 +67,16 @@ export const getCurrentUser = asyncHandler(async (req, res, next) => {
  */
 export const updateUserProfileController = asyncHandler(async (req, res) => {
     const userId = req.user?._id;
+
+    logger.info("Updating profile (Profile update requested)", {
+        userId,
+        body: req.body
+    });
+
     const body = updateProfileSchema.parse(req.body);
     const { user } = await updateUserProfileService(userId, body);
+
+    logger.info("Profile updated successfully in DB", { userId });
 
     return res.status(HTTP_STATUS.OK).json({
         success: true,
@@ -73,4 +114,4 @@ export const switchWorkspaceController = asyncHandler(async (req, res) => {
         message: "Chuyển workspace thành công",
         user,
     });
-});
+});

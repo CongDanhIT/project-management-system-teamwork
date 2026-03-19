@@ -31,6 +31,12 @@ const taskSchema = new Schema<TaskDocument>({
     timestamps: true
 });
 
+// Tối ưu hoá truy vấn Database với Index
+taskSchema.index({ workspaceId: 1, status: 1 });
+taskSchema.index({ projectId: 1, status: 1 });
+taskSchema.index({ assignedTo: 1 });
+taskSchema.index({ taskCode: 1 }, { unique: true });
+
 const TaskModel = model<TaskDocument>("Task", taskSchema);
 
 export default TaskModel;

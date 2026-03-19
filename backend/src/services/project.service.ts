@@ -77,13 +77,10 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
     const completedTasks = result.completedTasks?.[0]?.count || 0;
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
     return {
-        project,
-        analytics: {
-            totalTasks,
-            overdueTasks,
-            completedTasks,
-            completionRate
-        }
+        totalTasks,
+        overdueTasks,
+        completedTasks,
+        completionRate
     };
 };
 
