@@ -15,7 +15,7 @@ import {
     resetInviteCodeService,
     removeMemberFromWorkspaceService,
 } from "../services/workspace.service";
-import { roleGuard } from "../utils/roleGraud";
+import { roleGuard } from "../utils/roleGuard";
 import { changeWorkSpaceMemberRoleSchema, createWorkspaceSchema, updateWorkspaceSchema, WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
 

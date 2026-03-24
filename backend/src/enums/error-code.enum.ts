@@ -14,6 +14,7 @@ export const ErrorCodeEnum = {
 
     // --- Access Control Errors (Lỗi quyền truy cập) ---
     ACCESS_UNAUTHORIZED: "ACCESS_UNAUTHORIZED",
+    ACCESS_FORBIDDEN: "ACCESS_FORBIDDEN",
 
     // --- Validation and Resource Errors (Lỗi dữ liệu & tài nguyên) ---
     VALIDATION_ERROR: "VALIDATION_ERROR",

@@ -60,11 +60,20 @@ export class BadRequestException extends AppError {
 }
 
 /**
- * 🔐 LỖI CHƯA XÁC THỰC / KHÔNG CÓ QUYỀN (401)
+ * 🔐 LỖI CHƯA XÁC THỰC (401)
  */
 export class UnauthorizedException extends AppError {
-    constructor(message = "Không có quyền truy cập", errorCode?: ErrorCodeEnumType) {
-        super(message, HTTP_STATUS.UNAUTHORIZED, errorCode || ErrorCodeEnum.ACCESS_UNAUTHORIZED);
+    constructor(message = "Chưa xác thực người dùng", errorCode?: ErrorCodeEnumType) {
+        super(message, HTTP_STATUS.UNAUTHORIZED, errorCode || "ACCESS_UNAUTHORIZED" as any);
+    }
+}
+
+/**
+ * 🛡️ LỖI KHÔNG ĐỦ QUYỀN (403)
+ */
+export class ForbiddenException extends AppError {
+    constructor(message = "Bạn không có quyền thực hiện hành động này", errorCode?: ErrorCodeEnumType) {
+        super(message, HTTP_STATUS.FORBIDDEN, errorCode || "ACCESS_FORBIDDEN" as any);
     }
 }
 

@@ -7,24 +7,32 @@ import {
     getTaskByIdController,
     updateTaskController,
     getTasksByProjectController,
+    getSubtasksController,
+    getDeletedTasksController,
+    restoreTaskController,
 } from "../controllers/task.controller";
-
 
 const taskRoutes = Router();
 
 taskRoutes.use(isAuthenticated);
 
-taskRoutes.post("/projects/:projectId/workspace/:workspaceId/create", createTaskController);
+// 1. Tạo & Cập nhật
+taskRoutes.post("/workspace/:workspaceId/project/:projectId/create", createTaskController);
+taskRoutes.put("/workspace/:workspaceId/project/:projectId/update/:taskId", updateTaskController);
 
-taskRoutes.put("/projects/:projectId/workspace/:workspaceId/update/:taskId", updateTaskController);
+// 2. Lấy danh sách (Query chung trong Workspace)
+taskRoutes.get("/workspace/:workspaceId/all", getAllTasksController);
 
-taskRoutes.get("/workspace/:workspaceId/tasks", getAllTasksController);
+// 3. Lấy danh sách cụ thể theo Dự án
+taskRoutes.get("/workspace/:workspaceId/project/:projectId/all", getTasksByProjectController);
 
-taskRoutes.get("/:taskId/workspace/:workspaceId/projects/:projectId", getTaskByIdController);
+// 4. Lấy công việc con (Subtasks)
+taskRoutes.get("/workspace/:workspaceId/subtasks/:parentId", getSubtasksController);
 
-taskRoutes.delete("/:taskId/workspace/:workspaceId/delete", deleteTaskController);
-
-// [AI-ADDED] Lấy tasks theo project cụ thể (RESTful pattern)
-taskRoutes.get("/workspace/:workspaceId/projects/:projectId/tasks", getTasksByProjectController);
+// 5. Thao tác trên ID cụ thể công việc
+taskRoutes.get("/workspace/:workspaceId/project/:projectId/:taskId", getTaskByIdController);
+taskRoutes.get("/workspace/:workspaceId/deleted/all", getDeletedTasksController);
+taskRoutes.patch("/workspace/:workspaceId/restore/:taskId", restoreTaskController);
+taskRoutes.delete("/workspace/:workspaceId/delete/:taskId", deleteTaskController);
 
 export default taskRoutes;

@@ -23,78 +23,105 @@ export const loginOrCreateAccountService = async (data: {
 }) => {
     const { provider, displayName, providerId, email, picture } = data;
 
-    // 1. Khởi tạo session từ mongoose để dùng Transaction
     const dbSession = await mongoose.startSession();
     dbSession.startTransaction();
 
     try {
-        logger.info("Bắt đầu transaction loginOrCreateAccount");
+        logger.info("Bắt đầu transaction loginOrCreateAccount", { provider, providerId, email });
 
-        // 2. Tìm kiếm User theo email (findOne trả về object hoặc null)
+        // 1. Tìm bản ghi Account của provider này trước (Định danh chính xác nhất)
+        let account = await AccountModel.findOne({ 
+            provider: provider as ProviderEnumType, 
+            providerId 
+        }).session(dbSession);
+
+        if (account) {
+            // Đã có Account, lấy User
+            const user = await UserModel.findById(account.userId).session(dbSession);
+            if (user) {
+                // Cập nhật thông tin profile nếu cần
+                if (!user.name || !user.profilePicture) {
+                    user.name = user.name || displayName;
+                    user.profilePicture = user.profilePicture || picture || null;
+                    await user.save({ session: dbSession });
+                }
+
+                await dbSession.commitTransaction();
+                logger.info("Đăng nhập thành công qua Account hiện có.", { userId: user._id });
+                return { user, isNew: false };
+            }
+            // Trường hợp hy hữu: Có Account nhưng User bị xóa, ta sẽ xử lý như User mới
+        }
+
+        // 2. Nếu chưa có Account, tìm User theo email để liên kết (Link Account)
         let user = await UserModel.findOne({ email }).session(dbSession);
 
-        if (!user) {
-            logger.info("Người dùng mới, tiến hành tạo tài khoản và không gian làm việc...");
-
-            // Bước A: Tạo User mới
-            user = new UserModel({
-                email,
-                name: displayName,
-                profilePicture: picture || null,
-            });
-            await user.save({ session: dbSession });
-
-            // Bước B: Tạo Account liên kết
-            const account = new AccountModel({
+        if (user) {
+            logger.info("Tìm thấy User theo email, tiến hành liên kết Account mới...", { email });
+            
+            // Tạo Account liên kết cho User hiện tại
+            account = new AccountModel({
                 userId: user._id,
                 provider: provider as ProviderEnumType,
                 providerId,
             });
             await account.save({ session: dbSession });
 
-            // Bước C: Tìm Role OWNER (Role này phải được tạo trước qua seeder)
-            const ownerRole = await RoleModel.findOne({ name: RoleEnum.OWNER }).session(dbSession);
-            if (!ownerRole) {
-                throw new Error("Không tìm thấy dữ liệu Role OWNER trong Database. Vui lòng chạy seeder trước!");
-            }
+            // Cập nhật profile nếu chưa có
+            user.name = user.name || displayName;
+            user.profilePicture = user.profilePicture || picture || null;
+            await user.save({ session: dbSession });
 
-            // Bước D: Tạo Workspace mặc định cho User
-            const workspace = new WorkspaceModel({
-                name: "My Workspace",
-                description: `Workspace được tạo cho ${user.name}`,
-                owner: user._id, // Tên field trong schema là 'owner'
-            });
-            await workspace.save({ session: dbSession });
-
-            // Bước E: Thêm User vào Workspace với vai trò OWNER
-            const member = new MemberModel({
-                userId: user._id,
-                workspaceId: workspace._id, // Tên field trong schema là 'workspaceId'
-                role: ownerRole._id, // Vai trò là ObjectId của Role OWNER
-            });
-            await member.save({ session: dbSession });
-
-            user.currentWorkspace = workspace._id as mongoose.Types.ObjectId;
-            await user.save({ session: dbSession })
-            // 3. Commit toàn bộ thay đổi
             await dbSession.commitTransaction();
-
-            logger.info("Hoàn tất tạo tài khoản và không gian làm việc cho người dùng mới.", { userId: user._id });
-            return { user, isNew: true };
+            return { user, isNew: false };
         }
 
-        // Nếu đã có User, hoàn tất transaction và trả về dữ liệu
+        // 3. Nếu không thấy cả User lẫn Account, tạo mới hoàn toàn
+        logger.info("Người dùng mới hoàn toàn, tiến hành khởi tạo hệ thống...");
+
+        user = new UserModel({
+            email,
+            name: displayName,
+            profilePicture: picture || null,
+        });
+        await user.save({ session: dbSession });
+
+        account = new AccountModel({
+            userId: user._id,
+            provider: provider as ProviderEnumType,
+            providerId,
+        });
+        await account.save({ session: dbSession });
+
+        const ownerRole = await RoleModel.findOne({ name: RoleEnum.OWNER }).session(dbSession);
+        if (!ownerRole) {
+            throw new Error("Dữ liệu Role OWNER chưa được khởi tạo!");
+        }
+
+        const workspace = new WorkspaceModel({
+            name: "My Workspace",
+            description: `Workspace của ${user.name}`,
+            owner: user._id,
+        });
+        await workspace.save({ session: dbSession });
+
+        const member = new MemberModel({
+            userId: user._id,
+            workspaceId: workspace._id,
+            role: ownerRole._id,
+        });
+        await member.save({ session: dbSession });
+
+        user.currentWorkspace = workspace._id as mongoose.Types.ObjectId;
+        await user.save({ session: dbSession });
+
         await dbSession.commitTransaction();
-        logger.info("Đăng nhập thành công với người dùng hiện tại.", { userId: user._id });
-        return { user, isNew: false };
+        logger.info("Hoàn tất tạo tài khoản mới.", { userId: user._id });
+        return { user, isNew: true };
 
     } catch (error: any) {
-        // Hủy bỏ toàn bộ các bước nếu có lỗi xảy ra
         await dbSession.abortTransaction();
-        logger.error("Lỗi trong quá trình loginOrCreateAccount, đã rollback dữ liệu!", {
-            message: error.message,
-            stack: error.stack
-        });
+        logger.error("Lỗi loginOrCreateAccount, rollback data!", { message: error.message });
         throw error;
     } finally {
         dbSession.endSession();

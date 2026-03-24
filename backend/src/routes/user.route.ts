@@ -8,7 +8,11 @@ import {
 } from "../controllers/user.controller";
 import upload from "../middlewares/upload.middleware";
 
+import { isAuthenticated } from "../middlewares/isAuthenticated.middleware";
+
 const userRoutes = Router();
+
+userRoutes.use(isAuthenticated);
 
 // [ORIGINAL] Endpoint: /api/v1/user/current
 userRoutes.get("/current", getCurrentUser);

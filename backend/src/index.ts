@@ -19,6 +19,7 @@ import workspaceRoutes from './routes/workspace.route';
 import memberRoutes from './routes/member.route';
 import projectRoutes from './routes/project.route';
 import taskRoutes from './routes/task.route';
+import { startCronService } from './services/cron.service';
 dotenv.config();
 
 // Trigger restart
@@ -94,6 +95,9 @@ const startServer = async () => {
         app.listen(PORT, () => {
             logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${env.NODE_ENV} mode`);
             logger.info(`📝[session]: Switched back to cookie-session.`);
+            
+            // Kích hoạt Cron dọn dẹp thùng rác sau 30 ngày
+            startCronService();
         });
     } catch (error) {
         logger.error("Không thể khởi động Server do lỗi hệ thống", { error });

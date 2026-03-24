@@ -117,19 +117,27 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
     const currentDate = new Date();
     const twentyFourHoursLater = new Date(currentDate.getTime() + (24 * 60 * 60 * 1000));
 
-    // Dùng Promise.all để chạy 4 truy vấn song song - Tốc độ nhanh gấp 4 lần
-    const [totalTasks, overdueTasks, completedTasks, nearDueDateTasks] = await Promise.all([
-        TaskModel.countDocuments({ workspaceId: workspaceId }),
+    // Dùng Promise.all để chạy 5 truy vấn song song - Tốc độ nhanh gấp 5 lần
+    const [totalTasks, overdueTasks, completedTasks, inProgressTasks, nearDueDateTasks] = await Promise.all([
+        TaskModel.countDocuments({ workspaceId: workspaceId, deletedAt: null }),
 
         TaskModel.countDocuments({
             workspaceId: workspaceId,
             dueDate: { $lt: currentDate },
-            status: { $ne: TaskStatusEnum.DONE }
+            status: { $ne: TaskStatusEnum.DONE },
+            deletedAt: null
         }),
 
         TaskModel.countDocuments({
             workspaceId: workspaceId,
-            status: TaskStatusEnum.DONE
+            status: TaskStatusEnum.DONE,
+            deletedAt: null
+        }),
+
+        TaskModel.countDocuments({
+            workspaceId: workspaceId,
+            status: TaskStatusEnum.IN_PROGRESS,
+            deletedAt: null
         }),
 
         TaskModel.find({
@@ -138,7 +146,8 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
                 $gte: currentDate,
                 $lte: twentyFourHoursLater
             },
-            status: { $ne: TaskStatusEnum.DONE }
+            status: { $ne: TaskStatusEnum.DONE },
+            deletedAt: null
         }).sort({ dueDate: 1 })
     ]);
 
@@ -146,6 +155,7 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
         totalTasks,
         overdueTasks,
         completedTasks,
+        inProgressTasks,
         nearDueDateTasks,
         summary: {
             completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
@@ -212,20 +222,55 @@ export const deleteWorkspaceByIdService = async (workspaceId: string, userId: st
         if (!user) {
             throw new NotFoundException("không tìm thấy user");
         }
+
+        // 1. Lấy danh sách TẤT CẢ user đang là thành viên workspace này (để biết ai cần cập nhật)
+        const affectedMembers = await MemberModel.find({ workspaceId: workspaceId })
+            .select("userId")
+            .session(session);
+        const affectedUserIds = affectedMembers.map(m => m.userId.toString());
+
+        // 2. Xóa toàn bộ dữ liệu liên quan đến workspace
         await ProjectModel.deleteMany({ workspaceId: workspaceId }).session(session);
         await TaskModel.deleteMany({ workspaceId: workspaceId }).session(session);
         await MemberModel.deleteMany({ workspaceId: workspaceId }).session(session);
-        //update the user's currentWorkspace if  it matches the workspaceId
+
+        // 3. Cập nhật currentWorkspace cho người thực hiện xóa
         if (user.currentWorkspace?.toString() === workspaceId) {
-            const memberWorkspace = await MemberModel.findOne({ userId: userId }).session(session);
-            user.currentWorkspace = memberWorkspace ? memberWorkspace.workspaceId : null;
+            const nextMembership = await MemberModel.findOne({ userId: userId }).session(session);
+            user.currentWorkspace = nextMembership ? nextMembership.workspaceId : null;
             await user.save({ session });
         }
+
+        // 4. [FIX DANGLING REF] Cập nhật currentWorkspace cho TẤT CẢ user khác bị ảnh hưởng
+        //    Tìm những user còn lại (không phải người xóa) có currentWorkspace trỏ vào workspace bị xóa
+        const otherAffectedUsers = await UserModel.find({
+            _id: { $in: affectedUserIds, $ne: userId },
+            currentWorkspace: workspaceId,
+        }).session(session);
+
+        // Với mỗi user bị ảnh hưởng, tìm workspace hợp lệ khác cho họ (nếu có)
+        await Promise.all(
+            otherAffectedUsers.map(async (affectedUser) => {
+                const nextMembership = await MemberModel.findOne({
+                    userId: affectedUser._id,
+                    workspaceId: { $ne: workspaceId },
+                }).session(session);
+                affectedUser.currentWorkspace = nextMembership ? nextMembership.workspaceId : null;
+                return affectedUser.save({ session });
+            })
+        );
+
+        logger.info("Đã reset currentWorkspace cho các user bị ảnh hưởng", {
+            workspaceId,
+            resetCount: otherAffectedUsers.length,
+        });
+
         await workspace.deleteOne({ session });
         await session.commitTransaction();
         return user.currentWorkspace;
     } catch (error) {
         await session.abortTransaction();
+        logger.error("Lỗi trong transaction xóa workspace", { error, workspaceId });
         throw error;
     } finally {
         session.endSession();

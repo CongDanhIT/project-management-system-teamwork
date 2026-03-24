@@ -3,9 +3,9 @@ import { WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { projectIdSchema, taskIdSchema } from "../validation/project.validation";
 import { createTaskSchema, updateTaskSchema, getTasksQuerySchema } from "../validation/task.validation";
 import { getMemberRoleInWorkspace } from "../services/member.service";
-import { roleGuard } from "../utils/roleGraud";
+import { roleGuard } from "../utils/roleGuard";
 import { Permissions } from "../enums/role.enum";
-import { createTaskService, deleteTaskService, getAllTasksService, getTaskByIdService, updateTaskService } from "../services/task.service";
+import { createTaskService, deleteTaskService, getAllTasksService, getTaskByIdService, updateTaskService, getSubtasksService, getDeletedTasksService, restoreTaskService } from "../services/task.service";
 import HTTP_STATUS from "../config/http.config";
 
 export const createTaskController = asyncHandler(
@@ -13,8 +13,8 @@ export const createTaskController = asyncHandler(
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
         const userId = req.user?._id;
-        //body = { title, description, priority, status, dueDate, assignedTo }
         const body = createTaskSchema.parse(req.body);
+        
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.CREATE_TASK]);
 
@@ -22,7 +22,7 @@ export const createTaskController = asyncHandler(
 
         return res.status(HTTP_STATUS.CREATED).json({
             success: true,
-            message: "Tạo task thành công",
+            message: "Tạo công việc thành công",
             task
         });
     }
@@ -34,17 +34,16 @@ export const updateTaskController = asyncHandler(
         const projectId = projectIdSchema.parse(req.params.projectId);
         const userId = req.user?._id;
         const taskId = taskIdSchema.parse(req.params.taskId);
-        //body = { title, description, priority, status, dueDate, assignedTo }
         const body = updateTaskSchema.parse(req.body);
+
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.EDIT_TASK]);
 
-        const task = await updateTaskService(workspaceId, projectId,
-            body, userId, taskId);
+        const task = await updateTaskService(workspaceId, projectId, body, userId, taskId);
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
-            message: "Cập nhật task thành công",
+            message: "Cập nhật công việc thành công",
             task
         });
     }
@@ -55,11 +54,11 @@ export const getAllTasksController = asyncHandler(
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const userId = req.user?._id;
 
-        // Sử dụng Zod để parse và validate query params
         const query = getTasksQuerySchema.parse(req.query);
 
         const filters = {
             projectId: query.projectId,
+            parentId: query.parentId,
             status: query.status?.split(","),
             priority: query.priority?.split(","),
             assignedTo: query.assignedTo?.split(","),
@@ -79,7 +78,29 @@ export const getAllTasksController = asyncHandler(
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
-            message: "Lấy danh sách task thành công",
+            message: "Lấy danh sách công việc thành công",
+            ...result
+        });
+    }
+);
+
+export const getSubtasksController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const parentId = taskIdSchema.parse(req.params.parentId);
+        const userId = req.user?._id;
+
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 4;
+
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.VIEW_ONLY]);
+
+        const result = await getSubtasksService(workspaceId, parentId, { page, pageSize: limit });
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy danh sách công việc con thành công",
             ...result
         });
     }
@@ -91,6 +112,7 @@ export const getTaskByIdController = asyncHandler(
         const userId = req.user?._id;
         const taskId = taskIdSchema.parse(req.params.taskId);
         const projectId = projectIdSchema.parse(req.params.projectId);
+
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
@@ -98,7 +120,7 @@ export const getTaskByIdController = asyncHandler(
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
-            message: "Lấy task thành công",
+            message: "Lấy thông tin công việc thành công",
             task
         });
     }
@@ -109,6 +131,7 @@ export const deleteTaskController = asyncHandler(
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const userId = req.user?._id;
         const taskId = taskIdSchema.parse(req.params.taskId);
+
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.DELETE_TASK]);
 
@@ -116,13 +139,12 @@ export const deleteTaskController = asyncHandler(
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
-            message: "Xóa task thành công",
+            message: "Xóa công việc thành công",
             task
         });
     }
 );
 
-// [AI-ADDED] Lấy danh sách task của một project cụ thể (RESTful, scoped theo projectId từ route params)
 export const getTasksByProjectController = asyncHandler(
     async (req, res) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
@@ -132,10 +154,10 @@ export const getTasksByProjectController = asyncHandler(
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
-        // Tái sử dụng getAllTasksService - bắt buộc filter theo projectId từ params
         const query = getTasksQuerySchema.parse(req.query);
         const filters = {
             projectId,
+            parentId: query.parentId,
             status: query.status?.split(","),
             priority: query.priority?.split(","),
             assignedTo: query.assignedTo?.split(","),
@@ -151,8 +173,45 @@ export const getTasksByProjectController = asyncHandler(
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
-            message: "Lấy danh sách task của project thành công",
+            message: "Lấy danh sách công việc của dự án thành công",
             ...result,
         });
     }
-);
+);
+
+export const getDeletedTasksController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const userId = req.user?._id;
+
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.VIEW_ONLY]);
+
+        const tasks = await getDeletedTasksService(workspaceId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy danh sách công việc đã xóa thành công",
+            tasks
+        });
+    }
+);
+
+export const restoreTaskController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const userId = req.user?._id;
+        const taskId = taskIdSchema.parse(req.params.taskId);
+
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.EDIT_TASK]);
+
+        const task = await restoreTaskService(workspaceId, taskId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Khôi phục công việc thành công",
+            task
+        });
+    }
+);
