@@ -30,10 +30,11 @@ export const createTaskService = async (
         parentId?: string | null;
         estimatedHours?: number;
         loggedHours?: number;
+        subtasks?: string[];
     },
     userId: string
 ) => {
-    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours } = body;
+    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks } = body;
     
     // 1. Kiểm tra Workspace Member
     if (assignedTo) {
@@ -99,6 +100,18 @@ export const createTaskService = async (
     });
 
     await task.save();
+
+    // 4. Tạo nhiệm vụ con (nếu có - gọi tuần tự để tránh trùng taskCode)
+    if (subtasks && subtasks.length > 0) {
+        for (const subtaskTitle of subtasks) {
+            await createTaskService(workspaceId, projectId, {
+                title: subtaskTitle,
+                parentId: (task._id as mongoose.Types.ObjectId).toString(),
+                status: (task.status as string),
+                priority: (task.priority as string)
+            }, userId);
+        }
+    }
 
     // Nếu là task con, cập nhật giờ cho task cha
     if (parentId) {

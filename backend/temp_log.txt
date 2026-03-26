@@ -1,0 +1,50 @@
+﻿[26/03/2026 18:54:12] INFO: [AI-Groq] Chat pháº£n há»“i thÃ nh cÃ´ng
+ Dá»¯ liá»‡u phá»¥: {
+  "msg": "xin chÃ o"
+}
+----------------------------------------
+[26/03/2026 18:55:14] INFO: Káº¿t ná»‘i MongoDB thÃ nh cÃ´ng
+ Dá»¯ liá»‡u phá»¥: {
+  "uri": "mongodb+srv:****@cluster0.97lwaex.mongodb.net/teamsync_db?appName=Cluster0"
+}
+----------------------------------------
+[26/03/2026 18:55:14] INFO: âš¡ï¸[server]: Server is running at http://localhost:8000 in development mode
+----------------------------------------
+[26/03/2026 18:55:14] INFO: ðŸ“[session]: Switched back to cookie-session.
+----------------------------------------
+[26/03/2026 18:55:14] INFO: [CRON] Äang báº¯t Ä‘áº§u dá»n dáº¹p thÃ¹ng rÃ¡c (Ä‘á»‘i vá»›i cÃ¡c item xÃ³a trÆ°á»›c 2/24/2026)...
+----------------------------------------
+[26/03/2026 18:55:14] INFO: [CRON] Dá»‹ch vá»¥ dá»n dáº¹p thÃ¹ng rÃ¡c tá»± Ä‘á»™ng Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t (chu ká»³ 24h).
+----------------------------------------
+[26/03/2026 18:55:14] INFO: [CRON] Káº¿t thÃºc tiáº¿n trÃ¬nh dá»n dáº¹p thÃ¹ng rÃ¡c.
+----------------------------------------
+[26/03/2026 18:55:43] INFO: Káº¿t ná»‘i MongoDB thÃ nh cÃ´ng
+ Dá»¯ liá»‡u phá»¥: {
+  "uri": "mongodb+srv:****@cluster0.97lwaex.mongodb.net/teamsync_db?appName=Cluster0"
+}
+----------------------------------------
+[26/03/2026 18:55:44] INFO: âš¡ï¸[server]: Server is running at http://localhost:8000 in development mode
+----------------------------------------
+[26/03/2026 18:55:44] INFO: ðŸ“[session]: Switched back to cookie-session.
+----------------------------------------
+[26/03/2026 18:55:44] INFO: [CRON] Äang báº¯t Ä‘áº§u dá»n dáº¹p thÃ¹ng rÃ¡c (Ä‘á»‘i vá»›i cÃ¡c item xÃ³a trÆ°á»›c 2/24/2026)...
+----------------------------------------
+[26/03/2026 18:55:44] INFO: [CRON] Dá»‹ch vá»¥ dá»n dáº¹p thÃ¹ng rÃ¡c tá»± Ä‘á»™ng Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t (chu ká»³ 24h).
+----------------------------------------
+[26/03/2026 18:55:44] INFO: [CRON] Káº¿t thÃºc tiáº¿n trÃ¬nh dá»n dáº¹p thÃ¹ng rÃ¡c.
+----------------------------------------
+[26/03/2026 18:59:01] INFO: Káº¿t ná»‘i MongoDB thÃ nh cÃ´ng
+ Dá»¯ liá»‡u phá»¥: {
+  "uri": "mongodb+srv:****@cluster0.97lwaex.mongodb.net/teamsync_db?appName=Cluster0"
+}
+----------------------------------------
+[26/03/2026 18:59:01] INFO: âš¡ï¸[server]: Server is running at http://localhost:8000 in development mode
+----------------------------------------
+[26/03/2026 18:59:01] INFO: ðŸ“[session]: Switched back to cookie-session.
+----------------------------------------
+[26/03/2026 18:59:01] INFO: [CRON] Äang báº¯t Ä‘áº§u dá»n dáº¹p thÃ¹ng rÃ¡c (Ä‘á»‘i vá»›i cÃ¡c item xÃ³a trÆ°á»›c 2/24/2026)...
+----------------------------------------
+[26/03/2026 18:59:01] INFO: [CRON] Dá»‹ch vá»¥ dá»n dáº¹p thÃ¹ng rÃ¡c tá»± Ä‘á»™ng Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t (chu ká»³ 24h).
+----------------------------------------
+[26/03/2026 18:59:02] INFO: [CRON] Káº¿t thÃºc tiáº¿n trÃ¬nh dá»n dáº¹p thÃ¹ng rÃ¡c.
+----------------------------------------

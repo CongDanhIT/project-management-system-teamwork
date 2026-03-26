@@ -50,6 +50,7 @@ export const createTaskSchema = z.object({
     parentId: parentIdSchema,
     estimatedHours: hoursSchema,
     loggedHours: hoursSchema,
+    subtasks: z.array(z.string()).optional(),
 });
 
 export const updateTaskSchema = z.object({

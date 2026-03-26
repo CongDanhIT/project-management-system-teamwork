@@ -19,6 +19,7 @@ import workspaceRoutes from './routes/workspace.route';
 import memberRoutes from './routes/member.route';
 import projectRoutes from './routes/project.route';
 import taskRoutes from './routes/task.route';
+import aiRoutes from './routes/ai.route';
 import { startCronService } from './services/cron.service';
 dotenv.config();
 
@@ -32,15 +33,23 @@ const startServer = async () => {
 
         const PORT = env.PORT;
 
-        // Parser để đọc dữ liệu JSON từ body của request (gán vào req.body)
-        app.use(express.json());
-        // Parser để đọc dữ liệu từ Form (định dạng x-www-form-urlencoded)
-        app.use(express.urlencoded({ extended: true }));
+        console.log(">>> SERVER INDEX IS LOADING ROUTES <<<");
+        // 1. Logger (Debug mọi request)
+        app.use((req: Request, res: Response, next: NextFunction) => {
+            logger.info(`🔍 Request: [${req.method}] ${req.url}`);
+            next();
+        });
 
+        // 2. CORS & Parser (BẮT BUỘC đặt trước route)
         app.use(cors({
             origin: env.FRONTEND_ORIGIN,
             credentials: true,
         }));
+        app.use(express.json());
+        app.use(express.urlencoded({ extended: true }));
+
+        // 3. AI Route (Đã thông suốt CORS)
+        app.use("/api/ai", aiRoutes);
 
         // Quay lại dùng cookie-session (Kiến trúc cũ)
         app.use(session({
@@ -75,8 +84,8 @@ const startServer = async () => {
         app.get('/', asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
             res.status(HTTP_STATUS.OK).json({
                 success: true,
-                message: "Server is running!",
-                version: "1.0.0"
+                message: ">>> BACKEND IS RUNNING NEW CODE (v1.0.1) <<<",
+                version: "1.0.1"
             })
         }));
 

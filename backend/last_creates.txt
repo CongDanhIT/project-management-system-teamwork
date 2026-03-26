@@ -1,0 +1,29 @@
+﻿
+logs\combined.log:226:[26/03/
+2026 19:37:07] INFO: 🔍 
+Request: [OPTIONS] /api/task/
+workspace/69b407a8b5414730694
+2b630/project/69bfda2536db32c
+bf6139345/create
+logs\combined.log:228:[26/03/
+2026 19:37:07] INFO: 🔍 
+Request: [POST] /api/task/wor
+kspace/69b407a8b54147306942b6
+30/project/69bfda2536db32cbf6
+139345/create
+logs\combined.log:230:[26/03/
+2026 19:37:07] INFO: 
+[Auth-Check] User: true, 
+Passport: true, URL: /workspa
+ce/69b407a8b54147306942b630/p
+roject/69bfda2536db32cbf61393
+45/create
+logs\combined.log:232:[26/03/
+2026 19:37:07] INFO: 
+[Auth-Check] User: true, 
+Passport: true, URL: /workspa
+ce/69b407a8b54147306942b630/p
+roject/69bfda2536db32cbf61393
+45/create
+
+
