@@ -17,6 +17,16 @@ export interface Project {
   endDate?: string | null;
   status?: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'FROZEN';
   deletedAt?: string | null;
+  totalTasks?: number;
+  completedTasks?: number;
+  members?: {
+    userId: {
+      _id: string;
+      name: string;
+      profilePicture?: string;
+    };
+    role: string;
+  }[];
 }
 
 export const projectService = {
@@ -60,5 +70,10 @@ export const projectService = {
   restoreProject: async (workspaceId: string, projectId: string) => {
     const response = await api.patch(`/project/workspace/${workspaceId}/restore/${projectId}`);
     return response.data.project as Project;
+  },
+
+  permanentDeleteProject: async (workspaceId: string, projectId: string) => {
+    const response = await api.delete(`/project/workspace/${workspaceId}/hard-delete/${projectId}`);
+    return response.data;
   },
 };

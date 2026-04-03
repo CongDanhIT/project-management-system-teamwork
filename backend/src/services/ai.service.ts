@@ -82,8 +82,8 @@ Tên Subtask 3
         const text = completion.choices[0]?.message?.content?.trim() || "";
         const subtasks = text
             .split("\n")
-            .map((line) => line.replace(/^[\s\d\.\-\*]+/, "").trim()) // Xóa slug, số, dấu gạch đầu dòng nếu có
-            .filter((line) => line.length > 0)
+            .map((line: string) => line.replace(/^[\s\d\.\-\*]+/, "").trim()) // Xóa slug, số, dấu gạch đầu dòng nếu có
+            .filter((line: string) => line.length > 0)
             .slice(0, 5);
         
         logger.info("[AI-Groq] Đã gợi ý subtasks thành công", { parentTitle, count: subtasks.length });

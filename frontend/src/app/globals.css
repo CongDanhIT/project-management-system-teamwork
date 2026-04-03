@@ -8,36 +8,74 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
+  --font-mono: var(--font-mono);
+  
+  /* Brand Colors */
+  --color-brand-primary: #035D5B;
+  --color-brand-secondary: #E6F2F2;
+
+  /* Accent Colors */
+  --color-accent-ai: #2DD4BF;
+  --color-accent-workspace: #6366F1;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Utility Colors */
+  --color-disabled: #CBD5E1;
+  --color-divider: #E2E8F0;
+
+  /* Standard Tailwind Interception (Quick Makeover) */
+  /* We redirect standard Indigo classes to our Teal Brand palette because existing code is using 'indigo' classes */
+  --color-indigo-50: #E6F2F2;
+  --color-indigo-100: #D1E5E5;
+  --color-indigo-200: #B3D1D1;
+  --color-indigo-500: #047A77;
+  --color-indigo-600: #035D5B; /* Primary Brand */
+  --color-indigo-700: #024D4B;
+  --color-indigo-800: #013D3B;
+  --color-indigo-900: #002D2C;
+  
+  /* Redirect slate for text primary and dividers */
+  --color-slate-50: #F8FAFC;
+  --color-slate-100: #F1F5F9;
+  --color-slate-200: #E2E8F0; /* Divider */
+  --color-slate-600: #475569; /* Text Sec */
+  --color-slate-900: #0F172A; /* Text Primary */
+  --color-slate-950: #0F172A;
+
+  /* Shadcn standard mappings */
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  --color-popover-foreground: var(--popover-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,74 +86,96 @@
 }
 
 :root {
-  --background: oklch(0.985 0.01 240); /* Slate 50 as base */
-  --foreground: oklch(0.145 0.02 255); /* Slate 950 as text */
-  --card: oklch(1 0 0); /* Pure White */
-  --card-foreground: oklch(0.145 0.02 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.02 255);
-  --primary: oklch(0.511 0.22 262.7); /* Indigo 600 */
-  --primary-foreground: oklch(0.985 0.01 240);
-  --secondary: oklch(0.922 0.01 240); /* Slate 200 */
-  --secondary-foreground: oklch(0.205 0.02 255);
-  --muted: oklch(0.922 0.01 240);
-  --muted-foreground: oklch(0.45 0.02 255);
-  --accent: oklch(0.96 0.01 262.7); /* Light Indigo hover */
-  --accent-foreground: oklch(0.511 0.22 262.7);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0.01 240);
-  --border: oklch(0.922 0.01 240 / 0.6);
-  --input: oklch(0.922 0.01 240);
-  --ring: oklch(0.511 0.22 262.7);
-  --chart-1: oklch(0.646 0.222 41.11);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 184.499);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.75rem;
-  --sidebar: oklch(1 0 0 / 0.7);
-  --sidebar-foreground: oklch(0.145 0.02 255);
-  --sidebar-primary: oklch(0.511 0.22 262.7);
-  --sidebar-primary-foreground: oklch(0.985 0.01 240);
-  --sidebar-accent: oklch(0.96 0.01 262.7);
-  --sidebar-accent-foreground: oklch(0.511 0.22 262.7);
-  --sidebar-border: oklch(0.922 0.01 240 / 0.6);
-  --sidebar-ring: oklch(0.511 0.22 262.7);
+  /* Common Palette */
+  --background: #F8FAFC; /* Ghost White */
+  --foreground: #0F172A; /* Slate 900 */
+  
+  --card: #FFFFFF; /* Pure White */
+  --card-foreground: #0F172A;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  
+  --primary: #035D5B; /* Deep Teal */
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: #E6F2F2; /* Mist Teal */
+  --secondary-foreground: #035D5B;
+  
+  --muted: #F1F5F9; /* Slate 100 */
+  --muted-foreground: #475569; /* Slate 600 */
+  
+  --accent: #E6F2F2;
+  --accent-foreground: #035D5B;
+  
+  --destructive: #EF4444; /* Rose Red */
+  --destructive-foreground: #FFFFFF;
+  
+  --border: #E2E8F0; /* Slate 200 */
+  --input: #E2E8F0;
+  --ring: #035D5B;
+  
+  --radius: 0.625rem;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #475569;
+  --sidebar-primary: #035D5B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E6F2F2;
+  --sidebar-accent-foreground: #035D5B;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #035D5B;
 }
 
 .dark {
-  --background: oklch(0.145 0.02 255); /* Deep slate */
-  --foreground: oklch(0.985 0.01 240);
-  --card: oklch(0.18 0.02 255);
-  --card-foreground: oklch(0.985 0.01 240);
-  --popover: oklch(0.18 0.02 255);
-  --popover-foreground: oklch(0.985 0.01 240);
-  --primary: oklch(0.6 0.22 262.7); /* Brighter indigo for dark */
-  --primary-foreground: oklch(0.145 0.02 255);
-  --secondary: oklch(0.25 0.02 255);
-  --secondary-foreground: oklch(0.985 0.01 240);
-  --muted: oklch(0.25 0.02 255);
-  --muted-foreground: oklch(0.7 0.02 255);
-  --accent: oklch(0.25 0.02 255);
-  --accent-foreground: oklch(0.985 0.01 240);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.25 0.02 255);
-  --input: oklch(0.25 0.02 255);
-  --ring: oklch(0.6 0.22 262.7);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.891);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.16 0.02 255 / 0.8);
-  --sidebar-foreground: oklch(0.985 0.01 240);
-  --sidebar-primary: oklch(0.6 0.22 262.7);
-  --sidebar-primary-foreground: oklch(0.145 0.02 255);
-  --sidebar-accent: oklch(0.25 0.02 255);
-  --sidebar-accent-foreground: oklch(0.985 0.01 240);
-  --sidebar-border: oklch(0.25 0.02 255);
-  --sidebar-ring: oklch(0.6 0.22 262.7);
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  
+  --primary: #2DD4BF; /* Tiffany Blue for Dark Mode */
+  --primary-foreground: #0F172A;
+  
+  --secondary: #334155;
+  --secondary-foreground: #F8FAFC;
+  
+  --muted: #334155;
+  --muted-foreground: #94A3B8;
+  
+  --accent: #334155;
+  --accent-foreground: #F8FAFC;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #F8FAFC;
+  
+  --border: #334155;
+  --input: #334155;
+  --ring: #2DD4BF;
+
+  --sidebar: #1E293B;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #2DD4BF;
+  --sidebar-primary-foreground: #0F172A;
+  --sidebar-accent: #334155;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: #334155;
+  --sidebar-ring: #2DD4BF;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes kinetic {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @layer base {
@@ -123,15 +183,62 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Optimal character versions for Geist */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
   }
 }
 
 @layer utilities {
+  /* Architectural Overlay / Glassmorphism */
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-slate-200/60;
+    @apply bg-white/70 backdrop-blur-md;
   }
   .dark .glass {
-    @apply bg-slate-900/80 backdrop-blur-md border border-slate-700/50;
+    @apply bg-slate-900/80 backdrop-blur-md;
+  }
+
+  /* Kinetic Gradient for CTAs/Headers */
+  .bg-kinetic {
+    background: linear-gradient(135deg, #035D5B 0%, #004442 100%);
+  }
+  .dark .bg-kinetic {
+    background: linear-gradient(135deg, #2DD4BF 0%, #035D5B 100%);
+  }
+
+  /* Ambient Shadows for Floating Elements/Cards */
+  .shadow-ambient {
+    box-shadow: 0px 20px 40px rgba(15, 23, 42, 0.08);
+  }
+  .shadow-ambient-subtle {
+    box-shadow: 0px 10px 25px rgba(15, 23, 42, 0.04);
+  }
+  .dark .shadow-ambient {
+    box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.3);
+  }
+  .dark .shadow-ambient-subtle {
+    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Micro-chart glow */
+  .shadow-glow {
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Editorial Typography Utilities */
+  .font-editorial {
+    letter-spacing: -0.02em;
+    font-weight: 900;
+  }
+
+  /* Ghost border fallback (20% opacity outline variant) */
+  .border-ghost {
+    border: 1px solid rgba(190, 201, 199, 0.2);
   }
 }

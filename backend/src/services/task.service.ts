@@ -227,7 +227,13 @@ export const getAllTasksService = async (
 
     // Lọc theo parentId (Null = lấy task cha, String = lấy subtasks)
     if (filters.parentId !== undefined) {
-        query.parentId = filters.parentId ? new mongoose.Types.ObjectId(filters.parentId) : null;
+        if (filters.parentId === 'null') {
+            query.parentId = null;
+        } else if (filters.parentId === 'not-null') {
+            query.parentId = { $ne: null };
+        } else if (filters.parentId && mongoose.Types.ObjectId.isValid(filters.parentId)) {
+            query.parentId = new mongoose.Types.ObjectId(filters.parentId);
+        }
     }
 
     if (filters.status && filters.status.length > 0) {

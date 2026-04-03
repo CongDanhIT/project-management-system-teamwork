@@ -22,14 +22,87 @@ export const createProjectService = async (workspaceId: string, body: {
 };
 
 export const getProjectsInWorkspaceService = async (workspaceId: string, pageSize: number, pageNumber: number) => {
-    const query = { workspaceId, deletedAt: null };
-    const totalCount = await ProjectModel.countDocuments(query);
     const skip = (pageNumber - 1) * pageSize;
-    const projects = await ProjectModel.find(query)
-        .skip(skip)
-        .limit(pageSize)
-        .populate("createdBy", "_id name profilePicture")
-        .sort({ lastAccessedAt: -1, viewCount: -1 });
+    const workspaceIdObj = new mongoose.Types.ObjectId(workspaceId);
+
+    const query = { workspaceId: workspaceIdObj, deletedAt: null };
+
+    // 1. Tính tổng số dự án để phân trang
+    const totalCount = await ProjectModel.countDocuments(query);
+
+    // 2. Aggregation để lấy dự án kèm số lượng task
+    const projects = await ProjectModel.aggregate([
+        { $match: query },
+        { $sort: { lastAccessedAt: -1, viewCount: -1 } },
+        { $skip: skip },
+        { $limit: pageSize },
+        // Lookup tasks để đếm (chỉ lấy task chưa xóa)
+        {
+            $lookup: {
+                from: "tasks",
+                let: { projectId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$projectId", "$$projectId"] },
+                                    { $eq: ["$deletedAt", null] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "tasks"
+            }
+        },
+        // Chèn thông tin người tạo (Populate tương đương)
+        {
+            $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "createdBy"
+            }
+        },
+        { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+        // Tính toán totalTasks và completedTasks
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                description: 1,
+                emoji: 1,
+                workspaceId: 1,
+                status: 1,
+                startDate: 1,
+                endDate: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                lastAccessedAt: 1,
+                viewCount: 1,
+                "createdBy._id": 1,
+                "createdBy.name": 1,
+                "createdBy.profilePicture": 1,
+                totalTasks: { $size: "$tasks" },
+                completedTasks: {
+                    $size: {
+                        $filter: {
+                            input: "$tasks",
+                            as: "task",
+                            cond: { 
+                                $or: [
+                                    { $eq: ["$$task.status", TaskStatusEnum.DONE] },
+                                    { $eq: ["$$task.status", TaskStatusEnum.COMPLETED] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]);
+
     const totalPages = Math.ceil(totalCount / pageSize);
     return { projects, totalCount, totalPages, skip };
 };

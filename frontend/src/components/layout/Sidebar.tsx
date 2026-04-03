@@ -56,23 +56,25 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-screen border-r border-slate-200/60 bg-white/70 backdrop-blur-md flex flex-col fixed left-0 top-0 z-50">
+    <aside className="w-66 h-screen glass border-ghost flex flex-col fixed left-0 top-0 z-50 shadow-ambient">
       {/* Logo & Workspace Selector */}
-      <div className="p-4 space-y-4">
-        <div className="flex items-center gap-2 px-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-3 px-2">
+          <div className="w-9 h-9 bg-kinetic rounded-xl flex items-center justify-center shadow-glow shadow-brand-primary/20">
             <Layout className="text-white w-5 h-5" />
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-indigo-400">
+          <span className="text-xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-accent-ai">
             TeamFlow
           </span>
         </div>
         
-        <WorkspaceSelector />
+        <div className="px-1">
+          <WorkspaceSelector />
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
         {[
           { label: 'Dashboard', icon: LayoutDashboard, href: `/workspace/${currentWorkspaceId}` },
           { label: 'Dự án', icon: FolderKanban, href: `/workspace/${currentWorkspaceId}/projects` },
@@ -88,41 +90,42 @@ export default function Sidebar() {
               key={item.label}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "group flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
                 isActive 
-                  ? "bg-indigo-50 text-indigo-600" 
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-brand-primary text-white shadow-glow shadow-brand-primary/30" 
+                  : "text-slate-500 hover:bg-brand-secondary/50 hover:text-brand-primary"
               )}
             >
-              <item.icon className={cn("w-4 h-4", isActive ? "text-indigo-600" : "text-slate-400")} />
+              <item.icon className={cn("w-4.5 h-4.5 transition-transform duration-200", isActive ? "text-white scale-110" : "text-slate-400 group-hover:text-brand-primary")} />
               {item.label}
+              {isActive && <ChevronRight className="ml-auto w-4 h-4 text-white/70" />}
             </Link>
           );
         })}
       </nav>
 
       {/* Footer / User Profile */}
-      <div className="p-4 border-t border-slate-200/60">
-        <div className="flex items-center gap-3 px-2 py-3 rounded-xl bg-slate-50/50">
-          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+      <div className="p-6 mt-auto border-t border-divider/40">
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-secondary/30 border border-ghost shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-kinetic flex items-center justify-center text-white font-black text-sm shadow-sm ring-2 ring-white">
             {user?.name?.[0].toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-sm font-bold text-slate-900 truncate">{user?.name}</p>
+            <p className="text-[10px] font-medium text-slate-500 truncate uppercase tracking-tight">{user?.email}</p>
           </div>
-          <Button variant="ghost" size="icon-xs" onClick={handleLogout}>
-            <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+          <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full w-8 h-8 hover:bg-rose-50 hover:text-rose-500">
+            <LogOut className="w-4 h-4" />
           </Button>
         </div>
         
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-5 px-1">
           <Link 
             href="/settings/profile"
-            className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+            className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-brand-primary transition-all hover:translate-x-1"
           >
             <Settings className="w-3.5 h-3.5" />
-            Cài đặt tài khoản
+            Cài đặt
           </Link>
           <ThemeToggle />
         </div>

@@ -31,7 +31,8 @@ export default function ProjectBoardPage() {
   
   const { data: projectTasks = [] } = useQuery({
     queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId, projectId),
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000 }),
+    select: (data) => data.tasks,
     enabled: !!workspaceId && !!projectId,
   });
   
@@ -77,7 +78,7 @@ export default function ProjectBoardPage() {
       if (selectedTask?._id === taskId) {
         setSelectedTask({ ...selectedTask, ...updatedTask });
       }
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -93,7 +94,7 @@ export default function ProjectBoardPage() {
     try {
       await taskService.deleteTask(workspaceId, projectId, taskId);
       setIsDrawerOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -110,7 +111,7 @@ export default function ProjectBoardPage() {
       const createdTask = await taskService.createTask(workspaceId, pId, taskData);
       const subtasksCount = taskData.subtasks?.length || 0;
 
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });

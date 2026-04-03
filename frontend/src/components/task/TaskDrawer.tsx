@@ -223,7 +223,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={TaskStatus.TODO}>Cần làm</SelectItem>
-                      <SelectItem value={TaskStatus.IN_PROGRESS}>Đang làm</SelectItem>
+                      <SelectItem value={TaskStatus.IN_PROGRESS}>Đang thực hiện</SelectItem>
                       <SelectItem value={TaskStatus.INREVIEW}>Đang duyệt</SelectItem>
                       <SelectItem value={TaskStatus.DONE}>Hoàn thành</SelectItem>
                     </SelectContent>

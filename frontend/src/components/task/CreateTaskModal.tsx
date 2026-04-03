@@ -103,10 +103,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Fetch parent tasks
   const { data: parentTasksData } = useQuery({
     queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId!, projectId),
+    queryFn: () => taskService.getProjectTasks(workspaceId!, projectId, { pageSize: 1000 }), // Lấy nhiều để chọn parent
     enabled: !!workspaceId && !!projectId,
   });
-  const availableParentTasks = (parentTasksData || []).filter(t => !t.parentId);
+  const availableParentTasks = (parentTasksData?.tasks || []).filter(t => !t.parentId);
 
   // Set default project when list changes
   React.useEffect(() => {
@@ -161,74 +161,80 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] p-0 overflow-hidden bg-white/95 backdrop-blur-xl border-slate-200/60 shadow-2xl rounded-3xl flex flex-col">
-        <div className="p-6 pb-2">
+      <DialogContent className="sm:max-w-[600px] max-h-[92vh] p-0 overflow-hidden glass border-ghost shadow-ambient rounded-[2rem] flex flex-col">
+        <div className="p-8 pb-4">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
-              {parentId ? 'Tạo nhiệm vụ con mới' : 'Tạo nhiệm vụ mới'}
-            </DialogTitle>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-brand-primary/10 rounded-2xl flex items-center justify-center">
+                <Plus className="text-brand-primary w-6 h-6" />
+              </div>
+              <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight">
+                {parentId ? 'Nhiệm vụ con' : 'Nhiệm vụ mới'}
+              </DialogTitle>
+            </div>
           </DialogHeader>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 space-y-6 py-2 custom-scrollbar">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiêu đề</label>
+          <div className="flex-1 overflow-y-auto px-8 space-y-8 py-4 custom-scrollbar">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tiêu đề</label>
               <Input 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Nhập tiêu đề công việc..."
-                className="h-12 border border-slate-200 bg-white/50 focus:ring-indigo-500 rounded-xl font-bold placeholder:text-slate-200 placeholder:font-normal shadow-inner shadow-slate-200/50"
+                className="h-14 border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl font-bold text-lg placeholder:text-slate-300 placeholder:font-medium shadow-sm transition-all"
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Mô tả</label>
                 <button
                   type="button"
                   onClick={handleAiSuggestDescription}
                   disabled={isAiDescLoading || !title.trim()}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  className="group flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-brand-primary bg-brand-secondary/80 hover:bg-brand-primary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-all shadow-sm active:scale-95"
                 >
                   {isAiDescLoading ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="w-3 h-3" />
+                    <Sparkles className="w-3.5 h-3.5 group-hover:animate-pulse" />
                   )}
-                  AI gợi ý
+                  Tư vấn AI
                 </button>
               </div>
               <Textarea 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Thêm mô tả chi tiết..."
-                className="min-h-[120px] border border-slate-200 bg-white/50 focus:ring-indigo-500 rounded-xl resize-none shadow-inner shadow-slate-200/50"
+                placeholder="Thêm mô tả chi tiết để AI hiểu rõ hơn..."
+                className="min-h-[140px] border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl resize-none shadow-sm font-medium leading-relaxed transition-all"
               />
             </div>
 
             {/* AI Gợi ý Subtasks */}
             {selectedParentId === 'none' && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI Gợi ý Nhiệm vụ con</label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kế hoạch hành động AI</label>
                   <button
                     type="button"
                     onClick={handleAiSuggestSubtasks}
                     disabled={isAiSubtasksLoading || !title.trim()}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-accent-workspace bg-accent-workspace/10 hover:bg-accent-workspace hover:text-white disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-all shadow-sm active:scale-95"
                   >
                     {isAiSubtasksLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Sparkles className="w-3 h-3" />
+                      <Sparkles className="w-3.5 h-3.5" />
                     )}
-                    Gợi ý subtasks
+                    Phân tách subtasks
                   </button>
                 </div>
                 {aiSubtaskSuggestions.length > 0 && (
-                  <div className="p-3 bg-violet-50 border border-violet-200/60 rounded-xl space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <p className="text-xs text-violet-500 font-semibold mb-2">Chọn để thêm vào tiêu đề (tạo subtask sau khi tạo task cha):</p>
+                  <div className="p-5 bg-accent-workspace/5 border border-ghost rounded-3xl space-y-2 animate-in fade-in slide-in-from-top-4 duration-500 shadow-inner">
+                    <p className="text-[10px] text-accent-workspace font-black uppercase tracking-widest mb-4 opacity-70">Chọn các bước cần thực hiện:</p>
+                    <div className="grid grid-cols-1 gap-2">
                     {aiSubtaskSuggestions.map((suggestion, idx) => {
                       const isSelected = selectedSubtasks.includes(suggestion);
                       return (
@@ -240,50 +246,51 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                               setSelectedSubtasks(prev => prev.filter(s => s !== suggestion));
                             } else {
                               setSelectedSubtasks(prev => [...prev, suggestion]);
-                              toast.success(`Đã chọn: ${suggestion}`, { duration: 1500 });
+                              toast.success(`Đã thêm: ${suggestion}`, { duration: 1500 });
                             }
                           }}
                           className={cn(
-                            "w-full flex items-center justify-between px-3 py-2 border rounded-lg text-xs font-medium transition-all",
+                            "w-full flex items-center justify-between px-4 py-3 border rounded-2xl text-xs font-bold transition-all duration-200 active:scale-[0.98]",
                             isSelected 
-                              ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-100" 
-                              : "bg-white hover:bg-violet-50 border-violet-100 text-slate-700"
+                              ? "bg-accent-workspace border-accent-workspace text-white shadow-glow shadow-accent-workspace/40" 
+                              : "bg-white hover:bg-slate-50 border-ghost text-slate-700"
                           )}
                         >
-                          <div className="flex items-center gap-2">
-                            <Plus className={cn("w-3 h-3 flex-shrink-0", isSelected ? "text-violet-200" : "text-violet-500")} />
+                          <div className="flex items-center gap-3">
+                            <Plus className={cn("w-3.5 h-3.5 flex-shrink-0", isSelected ? "text-white" : "text-accent-workspace")} />
                             {suggestion}
                           </div>
-                          {isSelected && <div className="w-2 h-2 bg-white rounded-full animate-pulse" />}
+                          {isSelected && <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse shadow-glow" />}
                         </button>
                       );
                     })}
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ưu tiên</label>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Ưu tiên</label>
                 <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
-                  <SelectTrigger className="h-12 border-slate-200/60 bg-white/50 rounded-xl shadow-inner shadow-slate-200/50">
-                    <SelectValue placeholder="Chọn mức độ ưu tiên">
-                      {priority === TaskPriority.LOW ? "Thấp" : priority === TaskPriority.MEDIUM ? "Trung bình" : "Cao"}
+                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm hover:bg-white transition-all font-bold">
+                    <SelectValue placeholder="Chọn mức độ">
+                      {priority === TaskPriority.LOW ? "Tiêu chuẩn" : priority === TaskPriority.MEDIUM ? "Trung bình" : "Khẩn cấp"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value={TaskPriority.LOW}>Thấp</SelectItem>
-                    <SelectItem value={TaskPriority.MEDIUM}>Trung bình</SelectItem>
-                    <SelectItem value={TaskPriority.HIGH}>Cao</SelectItem>
+                  <SelectContent className="rounded-2xl shadow-ambient border-ghost">
+                    <SelectItem value={TaskPriority.LOW} className="font-bold py-3">Tiêu chuẩn</SelectItem>
+                    <SelectItem value={TaskPriority.MEDIUM} className="font-bold py-3 text-brand-primary">Trung bình</SelectItem>
+                    <SelectItem value={TaskPriority.HIGH} className="font-bold py-3 text-rose-600">Khẩn cấp</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dự án</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Dự án đích</label>
                 <Select value={projectId} onValueChange={(val) => setProjectId(val || '')} disabled={!!parentId}>
-                  <SelectTrigger className="h-12 border-slate-200/60 bg-white/50 rounded-xl shadow-inner shadow-slate-200/50">
+                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm hover:bg-white transition-all font-bold">
                     <SelectValue placeholder="Chọn dự án">
                       {(() => {
                         if (!projectId) return "Chọn dự án";
@@ -291,18 +298,20 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         if (!p) return projectId;
                         return (
                           <div className="flex items-center">
-                            <span className="mr-2">{p.emoji}</span>
+                            <span className="mr-3 text-lg">{p.emoji}</span>
                             {p.name}
                           </div>
                         );
                       })()}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent className="rounded-2xl shadow-ambient border-ghost">
                     {projects.map((project) => (
-                      <SelectItem key={project._id} value={project._id}>
-                        <span className="mr-2">{project.emoji}</span>
-                        {project.name}
+                      <SelectItem key={project._id} value={project._id} className="font-bold py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{project.emoji}</span>
+                          {project.name}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -310,26 +319,26 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nhiệm vụ cha</label>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nhiệm vụ gốc (Parent)</label>
                 <Select value={selectedParentId} onValueChange={(val) => setSelectedParentId(val || 'none')} disabled={!!parentId}>
-                  <SelectTrigger className="h-12 border-slate-200/60 bg-white/50 rounded-xl shadow-inner shadow-slate-200/50">
+                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm font-bold">
                     <SelectValue placeholder="Không có">
                       {selectedParentId === 'none' ? "Không có" : availableParentTasks.find(t => t._id === selectedParentId)?.title || selectedParentId}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl max-h-64">
-                    <SelectItem value="none">Không có</SelectItem>
+                  <SelectContent className="rounded-2xl shadow-ambient border-ghost max-h-64">
+                    <SelectItem value="none" className="font-bold py-3">Không có công việc gốc</SelectItem>
                     {availableParentTasks.map((t: Task) => (
-                      <SelectItem key={t._id} value={t._id}>{t.title}</SelectItem>
+                      <SelectItem key={t._id} value={t._id} className="font-bold py-3">{t.title}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ước tính (Giờ)</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Thanh khoản (Giờ)</label>
                 <Input 
                   type="number"
                   min="0"
@@ -337,41 +346,26 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   value={estimatedHours}
                   onChange={(e) => setEstimatedHours(e.target.value ? Number(e.target.value) : '')}
                   placeholder="Ví dụ: 8"
-                  className="h-12 border border-slate-200 bg-white/50 focus:ring-indigo-500 rounded-xl font-medium placeholder:text-slate-200 placeholder:font-normal shadow-inner shadow-slate-200/50"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đã log (Giờ)</label>
-                <Input 
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={loggedHours}
-                  onChange={(e) => setLoggedHours(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="Ví dụ: 4.5"
-                  className="h-12 border border-slate-200 bg-white/50 focus:ring-indigo-500 rounded-xl font-medium placeholder:text-slate-200 placeholder:font-normal shadow-inner shadow-slate-200/50"
+                  className="h-14 border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl font-bold shadow-sm transition-all"
                 />
               </div>
             </div>
 
             {selectedParentId === 'none' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 flex flex-col justify-end">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mở đầu</label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3 flex flex-col justify-end">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Bắt đầu</label>
                   <Popover>
                     <PopoverTrigger
                       className={cn(
-                        "flex items-center w-full h-12 px-4 border border-slate-200/60 bg-white/50 hover:bg-slate-50 rounded-xl font-bold text-left justify-start transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20",
+                        "flex items-center w-full h-14 px-5 border-ghost bg-secondary/20 hover:bg-white rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20",
                         !startDate && "text-slate-400 font-normal"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-3 h-5 w-5 text-brand-primary" />
                       {startDate ? format(startDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200/60" align="start">
+                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-ambient border-ghost" align="start">
                       <Calendar
                         mode="single"
                         selected={startDate}
@@ -382,19 +376,19 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </Popover>
                 </div>
 
-                <div className="space-y-2 flex flex-col justify-end">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hạn chót</label>
+                <div className="space-y-3 flex flex-col justify-end">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Hạn chót</label>
                   <Popover>
                     <PopoverTrigger
                       className={cn(
-                        "flex items-center w-full h-12 px-4 border border-slate-200/60 bg-white/50 hover:bg-slate-50 rounded-xl font-bold text-left justify-start transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20",
+                        "flex items-center w-full h-14 px-5 border-ghost bg-secondary/20 hover:bg-white rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20",
                         !dueDate && "text-slate-400 font-normal"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-3 h-5 w-5 text-rose-500" />
                       {dueDate ? format(dueDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-xl border-slate-200/60" align="start">
+                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-ambient border-ghost" align="start">
                       <Calendar
                         mode="single"
                         selected={dueDate}
@@ -408,19 +402,19 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             )}
           </div>
 
-          <DialogFooter className="p-6 pt-2 border-t border-slate-100 bg-slate-50/50">
-            <Button type="button" variant="ghost" onClick={onClose} className="rounded-xl font-bold text-slate-500 hover:text-slate-900">Hủy</Button>
+          <DialogFooter className="p-8 pt-4 border-t border-divider/20 bg-secondary/10 mt-auto">
+            <Button type="button" variant="ghost" onClick={onClose} className="rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-900 h-14 px-8 transition-all">Hủy bỏ</Button>
             <Button 
               type="submit" 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-10 font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50"
+              className="bg-kinetic hover:scale-[1.02] text-white rounded-2xl px-12 h-14 font-black uppercase text-[10px] tracking-[0.2em] shadow-glow active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition-all"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang lưu...
+                  Đang khởi tạo...
                 </>
-              ) : "Lưu công việc"}
+              ) : "Triển khai ngay"}
             </Button>
           </DialogFooter>
         </form>

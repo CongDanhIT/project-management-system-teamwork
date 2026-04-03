@@ -71,7 +71,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case TaskStatus.TODO: return "Cần làm";
-      case TaskStatus.IN_PROGRESS: return "Đang làm";
+      case TaskStatus.IN_PROGRESS: return "Đang thực hiện";
       case TaskStatus.INREVIEW: return "Đang duyệt";
       case TaskStatus.DONE: return "Hoàn thành";
       default: return "Tất cả";
@@ -157,7 +157,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                       <SelectContent className="rounded-xl border-slate-100">
                         <SelectItem value="all">Tất cả</SelectItem>
                         <SelectItem value={TaskStatus.TODO}>Cần làm</SelectItem>
-                        <SelectItem value={TaskStatus.IN_PROGRESS}>Đang làm</SelectItem>
+                        <SelectItem value={TaskStatus.IN_PROGRESS}>Đang thực hiện</SelectItem>
                         <SelectItem value={TaskStatus.INREVIEW}>Đang duyệt</SelectItem>
                         <SelectItem value={TaskStatus.DONE}>Hoàn thành</SelectItem>
                       </SelectContent>

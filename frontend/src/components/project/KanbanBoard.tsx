@@ -43,7 +43,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
   const queryClient = useQueryClient();
   const { data: fetchedTasks, isLoading: loading } = useQuery({
     queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId, projectId),
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000 }),
     enabled: !!workspaceId && !!projectId,
   });
 
@@ -59,8 +59,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
   );
 
   useEffect(() => {
-    if (fetchedTasks) {
-      setTasks(fetchedTasks);
+    if (fetchedTasks?.tasks) {
+      setTasks(fetchedTasks.tasks);
     }
   }, [fetchedTasks]);
 

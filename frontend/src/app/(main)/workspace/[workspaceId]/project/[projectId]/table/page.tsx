@@ -6,20 +6,22 @@ import { projectService, Project } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { workspaceService } from '@/services/workspace.service';
 import { Task } from '@/types/task';
-import { 
-  Loader2, 
-  LayoutGrid, 
-  BarChart3, 
-  Settings, 
-  Layout, 
-  Plus, 
+import {
+  Loader2,
+  LayoutGrid,
+  BarChart3,
+  Settings,
+  Layout,
+  Plus,
   Search,
   Filter,
   ArrowUpDown,
   MoreHorizontal,
   Calendar,
   User,
-  CornerDownRight
+  CornerDownRight,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,7 +35,7 @@ import { vi } from 'date-fns/locale';
 import { TaskDrawer } from '@/components/task/TaskDrawer';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
 import { toast } from 'sonner';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 
 export default function ProjectTablePage() {
@@ -42,16 +44,23 @@ export default function ProjectTablePage() {
   const projectId = params.projectId as string;
   const queryClient = useQueryClient();
   const { isAdminOrOwner } = useWorkspaceRole();
-  
+
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Drawer state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const { data: projectData, isLoading: isProjectLoading } = useQuery({
     queryKey: ['project', workspaceId, projectId],
@@ -59,9 +68,26 @@ export default function ProjectTablePage() {
     enabled: !!workspaceId && !!projectId,
   });
 
-  const { data: fetchedTasks, isLoading: isTasksLoading } = useQuery({
-    queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId, projectId),
+  // Fetch only Root Tasks for the current page
+  const { data: rootTasksData, isLoading: isRootTasksLoading, isPlaceholderData } = useQuery({
+    queryKey: ['project-root-tasks', workspaceId, projectId, currentPage, searchQuery],
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
+      pageNumber: currentPage, 
+      pageSize, 
+      parentId: 'null', // Fetch only top-level
+      keyword: searchQuery 
+    }),
+    placeholderData: keepPreviousData,
+    enabled: !!workspaceId && !!projectId,
+  });
+
+  // Fetch ALL subtasks of this project to build the tree (Subtasks don't affect root pagination)
+  const { data: subtasksData, isLoading: isSubtasksLoading } = useQuery({
+    queryKey: ['project-all-subtasks', workspaceId, projectId],
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
+      pageSize: 1000, 
+      parentId: 'not-null' // Custom parameter handling or just fetch all and filter client side
+    }),
     enabled: !!workspaceId && !!projectId,
   });
 
@@ -74,27 +100,50 @@ export default function ProjectTablePage() {
   useEffect(() => {
     if (projectData) {
       setProject(projectData);
-      // Invalidate workspace projects to refresh sorting on dashboard
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
     }
-    if (fetchedTasks) setTasks(fetchedTasks);
+    
+    // Combine Root Tasks and Subtasks
+    const combinedTasks: Task[] = [];
+    if (rootTasksData?.tasks) {
+      combinedTasks.push(...rootTasksData.tasks);
+      if (rootTasksData.pagination) {
+        setTotalPages(rootTasksData.pagination.totalPages);
+        setTotalCount(rootTasksData.pagination.totalCount);
+      }
+    }
+    if (subtasksData?.tasks) {
+      // Filter to only include subtasks (they have a parentId)
+      const subOnly = subtasksData.tasks.filter(t => t.parentId);
+      combinedTasks.push(...subOnly);
+    }
+    
+    setTasks(combinedTasks);
+    
     if (workspaceData) setMembers(workspaceData.members || []);
-  }, [projectData, fetchedTasks, workspaceData, queryClient, workspaceId]);
+  }, [projectData, rootTasksData, subtasksData, workspaceData, queryClient, workspaceId]);
 
-  const loading = isProjectLoading || isTasksLoading || isMembersLoading;
+  const loading = isProjectLoading || isRootTasksLoading || isSubtasksLoading || isMembersLoading;
 
   const refreshTasks = async () => {
-    try {
-      const tasksData = await taskService.getProjectTasks(workspaceId, projectId);
-      setTasks(tasksData);
-    } catch (error) {
-      console.error('Refresh tasks error:', error);
-    }
+    queryClient.invalidateQueries({ queryKey: ['project-root-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['project-all-subtasks'] });
   };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
     setIsDrawerOpen(true);
+  };
+
+  const toggleRow = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedRows(newExpanded);
   };
 
   const handleUpdateTask = async (taskId: string, data: Partial<Task>) => {
@@ -104,7 +153,8 @@ export default function ProjectTablePage() {
       if (selectedTask?._id === taskId) {
         setSelectedTask({ ...selectedTask, ...updatedTask });
       }
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -119,7 +169,8 @@ export default function ProjectTablePage() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await taskService.deleteTask(workspaceId, projectId, taskId);
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -137,19 +188,20 @@ export default function ProjectTablePage() {
       const createdTask = await taskService.createTask(workspaceId, pId, taskData);
       const subtasksCount = taskData.subtasks?.length || 0;
 
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
-      
+
       if (isDrawerOpen && selectedTask && taskData.parentId === selectedTask._id) {
         const updatedParent = await taskService.getTaskById(workspaceId, pId, selectedTask._id);
         setSelectedTask(updatedParent);
       }
-      
-      toast.success(subtasksCount > 0 
-        ? `Đã tạo công việc và ${subtasksCount} nhiệm vụ con!` 
+
+      toast.success(subtasksCount > 0
+        ? `Đã tạo công việc và ${subtasksCount} nhiệm vụ con!`
         : "Đã tạo công việc mới"
       );
     } catch (error) {
@@ -158,38 +210,48 @@ export default function ProjectTablePage() {
     }
   };
 
-  const filteredTasks: Task[] = [];
   const topLevelTasks = tasks.filter(t => !t.parentId);
 
-  topLevelTasks.forEach(parent => {
-    const parentMatches = parent.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          parent.taskCode.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const subTasks = tasks.filter(t => t.parentId === parent._id);
-    const matchingSubTasks = subTasks.filter(t => 
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      t.taskCode.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const getParentIdStr = (parentId: any) => {
+    if (!parentId) return '';
+    return typeof parentId === 'object' ? String(parentId._id) : String(parentId);
+  };
 
-    if (parentMatches || matchingSubTasks.length > 0) {
-      filteredTasks.push(parent);
-      if (parentMatches) {
-        filteredTasks.push(...subTasks);
-      } else {
-        filteredTasks.push(...matchingSubTasks); // only show matching subtasks if parent didn't strictly match search
-      }
-    }
-  });
-
-  // Add any orphaned tasks just in case
-  const loadedParentIds = new Set(topLevelTasks.map(t => t._id));
+  // Create a map for quick subtask lookup using string IDs
+  const subtasksMap = new Map<string, Task[]>();
   tasks.forEach(t => {
-    if (t.parentId && !loadedParentIds.has(t.parentId)) {
-      if (t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.taskCode.toLowerCase().includes(searchQuery.toLowerCase())) {
-        filteredTasks.push(t);
-      }
+    if (t.parentId) {
+      const parentIdStr = getParentIdStr(t.parentId);
+      const subs = subtasksMap.get(parentIdStr) || [];
+      subs.push(t);
+      subtasksMap.set(parentIdStr, subs);
     }
   });
+
+  const getFilteredData = () => {
+    const results: { parent: Task; subtasks: Task[] }[] = [];
+
+    topLevelTasks.forEach(parent => {
+      const parentIdStr = String(parent._id);
+      const parentMatches = parent.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        parent.taskCode.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const allSubtasks = subtasksMap.get(parentIdStr) || [];
+      const matchingSubTasks = allSubtasks.filter(t =>
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.taskCode.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      if (parentMatches || matchingSubTasks.length > 0) {
+        const subtasksToShow = searchQuery ? (parentMatches ? allSubtasks : matchingSubTasks) : allSubtasks;
+        results.push({ parent, subtasks: subtasksToShow });
+      }
+    });
+
+    return results;
+  };
+
+  const filteredData = getFilteredData();
 
   if (loading) {
     return (
@@ -224,21 +286,21 @@ export default function ProjectTablePage() {
         </div>
 
         <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1.5 rounded-xl border border-slate-200/60 shadow-sm">
-          <Link 
+          <Link
             href={`/workspace/${workspaceId}/project/${projectId}/board`}
             className="px-3 py-1 text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center"
           >
             <LayoutGrid className="w-4 h-4 mr-2" />
             Board
           </Link>
-          <Link 
+          <Link
             href={`/workspace/${workspaceId}/project/${projectId}/table`}
             className="px-3 py-1 bg-white shadow-sm text-indigo-600 hover:text-indigo-700 font-semibold text-sm rounded-md flex items-center border border-slate-200"
           >
             <Layout className="w-4 h-4 mr-2" />
             Table
           </Link>
-          <Link 
+          <Link
             href={`/workspace/${workspaceId}/project/${projectId}/analytics`}
             className="px-3 py-1 text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center"
           >
@@ -252,20 +314,20 @@ export default function ProjectTablePage() {
       <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input 
-            placeholder="Tìm theo tiêu đề hoặc mã..." 
+          <Input
+            placeholder="Tìm theo tiêu đề hoặc mã..."
             className="pl-10 h-10 bg-white border-slate-200 rounded-xl"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button variant="outline" className="h-10 border-slate-200 rounded-xl text-slate-600">
             <Filter className="w-4 h-4 mr-2" />
             Lọc
           </Button>
-          <Button 
+          <Button
             className="h-10 bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-indigo-100/50"
             onClick={() => setIsCreateModalOpen(true)}
           >
@@ -284,7 +346,7 @@ export default function ProjectTablePage() {
                 <th className="px-6 py-4 w-24">Mã</th>
                 <th className="px-6 py-4 flex-1">Tên công việc</th>
                 <th className="px-6 py-4 w-36">
-                   <div className="flex items-center gap-1">Trạng thái <ArrowUpDown className="w-3 h-3" /></div>
+                  <div className="flex items-center gap-1">Trạng thái <ArrowUpDown className="w-3 h-3" /></div>
                 </th>
                 <th className="px-6 py-4 w-32">Ưu tiên</th>
                 <th className="px-6 py-4 w-36">Người thực hiện</th>
@@ -293,75 +355,154 @@ export default function ProjectTablePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredTasks.length > 0 ? (
-                filteredTasks.map((task) => (
-                  <tr 
-                    key={task._id} 
-                    onClick={() => handleTaskClick(task)}
-                    className="group hover:bg-slate-50/50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-mono font-bold text-indigo-500 bg-indigo-50/50 px-2 py-0.5 rounded">
-                        {task.taskCode}
-                      </span>
-                    </td>
-                    <td className={cn("px-6 py-4 flex flex-col", task.parentId && "pl-14")}>
-                      <div className="flex items-center gap-2">
-                        {task.parentId && <CornerDownRight className="w-4 h-4 text-slate-300" />}
-                        <span className={cn(
-                          "text-sm tracking-tight transition-colors group-hover:text-indigo-600",
-                          task.parentId ? "font-medium text-slate-600" : "font-semibold text-slate-900"
-                        )}>
-                          {task.title}
-                        </span>
-                      </div>
-                      {task.description && !task.parentId && (
-                        <span className="text-xs text-slate-500 line-clamp-1 mt-0.5 font-normal">
-                          {task.description}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={task.status} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <PriorityBadge priority={task.priority} />
-                    </td>
-                    <td className="px-6 py-4">
-                      {task.assignedTo ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-6 h-6 ring-1 ring-slate-200">
-                            <AvatarImage src={task.assignedTo.profilePicture} />
-                            <AvatarFallback className="text-[10px] bg-indigo-50 text-indigo-600 font-bold uppercase">
-                              {task.assignedTo.name?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm text-slate-600 truncate max-w-[100px]">{task.assignedTo.name}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 flex items-center justify-center">
-                            <User className="w-3 h-3" />
+              {filteredData.length > 0 ? (
+                filteredData.map(({ parent, subtasks }) => {
+                  const parentIdStr = String(parent._id);
+                  const isExpanded = expandedRows.has(parentIdStr) || searchQuery.length > 0;
+                  const hasSubtasks = subtasks.length > 0;
+
+                  return (
+                    <React.Fragment key={parentIdStr}>
+                      {/* Parent Row */}
+                      <tr 
+                        onClick={() => handleTaskClick(parent)}
+                        className={cn(
+                          "group hover:bg-slate-50/50 cursor-pointer transition-colors relative",
+                          hasSubtasks && isExpanded && "bg-slate-50/30"
+                        )}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap relative">
+                          <div className="flex items-center gap-3">
+                            {hasSubtasks ? (
+                              <button 
+                                onClick={(e) => toggleRow(parentIdStr, e)}
+                                className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-all z-10 bg-white border border-slate-200"
+                              >
+                                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                              </button>
+                            ) : (
+                              <div className="w-5" />
+                            )}
+                            <span className="text-xs font-mono font-bold text-indigo-500 bg-indigo-50/50 px-2 py-0.5 rounded">
+                              {parent.taskCode}
+                            </span>
                           </div>
-                          <span className="text-xs italic">Chưa gán</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-500 whitespace-nowrap">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-xs font-medium uppercase tracking-wider">
-                          {task.dueDate ? format(new Date(task.dueDate), 'dd MMM, yyyy', { locale: vi }) : '--'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                          {hasSubtasks && isExpanded && (
+                            <div className="absolute left-[34px] top-[44px] bottom-0 w-[1.5px] bg-slate-200 group-hover:bg-indigo-200 transition-colors" />
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-slate-900 tracking-tight transition-colors group-hover:text-indigo-600">
+                              {parent.title}
+                            </span>
+                            {parent.description && (
+                              <span className="text-xs text-slate-500 line-clamp-1 mt-0.5 font-normal italic">
+                                {parent.description}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4"><StatusBadge status={parent.status} /></td>
+                        <td className="px-6 py-4"><PriorityBadge priority={parent.priority} /></td>
+                        <td className="px-6 py-4 text-slate-500">
+                          {parent.assignedTo ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-6 h-6 ring-1 ring-slate-200">
+                                <AvatarImage src={parent.assignedTo.profilePicture} />
+                                <AvatarFallback className="text-[10px] bg-indigo-50 text-indigo-600 font-bold uppercase">
+                                  {parent.assignedTo.name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm truncate max-w-[100px]">{parent.assignedTo.name}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 flex items-center justify-center">
+                                <User className="w-3 h-3 text-slate-300" />
+                              </div>
+                              <span className="text-xs italic">Chưa gán</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-xs font-medium tracking-wider">
+                              {parent.dueDate ? format(new Date(parent.dueDate), 'dd MMM, yyyy', { locale: vi }) : '--'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+
+                      {/* Subtask Rows */}
+                      {isExpanded && subtasks.map((subtask, index) => {
+                        const isLast = index === subtasks.length - 1;
+                        return (
+                          <tr 
+                            key={subtask._id} 
+                            onClick={() => handleTaskClick(subtask)}
+                            className="group hover:bg-indigo-50/20 cursor-pointer transition-colors relative"
+                          >
+                            <td className="px-6 py-3 whitespace-nowrap relative">
+                              {!isLast ? (
+                                <div className="absolute left-[34px] top-0 bottom-0 w-[1.5px] bg-slate-200 group-hover:bg-indigo-300 transition-colors" />
+                              ) : (
+                                <div className="absolute left-[34px] top-0 h-[50%] w-[1.5px] bg-slate-200 group-hover:bg-indigo-300 transition-colors" />
+                              )}
+                              <div className="absolute left-[34px] top-1/2 -translate-y-1/2 w-4 h-[1.5px] bg-slate-200 group-hover:bg-indigo-300 transition-colors" />
+                              <div className="flex items-center gap-3 pl-8">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-500 px-1.5 py-0.5 rounded transition-all">
+                                  {subtask.taskCode}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className="text-sm font-medium text-slate-600 transition-colors group-hover:text-indigo-600">
+                                {subtask.title}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3"><StatusBadge status={subtask.status} /></td>
+                            <td className="px-6 py-3"><PriorityBadge priority={subtask.priority} /></td>
+                            <td className="px-6 py-3">
+                              {subtask.assignedTo ? (
+                                <div className="flex items-center gap-2 opacity-80">
+                                  <Avatar className="w-5 h-5 ring-1 ring-slate-100">
+                                    <AvatarImage src={subtask.assignedTo.profilePicture} />
+                                    <AvatarFallback className="text-[9px] bg-slate-50 text-slate-500 font-bold uppercase">
+                                      {subtask.assignedTo.name?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs text-slate-500 truncate max-w-[80px]">{subtask.assignedTo.name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-300 italic pl-7">Chưa gán</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-3 text-slate-400 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-3 h-3 opacity-50" />
+                                <span className="text-[10px] font-medium tracking-wider">
+                                  {subtask.dueDate ? format(new Date(subtask.dueDate), 'dd MMM', { locale: vi }) : '--'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-200">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-20 text-center text-slate-500 italic">
@@ -372,17 +513,77 @@ export default function ProjectTablePage() {
             </tbody>
           </table>
         </div>
-        
-        {/* Footer info */}
-        <div className="p-4 bg-slate-50/50 border-t border-slate-200 flex items-center justify-between text-xs font-medium text-slate-500">
-          <span>Tổng số: {topLevelTasks.length} tác vụ chính & {tasks.length - topLevelTasks.length} tác vụ con</span>
-          <span className="flex items-center gap-2 italic">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Đang đồng bộ thời gian thực
+
+        {/* Pagination & Footer info */}
+        <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-6 text-xs font-medium text-slate-500">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md text-indigo-600 font-bold">
+                {currentPage}
+              </span>
+              <span>trên {totalPages} trang</span>
+            </div>
+            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+            <span>Tổng số: <strong className="text-slate-900">{totalCount}</strong> tác vụ chính</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-white hover:text-indigo-600 transition-all disabled:opacity-30"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+            >
+              <ChevronRight className="w-4 h-4 mr-1 rotate-180" />
+              Trước
+            </Button>
+            
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                 // Simple pagination window logic
+                 let pageNum = i + 1;
+                 if (totalPages > 5 && currentPage > 3) {
+                   pageNum = currentPage - 3 + i + 1;
+                   if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                 }
+                 
+                 return (
+                   <button
+                     key={pageNum}
+                     onClick={() => setCurrentPage(pageNum)}
+                     className={cn(
+                       "w-7 h-7 flex items-center justify-center text-[11px] font-bold rounded-md transition-all",
+                       currentPage === pageNum 
+                         ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200" 
+                         : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                     )}
+                   >
+                     {pageNum}
+                   </button>
+                 );
+               })}
+            </div>
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-white hover:text-indigo-600 transition-all disabled:opacity-30"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages || loading}
+            >
+              Sau
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          
+          <span className="flex items-center gap-2 italic text-[10px] text-slate-400 sm:ml-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Đang đồng bộ thời gian thực
           </span>
         </div>
       </div>
 
-      <TaskDrawer 
+      <TaskDrawer
         task={selectedTask}
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -394,7 +595,7 @@ export default function ProjectTablePage() {
         isAdminOrOwner={isAdminOrOwner}
       />
 
-      <CreateTaskModal 
+      <CreateTaskModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         projects={project ? [project] : []}
