@@ -10,7 +10,7 @@ export interface TaskDocument extends mongoose.Document {
     parentId: mongoose.Types.ObjectId | null; // [AI-ADDED] ID của Task cha (nếu là Subtask)
     status: TaskStatusEnumType;
     priority: TaskPriorityEnumType;
-    assignedTo: mongoose.Types.ObjectId | null;
+    assignedTo: mongoose.Types.ObjectId[]; // [MULTI-ASSIGNEE] Mảng người thực hiện, rỗng = chưa gán
     createdBy: mongoose.Types.ObjectId;
     startDate: Date | null; // [AI-ADDED] Ngày bắt đầu (Cho Calendar/Gantt)
     dueDate: Date | null;
@@ -29,7 +29,7 @@ const taskSchema = new Schema<TaskDocument>({
     parentId: { type: Schema.Types.ObjectId, ref: "Task", default: null },
     status: { type: String, enum: Object.values(TaskStatusEnum), default: TaskStatusEnum.TODO },
     priority: { type: String, enum: Object.values(TaskPriorityEnum), default: TaskPriorityEnum.MEDIUM },
-    assignedTo: { type: mongoose.Types.ObjectId, ref: "User", default: null },
+    assignedTo: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     createdBy: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     startDate: { type: Date, default: null },
     dueDate: { type: Date, default: null },

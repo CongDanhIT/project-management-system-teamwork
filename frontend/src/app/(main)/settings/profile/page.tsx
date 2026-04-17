@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/shared/UserAvatar';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { useAuthStore } from '@/stores/auth.store';
@@ -111,7 +111,7 @@ export default function ProfilePage() {
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <User className="w-5 h-5 text-indigo-600" />
+                <User className="w-5 h-5 text-brand-primary" />
                 Thông tin tài khoản
               </CardTitle>
             </CardHeader>
@@ -121,12 +121,13 @@ export default function ProfilePage() {
                   className="relative group cursor-pointer"
                   onClick={() => !isUploading && fileInputRef.current?.click()}
                 >
-                   <Avatar className="w-24 h-24 rounded-3xl border-4 border-white shadow-xl ring-1 ring-slate-100">
-                     <AvatarImage src={profilePictureUrl} />
-                     <AvatarFallback className="bg-indigo-50 text-indigo-600 text-3xl font-black">
-                        {user?.name?.[0].toUpperCase()}
-                     </AvatarFallback>
-                   </Avatar>
+                   <UserAvatar 
+                      name={user?.name} 
+                      image={profilePictureUrl}
+                      size="xl"
+                      showShadow={false}
+                      className="w-24 h-24 rounded-3xl border-4 border-white shadow-xl ring-1 ring-slate-100"
+                   />
                    <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       {isUploading ? <Loader2 className="text-white w-6 h-6 animate-spin" /> : <Camera className="text-white w-6 h-6" />}
                    </div>
@@ -146,7 +147,7 @@ export default function ProfilePage() {
                       type="button" 
                       variant="outline" 
                       size="sm" 
-                      className="mt-2 text-[10px] h-7 rounded-lg border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-bold"
+                      className="mt-2 text-[10px] h-7 rounded-lg border-brand-primary/10 text-brand-primary hover:bg-brand-primary/10 font-bold"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
                    >
@@ -160,7 +161,7 @@ export default function ProfilePage() {
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Họ và tên</label>
                   <Input 
                     {...register('name', { required: true })}
-                    className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-bold"
+                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-bold"
                   />
                 </div>
 
@@ -181,7 +182,7 @@ export default function ProfilePage() {
                   <Input 
                     {...register('profilePicture')}
                     placeholder="https://..."
-                    className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
+                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-medium"
                   />
                   <p className="text-[10px] text-slate-400 italic ml-1">* Bạn có thể dán link trực tiếp hoặc chọn ảnh từ máy ở trên.</p>
                 </div>
@@ -191,7 +192,7 @@ export default function ProfilePage() {
               <Button 
                 type="submit" 
                 disabled={!isDirty || updateMutation.isPending || isUploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-indigo-200"
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-brand-primary/20"
               >
                 {(updateMutation.isPending || isUploading) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Lưu hồ sơ
@@ -202,17 +203,17 @@ export default function ProfilePage() {
 
         {/* Sidebar help / Promo */}
         <div className="space-y-6">
-           <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white overflow-hidden rounded-3xl p-6">
+           <Card className="border-brand-primary/10 bg-gradient-to-br from-brand-primary/10/50 to-white overflow-hidden rounded-3xl p-6">
               <div className="flex items-center gap-2 mb-4">
-                 <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                 <div className="w-8 h-8 rounded-xl bg-brand-primary/20 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-brand-primary" />
                  </div>
                  <h4 className="font-bold text-slate-900">Mẹo thiết kế</h4>
               </div>
               <p className="text-sm text-slate-600 font-medium mb-4 leading-relaxed">
                  Sử dụng ảnh đại diện rõ nét sẽ giúp đồng đội dễ dàng nhận diện bạn trong các cuộc thảo luận và phân công dự án.
               </p>
-              <div className="p-3 bg-white rounded-xl border border-indigo-100 text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+              <div className="p-3 bg-white rounded-xl border border-brand-primary/10 text-[10px] font-bold text-brand-primary/80 uppercase tracking-widest">
                  CHẾ ĐỘ CHUYÊN NGHIỆP
               </div>
            </Card>

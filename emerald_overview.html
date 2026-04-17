@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#7b4528",
+                        "surface-dim": "#d8dada",
+                        "surface-container-high": "#e6e8e8",
+                        "on-surface-variant": "#3f4948",
+                        "inverse-primary": "#8cd3d0",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8cd3d0",
+                        "secondary-fixed-dim": "#a6d645",
+                        "secondary-fixed": "#c1f35f",
+                        "primary-container": "#035d5b",
+                        "primary-fixed-dim": "#8cd3d0",
+                        "on-secondary-fixed-variant": "#374e00",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f8fafa",
+                        "tertiary-fixed": "#ffdbcb",
+                        "outline-variant": "#bec9c7",
+                        "surface-variant": "#e1e3e3",
+                        "on-tertiary-fixed-variant": "#6c391d",
+                        "on-primary-fixed": "#00201f",
+                        "secondary-container": "#c1f35f",
+                        "surface-container": "#eceeee",
+                        "primary": "#004442",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#4f6e00",
+                        "on-tertiary-container": "#ffb693",
+                        "secondary": "#4a6800",
+                        "on-background": "#191c1d",
+                        "surface": "#f8fafa",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "surface-container-highest": "#e1e3e3",
+                        "tertiary": "#5f2f14",
+                        "outline": "#6f7978",
+                        "on-secondary-fixed": "#141f00",
+                        "on-tertiary-fixed": "#341100",
+                        "primary-fixed": "#a8efec",
+                        "error": "#ba1a1a",
+                        "background": "#f8fafa",
+                        "surface-tint": "#1a6967",
+                        "surface-container-low": "#f2f4f4",
+                        "on-primary-fixed-variant": "#00504e",
+                        "inverse-on-surface": "#eff1f1",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2e3131"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2rem;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#F8FAFA]/70 backdrop-blur-3xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="close-up portrait of a professional male designer in a minimalist studio setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRstbDSLlNADIPW6UyhuVRbysf3pHDiPfvd1XhrqmYe9b3F13Ihe9SvkGMd4T_fLPtspz_qZD9lS3HKmKgiNikSnmYDHDbQCnSvd_HOXr7ptdXv6U5B1pEzOu8JYIY5ii-vF9lO0ivVQ5P3AvpQ9Yh7QXzaaGfRwc_o670Pntzg1krR2gsGI8FVxWiOO5l03FcSISXD376jQMaD0yYuudIrx-Zri26doiWBP6E3CJlUbFCg31BELioKZBP0bhfO3EXM_dKiZxDO6ND"/>
+</div>
+<span class="font-manrope font-black tracking-[-0.02em] text-2xl text-[#035D5B]">EMERALD</span>
+</div>
+<div class="flex items-center gap-6">
+<button class="hover:bg-[#E1E3E3] p-2 rounded-full transition-transform active:scale-90">
+<span class="material-symbols-outlined text-[#035D5B]">settings</span>
+</button>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-7xl mx-auto">
+<!-- Hero Header Section -->
+<section class="mb-12">
+<p class="text-xs font-bold uppercase tracking-[0.2em] text-secondary mb-2">System Architecture</p>
+<h1 class="text-5xl font-extrabold tracking-tight text-primary max-w-2xl leading-[1.1]">
+                Bioluminescent Stream Engine
+            </h1>
+<div class="mt-8 flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+<div class="bg-surface-container-low px-6 py-3 rounded-full flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></div>
+<span class="text-sm font-semibold text-primary">System Online</span>
+</div>
+<div class="bg-surface-container-low px-6 py-3 rounded-full flex items-center gap-3">
+<span class="text-sm font-semibold text-primary">Latency: 14ms</span>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="bento-grid">
+<!-- Active Streams Section -->
+<div class="col-span-12 md:col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04)]">
+<div class="flex justify-between items-end mb-10">
+<h2 class="text-2xl font-bold tracking-tight text-primary">Active Streams</h2>
+<span class="text-sm font-bold text-secondary-container bg-primary px-4 py-1 rounded-full">LIVE</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+<!-- Stream 1 -->
+<div class="flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-high" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-secondary-container" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="40" stroke-width="8"></circle>
+</svg>
+<span class="absolute text-xl font-bold text-primary">89%</span>
+</div>
+<h3 class="font-bold text-primary">Neural Link</h3>
+<p class="text-xs text-outline font-medium tracking-wide">SYNCING DATA</p>
+</div>
+<!-- Stream 2 -->
+<div class="flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-high" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-secondary-container" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="120" stroke-width="8"></circle>
+</svg>
+<span class="absolute text-xl font-bold text-primary">67%</span>
+</div>
+<h3 class="font-bold text-primary">Data Flux</h3>
+<p class="text-xs text-outline font-medium tracking-wide">OPTIMIZING</p>
+</div>
+<!-- Stream 3 -->
+<div class="flex flex-col items-center text-center">
+<div class="relative w-32 h-32 mb-4 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-high" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-secondary-container" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="180" stroke-width="8"></circle>
+</svg>
+<span class="absolute text-xl font-bold text-primary">52%</span>
+</div>
+<h3 class="font-bold text-primary">System Bio</h3>
+<p class="text-xs text-outline font-medium tracking-wide">MONITORING</p>
+</div>
+</div>
+</div>
+<!-- Analytics Sidebar -->
+<div class="col-span-12 md:col-span-4 bg-primary-container text-on-primary-container rounded-xl p-8 flex flex-col justify-between overflow-hidden relative">
+<div class="relative z-10">
+<h2 class="text-xl font-bold tracking-tight text-white mb-6">Network Load</h2>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<div class="w-4 h-12 bg-secondary-container/20 rounded-t-full"></div>
+<div class="w-4 h-24 bg-secondary-container/40 rounded-t-full"></div>
+<div class="w-4 h-32 bg-secondary-container rounded-t-full"></div>
+<div class="w-4 h-20 bg-secondary-container/60 rounded-t-full"></div>
+<div class="w-4 h-28 bg-secondary-container/80 rounded-t-full"></div>
+<div class="w-4 h-16 bg-secondary-container/30 rounded-t-full"></div>
+</div>
+<div class="pt-4 border-t border-white/10">
+<p class="text-4xl font-black text-secondary-container">94.2<span class="text-lg font-medium opacity-60 ml-1">Gb/s</span></p>
+<p class="text-xs font-bold uppercase tracking-widest mt-1 opacity-60">Peak Throughput</p>
+</div>
+</div>
+</div>
+<!-- Abstract visual element -->
+<div class="absolute -right-12 -bottom-12 w-48 h-48 bg-secondary-container/10 rounded-full blur-3xl"></div>
+</div>
+<!-- Live Projects -->
+<div class="col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Project 1 -->
+<div class="group bg-surface-container-low rounded-lg p-8 transition-all hover:bg-surface-container-high relative overflow-hidden">
+<div class="flex justify-between items-start relative z-10">
+<div>
+<p class="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Priority X-9</p>
+<h3 class="text-3xl font-bold text-primary mb-4">Neon Matrix-X</h3>
+<div class="flex -space-x-2">
+<img alt="Team" class="w-8 h-8 rounded-full border-2 border-surface-container-low" data-alt="close-up of a smiling professional man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhRlWvOFTfKoeFfDrg6lYUhXyNFwWyZpSKtZ24zk7_JqLRR3aZoRqFNaceNJPKoT1GLF-WIkgvP2kmS_lDHV_jKFqTf1PhFdCB_R0EitIGW1NBKzI5T9iGTVZ3xHtUNv6b0eqaWXiGKVJhrR5F7brh6UMwP-nbmzoD8sC32E4pG09DzkY_YqdYsCRKwCGpdmCNL8VVh0qjxOXrNDQ5RP6dubH9v6t82bF1VUl0IAku_jKvppZVcirBLRdm4nfXu50cPiNJJuK0HnI5"/>
+<img alt="Team" class="w-8 h-8 rounded-full border-2 border-surface-container-low" data-alt="close-up of a focused professional woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoV7PYHvTAfgpp_WATaEmjHDV2vIcWcKuci6GyWSzRtIoVf7oGg1yXQ4WEP__bshtGgwT_CVhCyzuutvFDC9cOt9lLctMXNAZk1QB0XC8NzwzZhAxeG6WaUzqGBdkbpR4-Nm3_INyCA2ypz3hqswZtFwltrQIYd-EMGMLk3oIzAfLg4qjJmnfShHPMnAxr_O9C4PqI1B8St52BsE_D7ylZCJsQtiyGnksC1nfgmgA7t9eMYOnXd_kaKWezTDXDlgUfrrFcomD4bPi6"/>
+<div class="w-8 h-8 rounded-full border-2 border-surface-container-low bg-primary flex items-center justify-center text-[10px] font-bold text-white">+4</div>
+</div>
+</div>
+<div class="bg-white rounded-full p-4 shadow-sm">
+<span class="material-symbols-outlined text-primary text-3xl">analytics</span>
+</div>
+</div>
+<div class="absolute top-0 right-0 w-32 h-full opacity-5 pointer-events-none">
+<img alt="abstract" class="w-full h-full object-cover" data-alt="abstract close-up of green circuit board traces with soft bokeh light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8NAPm2CDCiOJ6oS-gn47k7jzXB54eHBgcJeQ9OpKMnkcKqQu3Mt5vClVqVNzbALYNn3sDxk4FIwUKGyVky3cdW6jvQopNRsEHLxp0Uy0Std5dcNg5nwuBzKspGsYO4MthOd4b2VzeBYdADEoeDVLZws3hY6y13LazroS-IpQFa8nFBewhVyVneXor4RTSzNXXjd0MViSV-1sm2AMZa5qgHq29JBQ2IKE9F8kdq6kpNAbMUrlh9XkZdERbguNkzT-26btfdlt-jSWj"/>
+</div>
+</div>
+<!-- Project 2 -->
+<div class="group bg-surface-container-low rounded-lg p-8 transition-all hover:bg-surface-container-high relative overflow-hidden">
+<div class="flex justify-between items-start relative z-10">
+<div>
+<p class="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Alpha Stream</p>
+<h3 class="text-3xl font-bold text-primary mb-4">Emerald Pulse</h3>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-sm font-bold text-primary">Deployment Active</span>
+</div>
+</div>
+<div class="bg-white rounded-full p-4 shadow-sm">
+<span class="material-symbols-outlined text-primary text-3xl">biotech</span>
+</div>
+</div>
+<div class="absolute top-0 right-0 w-32 h-full opacity-5 pointer-events-none">
+<img alt="abstract" class="w-full h-full object-cover" data-alt="abstract glowing digital data connections in a dark cyan space" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_QDLYVAvOu0qezBAPhCiW_RRM12aXzVvbxYbsWEAUMfLRvS1njk5x9y0DRfXxSyce6ofDWV6ZQzaUk2fLSqt9Vc0NcSFyFTjiHWaPLjHr6S4vGZWuQCH7wTk8xNhZRvQFpfIZe_KLYF0g6a0ClUSgVDYyXCuv2w4idKOuS6Ahc2uo7tjR2UZhA3pBH8lZbFzoJIbuTCi4dFoPzDv80HEiIbtsRDO3nZscVkmfAOeDY1A1Pi7xkAIMINUrEx6e1lb3Vh28Ypy89Jep"/>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-[#F8FAFA]/80 backdrop-blur-2xl rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,68,66,0.05)] border-t border-[#035D5B]/10">
+<!-- Projects (Active) -->
+<a class="flex flex-col items-center justify-center bg-[#C1F35F] text-[#4F6E00] rounded-full px-6 py-2 scale-105 duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-weight="fill">analytics</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Projects</span>
+</a>
+<!-- Tasks -->
+<a class="flex flex-col items-center justify-center text-[#5C5F5F] px-6 py-2 hover:bg-[#F2F4F4] rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Tasks</span>
+</a>
+<!-- Team -->
+<a class="flex flex-col items-center justify-center text-[#5C5F5F] px-6 py-2 hover:bg-[#F2F4F4] rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Team</span>
+</a>
+<!-- Lab -->
+<a class="flex flex-col items-center justify-center text-[#5C5F5F] px-6 py-2 hover:bg-[#F2F4F4] rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span class="font-manrope text-[10px] font-bold uppercase tracking-widest mt-1">Lab</span>
+</a>
+</nav>
+</body></html>

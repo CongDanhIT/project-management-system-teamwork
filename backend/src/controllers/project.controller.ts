@@ -5,7 +5,7 @@ import { createProjectSchema, updateProjectSchema } from "../validation/project.
 import { WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
 import HTTP_STATUS from "../config/http.config";
-import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService } from "../services/project.service";
+import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService, toggleFavoriteProjectService, getFavoriteProjectsInWorkspaceService } from "../services/project.service";
 import { projectIdSchema } from "../validation/project.validation";
 import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 
@@ -175,6 +175,38 @@ export const restoreProjectController = asyncHandler(
             success: true,
             message: "Khôi phục dự án thành công",
             project
+        })
+    }
+)
+
+export const toggleFavoriteProjectController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const projectId = projectIdSchema.parse(req.params.projectId);
+        const userId = req.user?._id;
+
+        const { project, isFavorited } = await toggleFavoriteProjectService(projectId, workspaceId, userId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: isFavorited ? "Đã thêm vào yêu thích" : "Đã bỏ yêu thích",
+            project,
+            isFavorited
+        })
+    }
+)
+
+export const getFavoriteProjectsController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const userId = req.user?._id;
+
+        const projects = await getFavoriteProjectsInWorkspaceService(workspaceId, userId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy danh sách dự án yêu thích thành công",
+            projects
         })
     }
 )

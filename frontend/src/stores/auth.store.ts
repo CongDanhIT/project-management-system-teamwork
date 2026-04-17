@@ -13,7 +13,9 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   token?: string | null;
+  isInitializing: boolean;
   setAuth: (user: any, token?: string) => void;
+  setInitializing: (val: boolean) => void;
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
 }
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       token: null,
+      isInitializing: true,
       setAuth: (user, token) => set({ 
         user: {
           id: user._id,
@@ -33,9 +36,11 @@ export const useAuthStore = create<AuthState>()(
           currentWorkspaceId: typeof user.currentWorkspace === 'object' ? user.currentWorkspace?._id : user.currentWorkspace,
         }, 
         token: token || null, 
-        isAuthenticated: true 
+        isAuthenticated: true,
+        isInitializing: false
       }),
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      setInitializing: (val) => set({ isInitializing: val }),
+      logout: () => set({ user: null, token: null, isAuthenticated: false, isInitializing: false }),
       updateUser: (userData) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...userData } : null,
@@ -44,6 +49,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ 
+        user: state.user, 
+        isAuthenticated: state.isAuthenticated, 
+        token: state.token 
+      }), // Chỉ persist user, token, và auth status. KHÔNG persist isInitializing.
     }
   )
 );

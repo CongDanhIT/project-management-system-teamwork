@@ -27,12 +27,12 @@ export interface Task {
   workspaceId: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assignedTo: {
+  assignedTo: {  // [MULTI-ASSIGNEE] Mảng người thực hiện, rỗng = chưa gán
     _id: string;
     name: string;
     email: string;
     profilePicture?: string;
-  } | null;
+  }[];
   createdBy: string;
   dueDate: string | null;
   createdAt: string;

@@ -64,6 +64,7 @@ export const getAllTasksController = asyncHandler(
             assignedTo: query.assignedTo?.split(","),
             keyword: query.keyword,
             dueDate: query.dueDate,
+            isOverdue: query.isOverdue,
         };
 
         const pagination = {

@@ -2,16 +2,19 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Layout, ArrowRight, Building2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Layout, ArrowRight, Building2, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { workspaceService } from '@/services/workspace.service';
 import { useQueryClient } from '@tanstack/react-query';
 
+/**
+ * Editorial Onboarding Page - Obsidian Meridian Design System
+ * Focus: High-end aesthetics, Glassmorphism, and Fluid UX.
+ */
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -29,12 +32,9 @@ export default function OnboardingPage() {
 
     try {
       const workspace = await workspaceService.createWorkspace({ name, description });
-      // Clear cache to refresh sidebar/header workspace list
       await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
-      // Redirect to the newly created workspace dashboard
       router.push(`/workspace/${workspace._id}`);
     } catch (err: any) {
-      console.error('Error creating workspace:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Không thể tạo Workspace. Vui lòng thử lại.';
       setError(errorMessage);
     } finally {
@@ -43,77 +43,173 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-indigo-50/30 dark:bg-slate-950 p-6">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Layout className="text-white w-6 h-6" />
+    <main className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]">
+      {/* Background Section - Editorial Video Layer */}
+      <div className="absolute inset-0 z-0">
+        {/* Mobile: Static Editorial Gradient */}
+        <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-[#050505] via-[#0A0F0E] to-[#050505]" />
+        
+        {/* Desktop: Dynamic Video Background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="hidden lg:block absolute inset-0 w-full h-full object-cover opacity-40 grayscale-[0.2]"
+        >
+          <source src="https://player.vimeo.com/external/494444983.hd.mp4?s=38274d8122964e56598c17b5f25a7d6da0e309d9&profile_id=175" type="video/mp4" />
+        </video>
+        
+        {/* Editorial Overlays */}
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/60" />
+      </div>
+
+      {/* Decorative Editorial Elements */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00FFD1]/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 z-0" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#CCFF00]/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2 z-0" />
+
+      {/* Content Section */}
+      <div className="relative z-10 w-full max-w-[1200px] px-6 grid lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Left Side: Editorial Vision */}
+        <motion.div 
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="hidden lg:flex flex-col space-y-8"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#00FFD1]/10 rounded-xl border border-[#00FFD1]/20 backdrop-blur-md">
+              <Sparkles className="w-6 h-6 text-[#00FFD1]" />
             </div>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">TeamFlow</span>
+            <span className="text-[#00FFD1] font-medium tracking-[0.2em] text-xs uppercase">Welcome to the future</span>
           </div>
-        </div>
 
-        <Card className="glass shadow-glass border-none">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Thiết lập Workspace</CardTitle>
-            <CardDescription>
-              Workspace là nơi nhóm bạn cộng tác và quản lý dự án.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form id="onboarding-form" onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                  {error}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="name">Tên Workspace</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Ví dụ: Công ty Công nghệ ABC"
-                    className="pl-10 h-11"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Bạn có thể thay đổi tên này bất cứ lúc nào trong phần cài đặt.
-                </p>
+          <h1 className="text-[64px] font-bold leading-[1.1] tracking-tight text-white drop-shadow-2xl">
+            Sáng tạo <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00FFD1] to-[#CCFF00]">
+              Không giới hạn.
+            </span>
+          </h1>
+
+          <p className="text-lg text-slate-400 max-w-md leading-relaxed">
+            Chúng ta sẽ khởi đầu bằng việc xây dựng một không gian làm việc chuyên nghiệp cho đội ngũ của bạn.
+          </p>
+
+          <div className="flex flex-col gap-4">
+            {[
+              { icon: ShieldCheck, text: "Bảo mật dữ liệu tuyệt đối" },
+              { icon: Layout, text: "Quản lý dự án trực quan" }
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-4 text-slate-300">
+                <item.icon className="w-5 h-5 text-[#CCFF00]" />
+                <span className="text-sm font-medium tracking-wide">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Right Side: Glassmorphism Functional Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="w-full max-w-[480px] justify-self-center lg:justify-self-end"
+        >
+          <div className="glass-morphism p-8 lg:p-10 rounded-[32px] border border-white/10 shadow-2xl relative overflow-hidden group">
+            {/* Subtle light effect on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#00FFD1]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col space-y-8">
+              {/* Identity */}
+              <div className="flex flex-col space-y-2">
+                <h2 className="text-3xl lg:text-[32px] font-bold text-white tracking-tight text-center lg:text-left">Thiết lập Workspace</h2>
+                <p className="text-slate-400 text-sm text-center lg:text-left">Workspace là trái tim trong quy trình của bạn.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Mô tả (Tùy chọn)</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Nhập mô tả về mục tiêu hoặc lĩnh vực của nhóm bạn..."
-                  className="resize-none h-24"
-                />
-              </div>
-            </form>
-          </CardContent>
-          <CardFooter>
-            <Button
-              form="onboarding-form"
-              type="submit"
-              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 font-semibold"
-              disabled={loading}
-            >
-              {loading ? 'Đang tạo...' : 'Bắt đầu ngay'}
-              {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-            </Button>
-          </CardFooter>
-        </Card>
-      </motion.div>
-    </div>
+              {/* Form Input Section */}
+              <form id="onboarding-form" onSubmit={handleSubmit} className="space-y-6">
+                <AnimatePresence mode="wait">
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-medium"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-6">
+                  <div className="space-y-2.5">
+                    <Label htmlFor="name" className="text-[11px] uppercase tracking-[0.15em] font-bold text-slate-500 ml-1">
+                      Tên Workspace
+                    </Label>
+                    <div className="relative group/input">
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within/input:text-[#00FFD1] transition-colors" />
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Ví dụ: Team Flow Studio"
+                        className="bg-white/[0.03] border-white/5 h-14 pl-12 rounded-2xl focus:ring-[#00FFD1]/30 focus:border-[#00FFD1]/50 text-white placeholder:text-slate-600 transition-all duration-300"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <Label htmlFor="description" className="text-[11px] uppercase tracking-[0.15em] font-bold text-slate-500 ml-1">
+                      Mô tả dự án
+                    </Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Chia sẻ ngắn gọn về mục tiêu của team bạn..."
+                      className="bg-white/[0.03] border-white/5 min-h-[120px] p-4 rounded-2xl focus:ring-[#00FFD1]/30 focus:border-[#00FFD1]/50 text-white placeholder:text-slate-600 resize-none transition-all duration-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Button
+                    type="submit"
+                    className="w-full h-14 bg-gradient-to-r from-[#00FFD1] to-[#CCFF00] hover:shadow-[0_0_25px_rgba(0,255,209,0.4)] text-black font-bold text-base rounded-2xl transition-all duration-500 group"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        <span>Đang khởi tạo...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <span>Bắt đầu ngay</span>
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </form>
+
+              <p className="text-center text-xs text-slate-600 font-medium">
+                Bạn có thể tùy chỉnh thêm trong phần Cài đặt Workspace sau này.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Modern Global Styles for Glassmorphism */}
+      <style jsx global>{`
+        .glass-morphism {
+          background: rgba(255, 255, 255, 0.03);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+      `}</style>
+    </main>
   );
 }

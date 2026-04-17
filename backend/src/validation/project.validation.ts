@@ -38,7 +38,11 @@ export const createProjectSchema = z.object({
     status: statusSchema,
     startDate: dateSchema,
     endDate: dateSchema,
-})
+    coverUrl: z.string().url().optional().nullable(),
+    coverPositionX: z.number().min(0).max(100).default(50).optional(),
+    coverPositionY: z.number().min(0).max(100).default(50).optional(),
+});
+
 export const updateProjectSchema = z.object({
     emoji: emojiSchema,
     name: nameSchema,
@@ -46,4 +50,7 @@ export const updateProjectSchema = z.object({
     status: statusSchema,
     startDate: dateSchema,
     endDate: dateSchema,
-})
+    coverUrl: z.string().url().optional().nullable(),
+    coverPositionX: z.number().min(0).max(100).optional(),
+    coverPositionY: z.number().min(0).max(100).optional(),
+});

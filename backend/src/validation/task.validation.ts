@@ -11,10 +11,10 @@ export const descriptionSchema = z.string()
     .max(5000, "Mô tả không được quá 5000 ký tự")
     .optional();
 
-export const assignedToSchema = z.string()
-    .trim()
-    .nullable()
-    .optional();
+// [MULTI-ASSIGNEE] Mảng ID người thực hiện, mảng rỗng = chưa gán
+export const assignedToSchema = z.array(z.string().trim())
+    .optional()
+    .default([]);
 
 export const parentIdSchema = z.string()
     .trim()
@@ -74,6 +74,7 @@ export const getTasksQuerySchema = z.object({
     assignedTo: z.string().optional(),
     keyword: z.string().optional(),
     dueDate: z.string().optional(),
+    isOverdue: z.string().optional(),
     pageNumber: z.string().transform((val) => parseInt(val) || 1).optional(),
     pageSize: z.string().transform((val) => parseInt(val) || 10).optional(),
 });

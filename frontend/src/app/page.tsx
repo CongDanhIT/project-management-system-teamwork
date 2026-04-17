@@ -1,23 +1,30 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { Loader2 } from 'lucide-react';
+import Loader from "@/components/ui/Loader";
 
 export default function Home() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isInitializing } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Sử dụng một hàm async bên trong để kiểm soát luồng điều hướng mượt hơn
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Nếu chưa mount hoặc đang trong quá trình khởi tạo, đừng làm gì cả
+    if (!mounted || isInitializing) return;
+
     const redirect = async () => {
       if (!isAuthenticated) {
         router.replace('/login');
         return;
       }
 
-      // Đã đăng nhập, đợi một nhịp để đảm bảo dữ liệu user đã được nạp đầy đủ (nếu cần)
       if (user) {
         if (user.currentWorkspaceId) {
           router.replace(`/workspace/${user.currentWorkspaceId}`);
@@ -28,13 +35,13 @@ export default function Home() {
     };
 
     redirect();
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isInitializing, mounted]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-slate-50">
       <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-        <p className="text-sm font-medium text-slate-500">Đang chuyển hướng...</p>
+        <Loader size="lg" />
+        <p className="text-sm font-medium text-slate-500 animate-pulse">Đang chuẩn bị không gian làm việc của bạn...</p>
       </div>
     </div>
   );

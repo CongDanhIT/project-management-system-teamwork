@@ -1,0 +1,66 @@
+'use client';
+
+import React from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { IInboxDraft } from '@/services/inbox.service';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+
+interface InboxDraggableCardProps {
+  draft: IInboxDraft;
+}
+
+export const InboxDraggableCard: React.FC<InboxDraggableCardProps> = ({ draft }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: draft._id,
+    data: {
+      type: 'InboxTask',
+      draft,
+    },
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <motion.div 
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className={cn(
+        "group p-5 bg-white dark:bg-white/5 rounded-[1.5rem] transition-all cursor-grab active:cursor-grabbing relative overflow-hidden touch-none",
+        "shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,0.1)]",
+        "dark:shadow-none dark:hover:bg-white/[0.08]",
+        isDragging && "opacity-40 scale-95 shadow-none"
+      )}
+    >
+      {/* Detached Shadow V6 simulation - Light Mode only */}
+      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4/5 h-1 bg-black/5 blur-md rounded-full group-hover:opacity-100 opacity-0 transition-opacity dark:hidden" />
+      
+      {/* Accent Point */}
+      <div className="absolute top-5 right-5 w-1.5 h-1.5 rounded-full bg-brand-secondary shadow-[0_0_8px_rgba(199,249,100,0.8)]" />
+
+      <div className="flex flex-col gap-1">
+        <span className="text-[8px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-[0.2em] font-sans">
+          {new Date(draft.createdAt).toLocaleDateString()}
+        </span>
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 font-sans line-clamp-1 group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
+          {draft.title}
+        </h3>
+        {draft.description && (
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            {draft.description}
+          </p>
+        )}
+      </div>
+
+      {/* Subtle Hover Glow */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+    </motion.div>
+  );
+};

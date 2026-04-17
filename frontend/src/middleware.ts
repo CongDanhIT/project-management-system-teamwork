@@ -29,13 +29,10 @@ export function middleware(req: NextRequest) {
 
   const isAuthenticated = hasSessionCookie(req);
 
-  // Nếu chưa đăng nhập và truy cập route được bảo vệ → redirect về login
-  if (!isPublicRoute && !isAuthenticated) {
-    const loginUrl = new URL('/login', req.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
+  // Tạm thời nới lỏng Middleware để tránh Redirect Loop giữa localhost:3000 và :8000
+  // Chúng ta sẽ để AuthProvider (Client-side) thực hiện kiểm tra chính xác qua API backend
+  // Middleware chỉ đóng vai trò lọc sơ bộ các route tĩnh và api Next.js
+  
   return NextResponse.next();
 }
 

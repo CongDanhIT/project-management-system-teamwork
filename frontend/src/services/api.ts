@@ -11,11 +11,16 @@ const api = axios.create({
   },
 });
 
+import { useAuthStore } from "@/stores/auth.store";
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Có thể xử lý logout hoặc redirect ở đây
+      if (typeof window !== "undefined") {
+        // Xoá thông tin auth cục bộ qua store để trigger re-render đồng bộ
+        useAuthStore.getState().logout();
+      }
     }
     return Promise.reject(error);
   }

@@ -13,6 +13,7 @@ import {
   defaultDropAnimationSideEffects,
   DropAnimation,
   closestCorners,
+  useDndMonitor,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { createPortal } from 'react-dom';
@@ -50,13 +51,120 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
+  useDndMonitor({
+    onDragStart: (event: DragStartEvent) => {
+      if (event.active.data.current?.type === 'Task') {
+        setActiveTask(event.active.data.current.task);
+      }
+    },
+    onDragOver: (event: DragOverEvent) => {
+      const { active, over } = event;
+      if (!over) return;
+
+      const activeId = active.id;
+      const overId = over.id;
+
+      if (activeId === overId) return;
+
+      const isActiveATask = active.data.current?.type === 'Task';
+      if (!isActiveATask) return;
+
+      const isOverATask = over.data.current?.type === 'Task';
+      const isOverAColumn = over.data.current?.type === 'Column';
+
+      // Determine the destination status
+      let newStatus: TaskStatus | null = null;
+      if (isOverAColumn) {
+        newStatus = overId as TaskStatus;
+      } else if (isOverATask) {
+        newStatus = over.data.current?.task?.status as TaskStatus;
+      } else if (Object.values(TaskStatus).includes(overId as any)) {
+        // Fallback for direct status ID hits
+        newStatus = overId as TaskStatus;
+      }
+
+      if (!newStatus) return;
+
+      setTasks((prevTasks) => {
+        const activeIndex = prevTasks.findIndex((t) => t._id === activeId);
+        if (activeIndex === -1) return prevTasks;
+
+        const updatedTasks = [...prevTasks];
+        const currentTask = updatedTasks[activeIndex];
+
+        // Update status if it changed
+        if (currentTask.status !== newStatus) {
+          updatedTasks[activeIndex] = {
+            ...currentTask,
+            status: newStatus,
+          };
+        }
+
+        // Reorder tasks if hovering over another task
+        if (isOverATask) {
+          const overIndex = updatedTasks.findIndex((t) => t._id === overId);
+          if (overIndex !== -1 && activeIndex !== overIndex) {
+            return arrayMove(updatedTasks, activeIndex, overIndex);
+          }
+        }
+
+        return updatedTasks;
+      });
+    },
+    onDragEnd: async (event: DragEndEvent) => {
+      const { active, over } = event;
+      const dragStartedTaskSnapshot = activeTask;
+      setActiveTask(null);
+
+      if (!over || active.data.current?.type !== 'Task') return;
+
+      const taskId = active.id as string;
+      const task = tasks.find(t => t._id === taskId);
+      
+      if (task && dragStartedTaskSnapshot) {
+        const originalStatus = dragStartedTaskSnapshot.status;
+        const targetStatus = task.status;
+
+        if (originalStatus === targetStatus) return;
+
+        try {
+          await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
+          
+          // 1. Cập nhật cache Kanban (workspace-tasks)
+          queryClient.setQueryData(['workspace-tasks', workspaceId], (oldData: any) => {
+            if (!oldData || !oldData.tasks) return oldData;
+            return {
+              ...oldData,
+              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, status: targetStatus } : t)
+            };
+          });
+
+          // 2. Cập nhật cache Task List (workspace-tasks-list)
+          queryClient.setQueriesData({ queryKey: ['workspace-tasks-list', workspaceId] }, (oldData: any) => {
+            if (!oldData || !oldData.tasks) return oldData;
+            return {
+              ...oldData,
+              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, status: targetStatus } : t)
+            };
+          });
+
+          // 3. Invalidate analytics
+          queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.message || "Không thể cập nhật trạng thái công việc.";
+          toast.error(errorMessage);
+          
+          setTasks(prev => {
+            const reverted = [...prev];
+            const idx = reverted.findIndex(t => t._id === taskId);
+            if (idx !== -1) reverted[idx].status = originalStatus;
+            return reverted;
+          });
+        }
+      }
+    },
+  });
 
   useEffect(() => {
     if (fetchedTasks?.tasks) {
@@ -64,103 +172,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
     }
   }, [fetchedTasks]);
 
-  const onDragStart = (event: DragStartEvent) => {
-    if (event.active.data.current?.type === 'Task') {
-      setActiveTask(event.active.data.current.task);
-    }
-  };
-
-  const onDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const isActiveATask = active.data.current?.type === 'Task';
-    const isOverATask = over.data.current?.type === 'Task';
-    const isOverAColumn = over.data.current?.type === 'Column';
-
-    if (!isActiveATask) return;
-
-    // Immutably clear active item from current column and add to new column
-    if (isActiveATask && isOverATask) {
-      setTasks((tasks) => {
-        const activeIndex = tasks.findIndex((t) => t._id === activeId);
-        const overIndex = tasks.findIndex((t) => t._id === overId);
-
-        if (tasks[activeIndex].status !== tasks[overIndex].status) {
-          const updatedTasks = [...tasks];
-          updatedTasks[activeIndex] = {
-            ...updatedTasks[activeIndex],
-            status: tasks[overIndex].status,
-          };
-          return arrayMove(updatedTasks, activeIndex, overIndex);
-        }
-
-        return arrayMove(tasks, activeIndex, overIndex);
-      });
-    }
-
-    if (isActiveATask && isOverAColumn) {
-      setTasks((tasks) => {
-        const activeIndex = tasks.findIndex((t) => t._id === activeId);
-        const updatedTasks = [...tasks];
-        updatedTasks[activeIndex] = {
-          ...updatedTasks[activeIndex],
-          status: overId as TaskStatus,
-        };
-        return arrayMove(updatedTasks, activeIndex, activeIndex);
-      });
-    }
-  };
-
-  const onDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    const dragStartedTaskSnapshot = activeTask; // Dùng snapshot từ trước khi drag over sửa status
-    setActiveTask(null);
-    if (!over) return;
-
-    const taskId = active.id as string;
-    const task = tasks.find(t => t._id === taskId);
-    
-    if (task && dragStartedTaskSnapshot) {
-      const originalStatus = dragStartedTaskSnapshot.status;
-      const targetStatus = task.status;
-
-      // Nếu không thay đổi trạng thái thì không làm gì
-      if (originalStatus === targetStatus) return;
-
-      try {
-        await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
-        // Invalidate all relevant queries to keep other pages fresh
-        queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
-        queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
-        queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
-        queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
-      } catch (error: any) {
-        // Lấy message từ backend nếu có, không thì dùng mặc định
-        const errorMessage = error.response?.data?.message || "Không thể cập nhật trạng thái công việc.";
-        toast.error(errorMessage);
-        
-        // Hoàn tác UI local state
-        setTasks(prev => {
-          const reverted = [...prev];
-          const idx = reverted.findIndex(t => t._id === taskId);
-          if (idx !== -1) reverted[idx].status = originalStatus;
-          return reverted;
-        });
-      }
-    }
-  };
-
   const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
       styles: {
         active: {
-          opacity: '0.5',
+          opacity: '1',
         },
       },
     }),
@@ -169,20 +185,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-primary/80" />
       </div>
     );
   }
 
   return (
     <div className="flex gap-6 overflow-x-auto pb-8 min-h-[calc(100vh-200px)] custom-scrollbar">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnd={onDragEnd}
-      >
         <div className="flex gap-6">
           {defaultColumns.map((col) => (
             <KanbanColumn
@@ -198,8 +207,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
           ))}
         </div>
 
-        {typeof document !== 'undefined' &&
-          createPortal(
+        {createPortal(
             <DragOverlay dropAnimation={dropAnimation}>
               {activeTask ? (
                 <div className="w-[300px]">
@@ -208,8 +216,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
               ) : null}
             </DragOverlay>,
             document.body
-          )}
-      </DndContext>
+        )}
     </div>
   );
 };

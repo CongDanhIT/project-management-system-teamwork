@@ -52,7 +52,7 @@ export default function WorkspaceSelector() {
 
   if (!mounted) {
     return (
-      <div className="h-10 w-full bg-slate-50 border border-slate-200/60 rounded-md animate-pulse" />
+      <div className="h-10 w-full bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-white/5 rounded-2xl animate-pulse" />
     );
   }
 
@@ -60,22 +60,22 @@ export default function WorkspaceSelector() {
     <div className="relative">
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="w-full inline-flex items-center justify-between bg-slate-50 border border-slate-200/60 hover:bg-slate-100 h-10 px-3 py-2 rounded-md text-left font-medium outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full inline-flex items-center justify-between bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 h-11 px-4 py-2 rounded-2xl text-left font-bold border-none outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
           disabled={isLoading}
         >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span className="truncate text-sm text-slate-900">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <Building2 className="w-4 h-4 text-brand-primary dark:text-brand-secondary shrink-0" />
+            <span className="truncate text-[13px] text-slate-800 dark:text-slate-100 tracking-tight">
               {isLoading ? 'Đang tải...' : currentWorkspace?.name || 'Chọn Workspace'}
             </span>
           </div>
-          <ChevronsUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <ChevronsUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 shrink-0" />
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent className="w-56" side="bottom" align="start">
+        <DropdownMenuContent className="w-64 rounded-[24px] p-2 border-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3" side="bottom" align="start" sideOffset={8}>
           {/* Label phải nằm trong DropdownMenuGroup */}
           <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
               Không gian làm việc
             </DropdownMenuLabel>
           </DropdownMenuGroup>
@@ -89,23 +89,23 @@ export default function WorkspaceSelector() {
                 <DropdownMenuItem
                   key={workspace._id}
                   onClick={() => handleSwitchWorkspace(workspace._id)}
-                  className="flex items-center justify-between cursor-pointer py-2"
+                  className="flex items-center justify-between cursor-pointer py-3 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                    <div className="w-6 h-6 rounded bg-brand-primary/20 text-brand-primary flex items-center justify-center text-[10px] font-bold">
                       {workspace.name?.charAt(0).toUpperCase() || 'W'}
                     </div>
                     <span className={cn(
-                      "text-sm",
+                      "text-sm tracking-tight transition-colors",
                       workspaceId === workspace._id
-                        ? "font-semibold text-indigo-600"
-                        : "text-slate-600"
+                        ? "font-bold text-brand-primary dark:text-brand-secondary"
+                        : "text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100"
                     )}>
                       {workspace.name}
                     </span>
                   </div>
                   {workspaceId === workspace._id && (
-                    <Check className="w-3.5 h-3.5 text-indigo-600" />
+                    <Check className="w-3.5 h-3.5 text-brand-primary" />
                   )}
                 </DropdownMenuItem>
               ))
@@ -121,11 +121,11 @@ export default function WorkspaceSelector() {
           {/* Tạo workspace mới - cũng phải trong Group */}
           <DropdownMenuGroup>
             <DropdownMenuItem
-              className="flex items-center gap-2 cursor-pointer text-indigo-600 focus:text-indigo-700 py-2"
+              className="flex items-center gap-2 cursor-pointer text-brand-primary dark:text-brand-secondary hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/10 py-3 px-3 rounded-xl font-bold transition-all"
               onClick={() => router.push('/onboarding')}
             >
               <Plus className="w-4 h-4" />
-              <span className="text-sm font-medium">Tạo workspace mới</span>
+              <span className="text-sm">Tạo workspace mới</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

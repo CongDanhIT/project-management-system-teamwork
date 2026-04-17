@@ -10,8 +10,9 @@ import { useWorkspaceStore } from '@/stores/workspace.store';
 import { Loader2, LayoutGrid, BarChart3, Settings, Layout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { TaskDrawer } from '@/components/task/TaskDrawer';
+import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
+import Loader from "@/components/ui/Loader";
 import { Task, TaskStatus } from '@/types/task';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,9 +37,9 @@ export default function ProjectBoardPage() {
     enabled: !!workspaceId && !!projectId,
   });
   
-  // Drawer state
+  // Modal state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // To refresh KanbanBoard
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -69,7 +70,7 @@ export default function ProjectBoardPage() {
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
-    setIsDrawerOpen(true);
+    setIsModalOpen(true);
   };
 
   const handleUpdateTask = async (taskId: string, data: any) => {
@@ -93,7 +94,7 @@ export default function ProjectBoardPage() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await taskService.deleteTask(workspaceId, projectId, taskId);
-      setIsDrawerOpen(false);
+      setIsModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
@@ -117,7 +118,7 @@ export default function ProjectBoardPage() {
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
       
-      if (isDrawerOpen && selectedTask && taskData.parentId === selectedTask._id) {
+      if (isModalOpen && selectedTask && taskData.parentId === selectedTask._id) {
         const updatedParent = await taskService.getTaskById(workspaceId, pId, selectedTask._id);
         setSelectedTask(updatedParent);
       }
@@ -135,7 +136,7 @@ export default function ProjectBoardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader size="lg" />
       </div>
     );
   }
@@ -153,50 +154,49 @@ export default function ProjectBoardPage() {
       {/* Project Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl border border-indigo-100 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-brand-primary/5 flex items-center justify-center text-2xl border border-brand-primary/10 shadow-sm">
             {project.emoji || '🎯'}
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               {project.name}
             </h1>
-            <p className="text-sm text-slate-500 line-clamp-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">
               {project.description || 'Không có mô tả dự án'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1.5 rounded-xl border border-slate-200/60 shadow-sm">
-          <Link 
-            href={`/workspace/${workspaceId}/project/${projectId}/board`}
-            className="px-3 py-1 bg-white shadow-sm text-indigo-600 hover:text-indigo-700 font-semibold text-sm rounded-md flex items-center border border-slate-200"
+        <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-inner overflow-hidden">
+          <div
+            className="px-4 py-1.5 bg-white dark:bg-brand-primary text-brand-primary dark:text-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-glow-combined border border-slate-200/50 dark:border-white/10 transition-all text-xs font-black uppercase tracking-wider flex items-center rounded-lg ring-1 ring-slate-900/5 dark:ring-white/5"
           >
-            <LayoutGrid className="w-4 h-4 mr-2" />
+            <LayoutGrid className="w-3.5 h-3.5 mr-2" />
             Board
-          </Link>
+          </div>
           <Link 
-            href={`/workspace/${workspaceId}/project/${projectId}/table`}
-            className="px-3 py-1 text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center"
+            href={`/workspace/${workspaceId}/projects/${projectId}/table`}
+            className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
-            <Layout className="w-4 h-4 mr-2" />
+            <Layout className="w-3.5 h-3.5 mr-2" />
             Table
           </Link>
           <Link 
-            href={`/workspace/${workspaceId}/project/${projectId}/analytics`}
-            className="px-3 py-1 text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center"
+            href={`/workspace/${workspaceId}/projects/${projectId}/analytics`}
+            className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
-            <BarChart3 className="w-4 h-4 mr-2" />
+            <BarChart3 className="w-3.5 h-3.5 mr-2" />
             Analytics
           </Link>
-          <div className="w-px h-4 bg-slate-200 mx-1" />
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
+          <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 mx-1" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-brand-primary dark:hover:text-brand-secondary transition-colors">
             <Settings className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
       {/* Kanban Board Container */}
-      <div className="flex-1 min-h-0 bg-slate-50/30 -mx-4 md:-mx-8 px-4 md:px-8 py-6 rounded-t-[32px] border-t border-slate-200/60">
+      <div className="flex-1 min-h-0 bg-slate-50/30 dark:bg-transparent -mx-4 md:-mx-8 px-4 md:px-8 py-6 rounded-t-[32px] border-t border-slate-200/60 dark:border-white/5">
         <KanbanBoard 
           key={refreshKey}
           workspaceId={workspaceId} 
@@ -210,10 +210,10 @@ export default function ProjectBoardPage() {
         />
       </div>
 
-      <TaskDrawer 
+      <TaskDetailModal 
         task={selectedTask}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
         onSubtaskUpdate={() => setRefreshKey(prev => prev + 1)}

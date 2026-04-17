@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter, X, Users, GitBranch, Layout, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
+import { SearchInput } from '@/components/shared/SearchInput';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -28,7 +29,7 @@ interface TaskFiltersProps {
   onStatusChange: (value: string) => void;
   onPriorityChange: (value: string) => void;
   onProjectChange: (value: string) => void;
-  onAssigneeChange: (value: string) => void;
+  onAssigneeChange: (values: string[]) => void;
   onParentTaskChange: (value: string) => void;
   projects: Project[];
   members: any[];
@@ -38,7 +39,7 @@ interface TaskFiltersProps {
     status: string;
     priority: string;
     projectId: string;
-    assignedTo: string;
+    assigneeIds: string[];
     parentId: string;
   };
   onClear: () => void;
@@ -61,7 +62,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
     filters.status !== 'all',
     filters.priority !== 'all',
     filters.projectId !== 'all',
-    filters.assignedTo !== 'all',
+    filters.assigneeIds.length > 0,
     filters.parentId !== 'all',
   ].filter(Boolean).length;
 
@@ -88,7 +89,20 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   };
 
   const selectedProject = projects.find(p => p._id === filters.projectId);
-  const selectedAssignee = members.find(m => m.userId?._id === filters.assignedTo);
+  const getActiveAssignees = () => {
+    return members.filter(m => filters.assigneeIds.includes(m.userId?._id));
+  };
+  const activeAssignees = getActiveAssignees();
+
+  const toggleAssignee = (userId: string) => {
+    let newIds = [...filters.assigneeIds];
+    if (newIds.includes(userId)) {
+      newIds = newIds.filter(id => id !== userId);
+    } else {
+      newIds.push(userId);
+    }
+    onAssigneeChange(newIds);
+  };
   const selectedParentTask = tasks.find(t => t._id === filters.parentId);
 
   // Lấy các task không phải là subtask (dùng làm select task cha)
@@ -102,44 +116,42 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   });
 
   return (
-    <div className="flex items-center gap-3 mb-6 bg-white/40 backdrop-blur-md p-2 rounded-2xl border border-slate-200/50 shadow-sm">
-      <div className="relative flex-1 group">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-        <Input
-          placeholder="Tìm kiếm công việc nhanh..."
-          className="pl-10 h-11 border-none bg-transparent focus-visible:ring-0 text-sm font-medium placeholder:text-slate-400"
-          value={filters.search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
+    <div className="flex items-center gap-3 mb-6 bg-white/40 dark:bg-slate-900/50 backdrop-blur-md p-2 rounded-2xl border border-slate-200/50 dark:border-white/10 shadow-sm">
+      <SearchInput
+        placeholder="Tìm kiếm công việc nhanh..."
+        value={filters.search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="h-11"
+        containerClassName="flex-1"
+      />
 
       <div className="flex items-center gap-2 pr-2">
         <Popover>
           <PopoverTrigger 
                 className={cn(
                     buttonVariants({ variant: "outline" }),
-                    "h-10 rounded-xl border-slate-200 bg-white hover:bg-slate-50 gap-2 font-bold px-4 transition-all active:scale-95 shadow-sm inline-flex items-center justify-center",
-                    activeFiltersCount > 0 && "border-indigo-200 bg-indigo-50/30 text-indigo-600 hover:bg-indigo-50/50"
+                    "h-10 rounded-xl border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 gap-2 font-bold px-4 transition-all active:scale-95 shadow-sm inline-flex items-center justify-center",
+                    activeFiltersCount > 0 && "border-brand-primary/20 dark:border-brand-primary/20 bg-brand-primary/10/30 text-brand-primary hover:bg-brand-primary/10/50"
                 )}
           >
-            <Filter className={cn("w-4 h-4", activeFiltersCount > 0 ? "text-indigo-500" : "text-slate-400")} />
+            <Filter className={cn("w-4 h-4", activeFiltersCount > 0 ? "text-brand-primary/80" : "text-slate-400")} />
             Bộ lọc
             {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="bg-indigo-500 text-white border-none h-5 min-w-[20px] px-1 animate-in zoom-in-50">
+              <Badge variant="secondary" className="bg-brand-primary/100 text-white border-none h-5 min-w-[20px] px-1 animate-in zoom-in-50">
                 {activeFiltersCount}
               </Badge>
             )}
             <ChevronDown className="w-3.5 h-3.5 opacity-50" />
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-5 rounded-[22px] border-slate-200/60 shadow-2xl bg-white/95 backdrop-blur-xl" align="end">
+          <PopoverContent className="w-80 p-5 rounded-[22px] border-slate-200/60 dark:border-white/10 shadow-2xl bg-white/95 dark:bg-slate-950/90 backdrop-blur-xl" align="end">
             <div className="space-y-5">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <h4 className="font-bold text-slate-900 flex items-center gap-2 capitalize">
-                    <Filter className="w-3.5 h-3.5 text-indigo-500" />
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 capitalize">
+                    <Filter className="w-3.5 h-3.5 text-brand-primary/80" />
                     Cấu hình lọc
                   </h4>
                   {activeFiltersCount > 0 && (
-                      <Button variant="ghost" size="sm" onClick={onClear} className="h-7 text-xs text-indigo-500 font-bold hover:bg-indigo-50 px-2 rounded-lg">
+                      <Button variant="ghost" size="sm" onClick={onClear} className="h-7 text-xs text-brand-primary/80 font-bold hover:bg-brand-primary/10 px-2 rounded-lg">
                           Đặt lại
                       </Button>
                   )}
@@ -149,12 +161,12 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Trạng thái</label>
                     <Select value={filters.status} onValueChange={(val) => onStatusChange(val || 'all')}>
-                      <SelectTrigger className="h-10 border-slate-200/60 bg-slate-50/50 rounded-xl focus:ring-1 focus:ring-indigo-500 font-medium">
+                      <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
                           {getStatusLabel(filters.status)}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100">
+                      <SelectContent className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                         <SelectItem value="all">Tất cả</SelectItem>
                         <SelectItem value={TaskStatus.TODO}>Cần làm</SelectItem>
                         <SelectItem value={TaskStatus.IN_PROGRESS}>Đang thực hiện</SelectItem>
@@ -167,12 +179,12 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mức độ ưu tiên</label>
                     <Select value={filters.priority} onValueChange={(val) => onPriorityChange(val || 'all')}>
-                      <SelectTrigger className="h-10 border-slate-200/60 bg-slate-50/50 rounded-xl focus:ring-1 focus:ring-indigo-500 font-medium">
+                      <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
                           {getPriorityLabel(filters.priority)}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100">
+                      <SelectContent className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                         <SelectItem value="all">Tất cả</SelectItem>
                         <SelectItem value={TaskPriority.LOW}>Thấp</SelectItem>
                         <SelectItem value={TaskPriority.MEDIUM}>Trung bình</SelectItem>
@@ -184,7 +196,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Theo dự án</label>
                     <Select value={filters.projectId} onValueChange={(val) => onProjectChange(val || 'all')}>
-                      <SelectTrigger className="h-10 border-slate-200/60 bg-slate-50/50 rounded-xl focus:ring-1 focus:ring-indigo-500 font-medium">
+                      <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
                           <div className="flex items-center gap-2">
                              {selectedProject ? (
@@ -196,7 +208,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                           </div>
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100 max-h-64">
+                      <SelectContent className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-h-64">
                         <SelectItem value="all">Tất cả dự án</SelectItem>
                         {projects.map(project => (
                           <SelectItem key={project._id} value={project._id}>
@@ -210,47 +222,77 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
 
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Thành viên thực hiện</label>
-                    <Select value={filters.assignedTo} onValueChange={(val) => onAssigneeChange(val || 'all')}>
-                      <SelectTrigger className="h-10 border-slate-200/60 bg-slate-50/50 rounded-xl focus:ring-1 focus:ring-indigo-500 font-medium">
-                        <SelectValue>
-                           <div className="flex items-center gap-2">
-                              {selectedAssignee ? (
-                                <>
-                                  <Avatar className="w-5 h-5">
-                                    <AvatarImage src={selectedAssignee.userId?.profilePicture || undefined} />
-                                    <AvatarFallback className="text-[9px] font-bold">{selectedAssignee.userId?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="truncate">{selectedAssignee.userId?.name}</span>
-                                </>
-                              ) : "Mọi thành viên"}
+                    <Popover>
+                      <PopoverTrigger>
+                        <div className="flex items-center justify-between w-full h-10 px-3 border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl hover:bg-slate-100/50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+                           <div className="flex items-center gap-2 overflow-hidden">
+                              {activeAssignees.length > 0 ? (
+                                <div className="flex -space-x-2">
+                                  {activeAssignees.slice(0, 3).map(m => (
+                                    <Avatar key={m.userId?._id} className="w-6 h-6 border-2 border-white dark:border-slate-800">
+                                      <AvatarImage src={m.userId?.profilePicture || undefined} />
+                                      <AvatarFallback className="text-[9px] font-bold">{m.userId?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                  {activeAssignees.length > 3 && (
+                                    <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-2 border-white dark:border-slate-700 text-[10px] font-bold text-slate-500 z-10">
+                                      +{activeAssignees.length - 3}
+                                    </div>
+                                  )}
+                                  <span className="ml-[12px] truncate text-sm dark:text-slate-300">
+                                    Đã chọn {activeAssignees.length} thành viên
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-medium dark:text-slate-400">Mọi thành viên</span>
+                              )}
                            </div>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100 max-h-64">
-                        <SelectItem value="all">Mọi thành viên</SelectItem>
-                        {members.map(member => {
-                          const u = member.userId;
-                          if (!u) return null;
-                          return (
-                            <SelectItem key={u._id} value={u._id}>
-                              <div className="flex items-center gap-2">
-                                <Avatar className="w-5 h-5">
-                                  <AvatarImage src={u.profilePicture || undefined} />
-                                  <AvatarFallback className="text-[9px] font-bold">{u.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium">{u.name}</span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                           <ChevronDown className="w-4 h-4 opacity-50" />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[17.5rem] p-2 rounded-xl border-slate-100 dark:border-white/10 shadow-xl dark:bg-slate-900" align="start">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2 pb-1 block">Chọn người thực hiện</label>
+                          <div className="max-h-64 overflow-y-auto pr-1 custom-scrollbar space-y-1">
+                            {members.map(member => {
+                              const u = member.userId;
+                              if (!u) return null;
+                              const isSelected = filters.assigneeIds.includes(u._id);
+                              return (
+                                <div
+                                  key={u._id}
+                                  onClick={() => toggleAssignee(u._id)}
+                                  className={cn(
+                                    "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors",
+                                    isSelected ? "bg-brand-primary/5 hover:bg-brand-primary/10" : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarImage src={u.profilePicture || undefined} />
+                                      <AvatarFallback className="text-[10px] font-bold">{u.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <span className={cn("text-sm transition-colors", isSelected ? "font-bold text-brand-primary" : "font-medium text-slate-700 dark:text-slate-300")}>{u.name}</span>
+                                  </div>
+                                  <div className={cn(
+                                    "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                                    isSelected ? "bg-brand-primary border-brand-primary" : "border-slate-300 dark:border-slate-600"
+                                  )}>
+                                    {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                 </div>
 
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Nhiệm vụ cha</label>
                     <Select value={filters.parentId} onValueChange={(val) => onParentTaskChange(val || 'all')}>
-                      <SelectTrigger className="h-10 border-slate-200/60 bg-slate-50/50 rounded-xl focus:ring-1 focus:ring-indigo-500 font-medium">
+                      <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
                           <div className="flex items-center gap-2">
                              <GitBranch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -260,7 +302,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                           </div>
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100 max-h-64">
+                      <SelectContent className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-h-64">
                         <SelectItem value="all">Tất cả</SelectItem>
                         <SelectItem value="root">Chỉ nhiệm vụ chính</SelectItem>
                         {parentTasks.map(task => (

@@ -161,14 +161,15 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[92vh] p-0 overflow-hidden glass border-ghost shadow-ambient rounded-[2rem] flex flex-col">
-        <div className="p-8 pb-4">
+      <DialogContent className="sm:max-w-[600px] max-h-[92vh] p-0 overflow-hidden bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border border-white/50 dark:border-white/10 shadow-depth-3 rounded-[2.5rem] flex flex-col transition-all duration-500">
+        <div className="p-8 pb-4 relative">
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-brand-primary/5 to-transparent pointer-events-none" />
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-brand-primary/10 rounded-2xl flex items-center justify-center">
                 <Plus className="text-brand-primary w-6 h-6" />
               </div>
-              <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight">
+              <DialogTitle className="text-3xl font-black text-brand-primary dark:text-white tracking-tight">
                 {parentId ? 'Nhiệm vụ con' : 'Nhiệm vụ mới'}
               </DialogTitle>
             </div>
@@ -178,23 +179,29 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-8 space-y-8 py-4 custom-scrollbar">
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tiêu đề</label>
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                Tiêu đề
+              </label>
               <Input 
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Nhập tiêu đề công việc..."
-                className="h-14 border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl font-bold text-lg placeholder:text-slate-300 placeholder:font-medium shadow-sm transition-all"
+                className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 focus:ring-brand-primary/30 focus:bg-white dark:focus:bg-slate-900 rounded-2xl font-bold text-lg placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:font-medium shadow-sm transition-all"
               />
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between ml-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Mô tả</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Mô tả
+                </label>
                 <button
                   type="button"
                   onClick={handleAiSuggestDescription}
                   disabled={isAiDescLoading || !title.trim()}
-                  className="group flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-brand-primary bg-brand-secondary/80 hover:bg-brand-primary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-all shadow-sm active:scale-95"
+                  className="group flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-all shadow-sm active:scale-95"
                 >
                   {isAiDescLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -208,7 +215,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Thêm mô tả chi tiết để AI hiểu rõ hơn..."
-                className="min-h-[140px] border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl resize-none shadow-sm font-medium leading-relaxed transition-all"
+                className="min-h-[140px] border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 focus:ring-brand-primary/30 focus:bg-white dark:focus:bg-slate-900 rounded-2xl resize-none shadow-sm font-medium leading-relaxed transition-all"
               />
             </div>
 
@@ -216,7 +223,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             {selectedParentId === 'none' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kế hoạch hành động AI</label>
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <div className="w-1 h-1 bg-accent-workspace rounded-full" />
+                    Kế hoạch hành động AI
+                  </label>
                   <button
                     type="button"
                     onClick={handleAiSuggestSubtasks}
@@ -272,14 +282,17 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Ưu tiên</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Ưu tiên
+                </label>
                 <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
-                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm hover:bg-white transition-all font-bold">
+                  <SelectTrigger className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-2xl shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-all font-bold group">
                     <SelectValue placeholder="Chọn mức độ">
                       {priority === TaskPriority.LOW ? "Tiêu chuẩn" : priority === TaskPriority.MEDIUM ? "Trung bình" : "Khẩn cấp"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl shadow-ambient border-ghost">
+                  <SelectContent className="rounded-2xl shadow-depth-3 border-ghost">
                     <SelectItem value={TaskPriority.LOW} className="font-bold py-3">Tiêu chuẩn</SelectItem>
                     <SelectItem value={TaskPriority.MEDIUM} className="font-bold py-3 text-brand-primary">Trung bình</SelectItem>
                     <SelectItem value={TaskPriority.HIGH} className="font-bold py-3 text-rose-600">Khẩn cấp</SelectItem>
@@ -288,9 +301,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Dự án đích</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Dự án đích
+                </label>
                 <Select value={projectId} onValueChange={(val) => setProjectId(val || '')} disabled={!!parentId}>
-                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm hover:bg-white transition-all font-bold">
+                  <SelectTrigger className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-2xl shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-all font-bold group">
                     <SelectValue placeholder="Chọn dự án">
                       {(() => {
                         if (!projectId) return "Chọn dự án";
@@ -305,7 +321,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       })()}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl shadow-ambient border-ghost">
+                  <SelectContent className="rounded-2xl shadow-depth-3 border-ghost">
                     {projects.map((project) => (
                       <SelectItem key={project._id} value={project._id} className="font-bold py-3 px-4">
                         <div className="flex items-center gap-3">
@@ -321,14 +337,17 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nhiệm vụ gốc (Parent)</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Nhiệm vụ gốc
+                </label>
                 <Select value={selectedParentId} onValueChange={(val) => setSelectedParentId(val || 'none')} disabled={!!parentId}>
-                  <SelectTrigger className="h-14 border-ghost bg-secondary/20 rounded-2xl shadow-sm font-bold">
+                  <SelectTrigger className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-2xl shadow-sm font-bold">
                     <SelectValue placeholder="Không có">
                       {selectedParentId === 'none' ? "Không có" : availableParentTasks.find(t => t._id === selectedParentId)?.title || selectedParentId}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl shadow-ambient border-ghost max-h-64">
+                  <SelectContent className="rounded-2xl shadow-depth-3 border-ghost max-h-64">
                     <SelectItem value="none" className="font-bold py-3">Không có công việc gốc</SelectItem>
                     {availableParentTasks.map((t: Task) => (
                       <SelectItem key={t._id} value={t._id} className="font-bold py-3">{t.title}</SelectItem>
@@ -338,7 +357,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Thanh khoản (Giờ)</label>
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Thanh khoản
+                </label>
                 <Input 
                   type="number"
                   min="0"
@@ -346,7 +368,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   value={estimatedHours}
                   onChange={(e) => setEstimatedHours(e.target.value ? Number(e.target.value) : '')}
                   placeholder="Ví dụ: 8"
-                  className="h-14 border-ghost bg-secondary/20 focus:ring-brand-primary focus:bg-white rounded-2xl font-bold shadow-sm transition-all"
+                  className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 focus:ring-brand-primary/30 focus:bg-white dark:focus:bg-slate-900 rounded-2xl font-bold shadow-sm transition-all"
                 />
               </div>
             </div>
@@ -354,18 +376,21 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             {selectedParentId === 'none' && (
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3 flex flex-col justify-end">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Bắt đầu</label>
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                    Bắt đầu
+                  </label>
                   <Popover>
                     <PopoverTrigger
                       className={cn(
-                        "flex items-center w-full h-14 px-5 border-ghost bg-secondary/20 hover:bg-white rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20",
+                        "flex items-center w-full h-14 px-5 border border-white/50 dark:border-white/10 bg-white/20 dark:bg-white/5 hover:bg-white dark:hover:bg-slate-900 rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20 shadow-sm group",
                         !startDate && "text-slate-400 font-normal"
                       )}
                     >
                       <CalendarIcon className="mr-3 h-5 w-5 text-brand-primary" />
                       {startDate ? format(startDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-ambient border-ghost" align="start">
+                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-depth-3 border-ghost" align="start">
                       <Calendar
                         mode="single"
                         selected={startDate}
@@ -377,18 +402,21 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 </div>
 
                 <div className="space-y-3 flex flex-col justify-end">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Hạn chót</label>
+                  <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-rose-500 rounded-full" />
+                    Hạn chót
+                  </label>
                   <Popover>
                     <PopoverTrigger
                       className={cn(
-                        "flex items-center w-full h-14 px-5 border-ghost bg-secondary/20 hover:bg-white rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20",
+                        "flex items-center w-full h-14 px-5 border border-white/50 dark:border-white/10 bg-white/20 dark:bg-white/5 hover:bg-white dark:hover:bg-slate-900 rounded-2xl font-bold text-left justify-start transition-all outline-none focus:ring-2 focus:ring-brand-primary/20 shadow-sm group",
                         !dueDate && "text-slate-400 font-normal"
                       )}
                     >
                       <CalendarIcon className="mr-3 h-5 w-5 text-rose-500" />
                       {dueDate ? format(dueDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-ambient border-ghost" align="start">
+                    <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-depth-3 border-ghost" align="start">
                       <Calendar
                         mode="single"
                         selected={dueDate}
@@ -402,7 +430,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             )}
           </div>
 
-          <DialogFooter className="p-8 pt-4 border-t border-divider/20 bg-secondary/10 mt-auto">
+          <DialogFooter className="p-8 pt-6 border-t border-brand-primary/10 bg-brand-primary/5 mt-auto">
             <Button type="button" variant="ghost" onClick={onClose} className="rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-900 h-14 px-8 transition-all">Hủy bỏ</Button>
             <Button 
               type="submit" 

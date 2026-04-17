@@ -25,19 +25,19 @@ export const AiChatButton: React.FC<AiChatButtonProps> = ({ context }) => {
           transition-all duration-300 ease-in-out
           ${isOpen
             ? 'bg-slate-700 hover:bg-slate-800 rotate-0 scale-95'
-            : 'bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 hover:scale-110 hover:shadow-indigo-200 hover:shadow-2xl'
+            : 'bg-gradient-to-br from-brand-primary to-brand-secondary hover:from-teal-700 hover:to-lime-500 hover:scale-110 hover:shadow-brand-secondary/20 hover:shadow-2xl'
           }
         `}
       >
         {isOpen ? (
           <X className="w-6 h-6 text-white transition-all" />
         ) : (
-          <Bot className="w-6 h-6 text-white transition-all" />
+          <Bot className="w-6 h-6 text-brand-primary transition-all group-hover:text-white" />
         )}
 
         {/* Pulse animation khi đóng */}
         {!isOpen && (
-          <span className="absolute inline-flex w-full h-full rounded-2xl bg-indigo-400 opacity-30 animate-ping" />
+          <span className="absolute inline-flex w-full h-full rounded-2xl bg-brand-secondary/40 opacity-30 animate-ping" />
         )}
       </button>
 

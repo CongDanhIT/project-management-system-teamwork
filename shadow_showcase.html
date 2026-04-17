@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atmospheric Depth Showcase | Project Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#1a6967",
+                        "primary": "#004442",
+                        "on-background": "#191c1e",
+                        "primary-container": "#035d5b",
+                        "primary-fixed-dim": "#8cd3d0",
+                        "on-primary-fixed-variant": "#00504e",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-high": "#e6e8ea",
+                        "on-surface-variant": "#3f4948",
+                        "on-tertiary-container": "#ffb693",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-primary": "#8cd3d0",
+                        "on-primary-container": "#8cd3d0",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#5f2f14",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-dim": "#d8dadc",
+                        "outline-variant": "#bec9c7",
+                        "surface": "#f7f9fb",
+                        "primary-fixed": "#a8efec",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "secondary-container": "#6063ee",
+                        "on-tertiary-fixed": "#341100",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary": "#4648d4",
+                        "on-tertiary-fixed-variant": "#6c391d",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-error-container": "#93000a",
+                        "outline": "#6f7978",
+                        "on-surface": "#191c1e",
+                        "tertiary-container": "#7b4528",
+                        "surface-container": "#eceef0",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed": "#07006c",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-primary-fixed": "#00201f",
+                        "background": "#f7f9fb",
+                        "on-secondary-container": "#fffbff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Shadows for the Atmospheric Depth Showcase */
+        .shadow-soft {
+            shadow: 0px 4px 12px rgba(25, 28, 30, 0.03);
+        }
+        .shadow-medium {
+            box-shadow: 0px 12px 24px rgba(25, 28, 30, 0.05);
+        }
+        .shadow-deep {
+            box-shadow: 0px 20px 40px rgba(25, 28, 30, 0.08);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- Sidebar Navigation -->
+<nav class="fixed left-0 top-0 flex flex-col py-8 gap-4 h-screen w-72 bg-[#f2f4f6] dark:bg-slate-950 z-40">
+<div class="px-10 mb-8">
+<span class="font-headline text-2xl font-black tracking-tighter text-[#035D5B]">Architect</span>
+</div>
+<div class="flex flex-col gap-2">
+<a class="hover:bg-white/50 dark:hover:bg-slate-800 rounded-full transition-all text-slate-600 dark:text-slate-400 mx-4 px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+<span class="font-label text-sm font-medium">Portfolio</span>
+</a>
+<a class="bg-[#a8efec] text-[#00201f] rounded-full mx-4 px-6 py-3 font-bold flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" data-icon="insert_chart">insert_chart</span>
+<span class="font-label text-sm font-medium">Analytics</span>
+</a>
+<a class="hover:bg-white/50 dark:hover:bg-slate-800 rounded-full transition-all text-slate-600 dark:text-slate-400 mx-4 px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label text-sm font-medium">Team</span>
+</a>
+<a class="hover:bg-white/50 dark:hover:bg-slate-800 rounded-full transition-all text-slate-600 dark:text-slate-400 mx-4 px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+<span class="font-label text-sm font-medium">Milestones</span>
+</a>
+<a class="hover:bg-white/50 dark:hover:bg-slate-800 rounded-full transition-all text-slate-600 dark:text-slate-400 mx-4 px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label text-sm font-medium">Settings</span>
+</a>
+</div>
+</nav>
+<main class="ml-72 min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-8 h-20 w-full bg-[#f7f9fb] dark:bg-slate-900 sticky top-0 z-30">
+<h1 class="font-headline font-bold tracking-tight text-xl text-[#035D5B] dark:text-teal-400">Project Curator</h1>
+<div class="flex items-center gap-6">
+<div class="relative group cursor-pointer">
+<span class="material-symbols-outlined text-slate-500" data-icon="search">search</span>
+</div>
+<div class="h-10 w-10 rounded-full overflow-hidden bg-surface-container">
+<img alt="User Profile" data-alt="Close up portrait of a professional woman with a minimalist aesthetic and neutral studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXRNN2N-E6XVCIQu0aiMOkIzkmWLDNXnZO52JENR-T-M3P7klKbdz60s7udcfwcaWHqgD5KrWyYpMb1Eibd0qQGl_RvgTqQ_5CC_F3xCw1-bv6FUA83loMlfc8jI1E1rAUqmF_SmonB3YJU0BY4fTTmcpRWBzXbfSGhumqRyBwo1adspt9Cz7mtRBJzSbAfMPJYNBfIGHoPEGy8WjomVaSV64mjfl8r1fUTonnVJ_m5tV412x02s1AomgwODoMIF_qMYXOjjVecxii"/>
+</div>
+</div>
+</header>
+<section class="p-16 max-w-7xl mx-auto">
+<!-- Hero Content -->
+<div class="mb-20">
+<span class="font-label text-[0.6875rem] font-bold tracking-widest text-primary uppercase mb-4 block">Design System Guide</span>
+<h2 class="font-headline text-5xl font-extrabold tracking-tight text-on-surface mb-6">Atmospheric Depth</h2>
+<p class="font-body text-lg text-on-surface-variant max-w-2xl leading-relaxed">
+                    Our interface uses architectural layering to define hierarchy. We reject harsh lines, favoring background shifts and tonal elevation to create a premium, editorial experience.
+                </p>
+</div>
+<!-- Bento Grid of Shadows -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Level 1: Soft (The Layering Principle) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-lg p-10 border-0 flex flex-col justify-between h-[450px]">
+<div>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="layers">layers</span>
+<span class="font-label text-xs font-bold uppercase tracking-widest">Level 01</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-4">Soft Elevation</h3>
+<p class="font-body text-sm text-on-surface-variant mb-8 leading-relaxed">
+                                Achieved primarily through background contrast rather than shadow. Perfect for static information and base-level cards.
+                            </p>
+</div>
+<!-- Example Element: Soft Card -->
+<div class="bg-surface-container-lowest p-6 rounded-md shadow-[0px_4px_12px_rgba(25,28,30,0.02)] transition-all hover:scale-[1.02] cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<p class="font-headline font-bold text-sm">System Ready</p>
+<p class="font-body text-xs text-on-surface-variant">Standard tonal lift</p>
+</div>
+</div>
+</div>
+</div>
+<div class="px-2">
+<h4 class="font-headline font-bold text-lg mb-1">Standard Tonal Lift</h4>
+<p class="text-xs font-label uppercase tracking-widest text-slate-400">Background #FFFFFF on #F2F4F6</p>
+</div>
+</div>
+<!-- Level 2: Medium (The Interactive Pulse) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-lg p-10 flex flex-col justify-between h-[450px]">
+<div>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="interaction_intel">network_intel_node</span>
+<span class="font-label text-xs font-bold uppercase tracking-widest">Level 02</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-4">Medium Depth</h3>
+<p class="font-body text-sm text-on-surface-variant mb-8 leading-relaxed">
+                                Utilizes ambient shadows to indicate active or clickable status. Creates a clear visual separation from the base surface.
+                            </p>
+</div>
+<!-- Example Element: Interactive Button & Card -->
+<div class="flex flex-col gap-4">
+<div class="bg-surface-container-lowest p-6 rounded-md shadow-medium transition-all hover:translate-y-[-4px] cursor-pointer">
+<span class="font-label text-[10px] font-bold text-tertiary-container uppercase tracking-wider mb-2 block">In Progress</span>
+<p class="font-headline font-extrabold text-xl">Design Sprint</p>
+</div>
+<button class="bg-primary text-white font-headline font-bold py-4 rounded-md shadow-medium flex items-center justify-center gap-2 hover:bg-primary-container transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+                                Launch Project
+                            </button>
+</div>
+</div>
+<div class="px-2">
+<h4 class="font-headline font-bold text-lg mb-1">Active Interaction</h4>
+<p class="text-xs font-label uppercase tracking-widest text-slate-400">Shadow: 0px 12px 24px rgba(25, 28, 30, 0.05)</p>
+</div>
+</div>
+<!-- Level 3: Deep (The Floating Gallery) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-lg p-10 flex flex-col justify-between h-[450px]">
+<div>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="cloud_upload">cloud_upload</span>
+<span class="font-label text-xs font-bold uppercase tracking-widest">Level 03</span>
+</div>
+<h3 class="font-headline text-2xl font-bold mb-4">Deep Atmosphere</h3>
+<p class="font-body text-sm text-on-surface-variant mb-8 leading-relaxed">
+                                Reserved for modals, overlays, and floating action buttons. This level simulates maximum physical distance from the base background.
+                            </p>
+</div>
+<!-- Example Element: Floating Component -->
+<div class="relative h-32 flex items-center justify-center">
+<div class="absolute w-20 h-20 rounded-full bg-primary shadow-deep flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</div>
+<!-- Glassmorphism Preview behind it -->
+<div class="w-full h-24 bg-white/40 backdrop-blur-md rounded-md shadow-deep border border-white/20"></div>
+</div>
+</div>
+<div class="px-2">
+<h4 class="font-headline font-bold text-lg mb-1">Architectural Floating</h4>
+<p class="text-xs font-label uppercase tracking-widest text-slate-400">Shadow: 0px 20px 40px rgba(25, 28, 30, 0.08)</p>
+</div>
+</div>
+</div>
+<!-- Asymmetrical Showcase Section -->
+<div class="mt-32 grid grid-cols-12 gap-12 items-center">
+<div class="col-span-12 lg:col-span-7">
+<div class="relative">
+<!-- Main "Gallery" Card -->
+<div class="bg-surface-container-lowest rounded-xl p-1 shadow-deep overflow-hidden">
+<img alt="Modern architectural space" class="w-full h-[500px] object-cover rounded-lg" data-alt="Interior of a minimalist concrete building with large windows and dramatic natural light casting sharp shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClA-kdCAUL7Px-db5SgenvIHfXn06Ae7BdmsdgSIgyV4PQefAiqzFv-CyGHQ7nXIDDEcRXjpBIlKsRY1deQT_Ts4kCYj2-gndEEAA14NdL7J2-gH_zt_QeybidIlt4ece-Va_W1Aq4BEaim2RZYxDfp6q82Gz2hFg4Y9SZac8xMWyAReHCvUnWZgwKU2HEfXBYJC2XRwTcBP7wy3omq3Dv0vlpmNYrnmCtTaoWTKdsd7d_rj_784tUm2Gb7eq5AtcZjP0-Qy9gY-ih"/>
+<div class="absolute top-8 left-8 bg-white/80 backdrop-blur-xl p-6 rounded-lg shadow-medium max-w-xs">
+<span class="font-label text-[10px] font-bold text-primary uppercase tracking-widest mb-2 block">Reference 01</span>
+<h4 class="font-headline font-bold text-lg mb-2 text-on-surface">Light &amp; Geometry</h4>
+<p class="font-body text-sm text-on-surface-variant">Our depth principles mirror real-world architectural lighting.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-5 space-y-8">
+<div>
+<h3 class="font-headline text-3xl font-bold mb-4">Editorial Tech Aesthetic</h3>
+<p class="font-body text-on-surface-variant leading-relaxed">
+                            Every dashboard is a curated composition. We treat data as an exhibit, using expansive whitespace and intentional asymmetry to direct the user's attention through the architectural layers.
+                        </p>
+</div>
+<div class="space-y-4">
+<div class="flex items-start gap-4 p-4 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="p-3 bg-primary-fixed rounded-md">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="architecture">architecture</span>
+</div>
+<div>
+<p class="font-headline font-bold">No 1px Lines</p>
+<p class="font-body text-xs text-on-surface-variant">Edges are defined by tonal shifts and shadows only.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer">
+<div class="p-3 bg-primary-fixed rounded-md">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="blur_on">blur_on</span>
+</div>
+<div>
+<p class="font-headline font-bold">Ambient Diffusion</p>
+<p class="font-body text-xs text-on-surface-variant">Shadows use the 'on-surface' color at low opacity for softness.</p>
+</div>
+</div>
+</div>
+<button class="bg-primary text-white px-10 py-5 rounded-lg font-headline font-extrabold shadow-deep hover:scale-[1.02] active:scale-[0.98] transition-all">
+                        Explore Full Spec
+                    </button>
+</div>
+</div>
+</section>
+<!-- Footer Reference -->
+<footer class="mt-32 px-16 py-12 bg-surface-container-low flex justify-between items-center">
+<p class="font-label text-xs font-bold text-slate-500 tracking-widest uppercase">Obsidian Meridian Design System v2.0</p>
+<div class="flex gap-8">
+<span class="font-label text-xs font-bold text-primary tracking-widest uppercase cursor-pointer hover:underline">Guidelines</span>
+<span class="font-label text-xs font-bold text-primary tracking-widest uppercase cursor-pointer hover:underline">Components</span>
+<span class="font-label text-xs font-bold text-primary tracking-widest uppercase cursor-pointer hover:underline">Tokens</span>
+</div>
+</footer>
+</main>
+<!-- Navigation Shell Logic - Mobile Bottom Bar -->
+<div class="md:hidden">
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-[0_-10px_40px_rgba(25,28,30,0.06)] rounded-t-[2rem]">
+<div class="flex flex-col items-center justify-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-bold mt-1">Today</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#a8efec] text-[#00201f] rounded-2xl px-6 py-2">
+<span class="material-symbols-outlined" data-icon="folder_special">folder_special</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-bold mt-1">Projects</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="assignment_turned_in">assignment_turned_in</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-bold mt-1">Tasks</span>
+</div>
+<div class="flex flex-col items-center justify-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-bold mt-1">Profile</span>
+</div>
+</div>
+</div>
+</body></html>

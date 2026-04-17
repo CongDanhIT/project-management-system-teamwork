@@ -1,6 +1,11 @@
 import api from './api';
 import { Task, TaskStatus } from '../types/task';
 
+// [MULTI-ASSIGNEE] DTO riêng cho update - gửi ID thay vì object đầy đủ
+export interface UpdateTaskRequest extends Omit<Partial<Task>, 'assignedTo'> {
+  assignedTo?: string[];
+}
+
 export const taskService = {
   getTasksByWorkspace: async (workspaceId: string, filters = {}) => {
     const response = await api.get(`/task/workspace/${workspaceId}/all`, {
@@ -28,7 +33,9 @@ export const taskService = {
     return response.data.task;
   },
 
-  updateTask: async (workspaceId: string, projectId: string, taskId: string, data: Partial<Task>) => {
+
+
+  updateTask: async (workspaceId: string, projectId: string, taskId: string, data: UpdateTaskRequest) => {
     const response = await api.put(`/task/workspace/${workspaceId}/project/${projectId}/update/${taskId}`, data);
     return response.data.task;
   },

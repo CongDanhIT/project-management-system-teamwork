@@ -15,6 +15,10 @@ export interface ProjectDocument extends mongoose.Document {
     deletedAt: Date | null;
     viewCount: number;
     lastAccessedAt: Date;
+    coverUrl: string | null;
+    coverPositionX: number;
+    coverPositionY: number;
+    favoritedBy: mongoose.Types.ObjectId[];
 }
 const projectSchema = new Schema<ProjectDocument>({
     name: { type: String, required: true, trim: true },
@@ -28,6 +32,10 @@ const projectSchema = new Schema<ProjectDocument>({
     deletedAt: { type: Date, default: null },
     viewCount: { type: Number, default: 0 },
     lastAccessedAt: { type: Date, default: Date.now },
+    coverUrl: { type: String, default: null },
+    coverPositionX: { type: Number, default: 50 },
+    coverPositionY: { type: Number, default: 50 },
+    favoritedBy: [{ type: Schema.Types.ObjectId, ref: "User", default: [] }],
 }, {
     timestamps: true,
 });
@@ -36,6 +44,7 @@ projectSchema.index({ createdBy: 1 });
 // Thêm Index để tối ưu hóa truy vấn Dashboard/Lọc dự án
 projectSchema.index({ workspaceId: 1, status: 1 });
 projectSchema.index({ deletedAt: 1 }); // Quan trọng cho tính năng Thùng rác
+projectSchema.index({ favoritedBy: 1 });
 
 
 const ProjectModel = model<ProjectDocument>("Project", projectSchema);

@@ -52,19 +52,19 @@ export function JoinWorkspaceModal({ isOpen, onClose }: JoinWorkspaceModalProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] rounded-3xl border-none shadow-2xl">
+      <DialogContent className="sm:max-w-[425px] rounded-[32px] border-none shadow-depth-3 bg-white dark:bg-slate-900">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Tham gia Workspace</DialogTitle>
-          <DialogDescription className="text-slate-500 font-medium pt-1">
+          <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Tham gia Workspace</DialogTitle>
+          <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium pt-1">
             Nhập mã mời được chủ sở hữu Workspace chia sẻ để bắt đầu cộng tác ngay.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleJoin} className="space-y-6 pt-4">
           <div className="space-y-3">
-            <Label htmlFor="inviteCode" className="text-sm font-bold text-slate-700 ml-1">Mã mời</Label>
+            <Label htmlFor="inviteCode" className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Mã mời</Label>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors">
                 <Hash className="w-5 h-5" />
               </div>
               <Input
@@ -72,7 +72,7 @@ export function JoinWorkspaceModal({ isOpen, onClose }: JoinWorkspaceModalProps)
                 placeholder="Nhập mã mời (VD: E5B23890)"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
-                className="pl-12 h-14 bg-slate-50 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl text-lg font-mono font-bold tracking-widest placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
+                className="pl-12 h-14 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 focus:border-brand-primary/80 dark:focus:border-brand-secondary/80 focus:ring-4 focus:ring-brand-primary/10 rounded-2xl text-lg font-mono font-bold tracking-widest placeholder:font-sans placeholder:font-medium placeholder:tracking-normal text-slate-900 dark:text-slate-100"
                 required
               />
             </div>
@@ -83,14 +83,14 @@ export function JoinWorkspaceModal({ isOpen, onClose }: JoinWorkspaceModalProps)
               type="button" 
               variant="ghost" 
               onClick={onClose}
-              className="font-bold rounded-2xl h-12 hover:bg-slate-100"
+              className="font-bold rounded-2xl h-12 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"
             >
               Hủy
             </Button>
             <Button 
               type="submit" 
               disabled={loading || !inviteCode.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl h-12 flex-1 shadow-lg shadow-indigo-200 disabled:opacity-50"
+              className="bg-brand-primary dark:bg-brand-secondary/10 dark:text-brand-secondary dark:hover:bg-brand-secondary/20 hover:bg-brand-primary/90 text-white font-black rounded-2xl h-12 flex-1 shadow-lg shadow-brand-primary/20 dark:shadow-none disabled:opacity-50"
             >
               {loading ? (
                 <>

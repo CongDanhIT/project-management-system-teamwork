@@ -11,6 +11,8 @@ export const createProjectService = async (workspaceId: string, body: {
     status?: ProjectStatusEnumType;
     startDate?: Date | null;
     endDate?: Date | null;
+    coverUrl?: string | null;
+    coverPosition?: number;
 }, userId: string) => {
     const project = new ProjectModel({
         ...body,
@@ -18,8 +20,15 @@ export const createProjectService = async (workspaceId: string, body: {
         createdBy: userId
     })
     await project.save();
-    return project;
+
+    // Trả về kèm các trường placeholder cho UI cache
+    return {
+        ...project.toObject(),
+        totalTasks: 0,
+        completedTasks: 0
+    };
 };
+
 
 export const getProjectsInWorkspaceService = async (workspaceId: string, pageSize: number, pageNumber: number) => {
     const skip = (pageNumber - 1) * pageSize;
@@ -81,9 +90,13 @@ export const getProjectsInWorkspaceService = async (workspaceId: string, pageSiz
                 updatedAt: 1,
                 lastAccessedAt: 1,
                 viewCount: 1,
+                coverUrl: 1,
+                coverPositionX: 1,
+                coverPositionY: 1,
                 "createdBy._id": 1,
                 "createdBy.name": 1,
                 "createdBy.profilePicture": 1,
+                favoritedBy: 1,
                 totalTasks: { $size: "$tasks" },
                 completedTasks: {
                     $size: {
@@ -177,7 +190,9 @@ export const updateProjectService = async (projectId: string, workspaceId: strin
         emoji?: string | null,
         status?: ProjectStatusEnumType,
         startDate?: Date | null,
-        endDate?: Date | null
+        endDate?: Date | null,
+        coverUrl?: string | null;
+        coverPosition?: number;
     }) => {
     const project = await ProjectModel.findOneAndUpdate(
         { _id: projectId, workspaceId, deletedAt: null },
@@ -267,3 +282,38 @@ export const getDeletedProjectsInWorkspaceService = async (workspaceId: string) 
     return projects;
 };
 
+// [AI-ADDED] Toggle trạng thái yêu thích dự án
+export const toggleFavoriteProjectService = async (projectId: string, workspaceId: string, userId: string) => {
+    const project = await ProjectModel.findOne({ _id: projectId, workspaceId, deletedAt: null });
+    if (!project) {
+        throw new Error("Không tìm thấy dự án");
+    }
+
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    const isFavorited = project.favoritedBy.some(id => id.equals(userIdObj));
+
+    if (isFavorited) {
+        // Bỏ yêu thích
+        project.favoritedBy = project.favoritedBy.filter(id => !id.equals(userIdObj));
+    } else {
+        // Thêm vào yêu thích
+        project.favoritedBy.push(userIdObj);
+    }
+
+    await project.save();
+    return { project, isFavorited: !isFavorited };
+};
+
+// [AI-ADDED] Lấy danh sách dự án yêu thích của người dùng trong Workspace
+export const getFavoriteProjectsInWorkspaceService = async (workspaceId: string, userId: string) => {
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    const projects = await ProjectModel.find({
+        workspaceId,
+        deletedAt: null,
+        favoritedBy: userIdObj
+    })
+    .select("_id name emoji favoritedBy")
+    .sort({ name: 1 }); // Sắp xếp A-Z theo tên
+
+    return projects;
+};

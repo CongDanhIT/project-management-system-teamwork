@@ -26,7 +26,7 @@ export const createTaskService = async (
         status?: string;
         startDate?: Date | null;
         dueDate?: Date | null;
-        assignedTo?: string | null;
+        assignedTo?: string[]; // [MULTI-ASSIGNEE] Mảng ID người thực hiện
         parentId?: string | null;
         estimatedHours?: number;
         loggedHours?: number;
@@ -36,14 +36,16 @@ export const createTaskService = async (
 ) => {
     const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks } = body;
     
-    // 1. Kiểm tra Workspace Member
-    if (assignedTo) {
-        const isAssignedUserMember = await MemberModel.exists({
-            workspaceId,
-            userId: assignedTo
-        });
-        if (!isAssignedUserMember) {
-            throw new Error("Người được giao việc phải là thành viên của workspace này");
+    // 1. [MULTI-ASSIGNEE] Kiểm tra tất cả Workspace Members
+    if (assignedTo && assignedTo.length > 0) {
+        for (const userId of assignedTo) {
+            const isMember = await MemberModel.exists({
+                workspaceId,
+                userId,
+            });
+            if (!isMember) {
+                throw new Error(`Người dùng ${userId} không phải thành viên của workspace này`);
+            }
         }
     }
 
@@ -89,7 +91,7 @@ export const createTaskService = async (
         status: (status as TaskStatusEnumType) || TaskStatusEnum.TODO,
         startDate: startDate || null,
         dueDate: dueDate || null,
-        assignedTo: assignedTo ? new mongoose.Types.ObjectId(assignedTo) : null,
+        assignedTo: (assignedTo && assignedTo.length > 0) ? assignedTo.map(id => new mongoose.Types.ObjectId(id)) : [],
         parentId: parentId ? new mongoose.Types.ObjectId(parentId) : null,
         estimatedHours: estimatedHours || 0,
         loggedHours: loggedHours || 0,
@@ -135,7 +137,7 @@ export const updateTaskService = async (
         status?: string;
         startDate?: Date | null;
         dueDate?: Date | null;
-        assignedTo?: string | null;
+        assignedTo?: string[]; // [MULTI-ASSIGNEE] Mảng ID người thực hiện
         parentId?: string | null;
         estimatedHours?: number;
         loggedHours?: number;
@@ -155,11 +157,13 @@ export const updateTaskService = async (
         throw new Error("Không tìm thấy công việc hoặc bạn không có quyền sửa");
     }
 
-    // 2. Kiểm tra Assignee (nếu có thay đổi)
-    if (body.assignedTo !== undefined && body.assignedTo !== null && body.assignedTo.toString() !== task.assignedTo?.toString()) {
-        const isAssignedUserMember = await MemberModel.exists({ workspaceId, userId: body.assignedTo });
-        if (!isAssignedUserMember) {
-            throw new Error("Người được giao việc phải là thành viên của workspace này");
+    // 2. [MULTI-ASSIGNEE] Kiểm tra tất cả Assignees mới
+    if (body.assignedTo !== undefined && body.assignedTo.length > 0) {
+        for (const userId of body.assignedTo) {
+            const isMember = await MemberModel.exists({ workspaceId, userId });
+            if (!isMember) {
+                throw new Error(`Người dùng ${userId} không phải thành viên của workspace này`);
+            }
         }
     }
 
@@ -183,7 +187,11 @@ export const updateTaskService = async (
     if (body.status !== undefined) task.status = body.status as TaskStatusEnumType;
     if (body.startDate !== undefined) task.startDate = body.startDate;
     if (body.dueDate !== undefined) task.dueDate = body.dueDate;
-    if (body.assignedTo !== undefined) task.assignedTo = body.assignedTo ? new mongoose.Types.ObjectId(body.assignedTo) : null;
+    if (body.assignedTo !== undefined) {
+        task.assignedTo = body.assignedTo.length > 0
+            ? body.assignedTo.map(id => new mongoose.Types.ObjectId(id)) as any
+            : [];
+    }
     
     if (body.estimatedHours !== undefined) task.estimatedHours = body.estimatedHours;
     if (body.loggedHours !== undefined) task.loggedHours = body.loggedHours;
@@ -212,6 +220,7 @@ export const getAllTasksService = async (
         assignedTo?: string[];
         keyword?: string;
         dueDate?: string;
+        isOverdue?: string;
     },
     pagination: {
         page: number;
@@ -260,14 +269,24 @@ export const getAllTasksService = async (
         query.dueDate = { $gte: startOfDay, $lte: endOfDay };
     }
 
+    if (filters.isOverdue === 'true') {
+        query.dueDate = { $lt: new Date() };
+        query.status = { $ne: TaskStatusEnum.DONE };
+    }
+
     const skip = (pagination.page - 1) * pagination.pageSize;
+
+    // Sắp xếp mặc định hoặc sắp xếp cho task quá hạn
+    const sortOptions: any = filters.isOverdue === 'true' 
+        ? { dueDate: 1 } // Trễ nhất lên đầu
+        : { createdAt: -1 };
 
     const [tasks, totalCount] = await Promise.all([
         TaskModel.find(query)
             .populate("assignedTo", "_id name email profilePicture")
             .populate("projectId", "_id name")
             .populate("parentId", "_id title taskCode")
-            .sort({ createdAt: -1 })
+            .sort(sortOptions)
             .skip(skip)
             .limit(pagination.pageSize),
         TaskModel.countDocuments(query)

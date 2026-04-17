@@ -8,9 +8,11 @@ import {
   HelpCircle,
   UserPlus,
   Building2,
-  CheckSquare
+  CheckSquare,
+  Inbox
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useUiStore } from '@/stores/ui.store';
 import { projectService } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
@@ -29,6 +31,7 @@ import { JoinWorkspaceModal } from '@/components/workspace/JoinWorkspaceModal';
 import { useRouter } from 'next/navigation';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '../shared/ThemeToggle';
 
 export default function Header() {
   const router = useRouter();
@@ -46,14 +49,37 @@ export default function Header() {
 
   const handleCreateTask = async (pId: string, taskData: any) => {
     try {
-      await taskService.createTask(workspaceId as string, pId, taskData);
+      const newTask = await taskService.createTask(workspaceId as string, pId, taskData);
       const subtasksCount = taskData.subtasks?.length || 0;
 
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list'] });
-      queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-projects'] });
+      // 1. Cập nhật tất cả các danh sách task trong cache (Workspace-wide)
+      queryClient.setQueriesData({ queryKey: ['workspace-tasks', workspaceId] }, (oldData: any) => {
+        if (!oldData || !oldData.tasks) return oldData;
+        return {
+          ...oldData,
+          tasks: [newTask, ...oldData.tasks],
+          pagination: {
+            ...oldData.pagination,
+            totalCount: (oldData.pagination?.totalCount || 0) + 1
+          }
+        };
+      });
+
+      // 2. Cập nhật số lượng task của dự án tương ứng trong cache
+      queryClient.setQueryData(['workspace-projects', workspaceId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          projects: oldData.projects.map((p: any) => 
+            p._id === pId ? { ...p, totalTasks: (p.totalTasks || 0) + 1 } : p
+          )
+        };
+      });
+
+      // 3. Invalidate analytics
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+
+
 
       toast.success(subtasksCount > 0
         ? `Đã tạo công việc và ${subtasksCount} nhiệm vụ con!`
@@ -64,46 +90,61 @@ export default function Header() {
     }
   };
 
+  const { isInboxSidebarOpen, toggleInboxSidebar } = useUiStore();
+
   return (
-    <header className="h-20 glass border-ghost sticky top-0 z-40 flex items-center justify-between px-10 shadow-sm">
+    <header className="h-20 bg-background/40 dark:bg-background/40 backdrop-blur-[20px] sticky top-0 z-40 flex items-center justify-between px-12 border-b border-border transition-all duration-300">
       <div className="flex-1">
         {/* Can add breadcrumbs or search here in future */}
       </div>
 
       <div className="flex items-center gap-5">
-        <Button variant="ghost" size="icon" className="group relative text-slate-400 hover:bg-brand-secondary/50 rounded-full h-10 w-10">
-          <Bell className="w-5 h-5 group-hover:text-brand-primary" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleInboxSidebar}
+          className={cn(
+            "group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11 transition-all duration-300",
+            isInboxSidebarOpen && "bg-brand-primary/10 text-brand-primary"
+          )}
+        >
+          <Inbox className="w-6 h-6 group-hover:text-brand-primary" />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
+        </Button>
+
+        <Button variant="ghost" size="icon" className="group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
+          <Bell className="w-6 h-6 group-hover:text-brand-primary" />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
         </Button>
 
-        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-brand-secondary/50 rounded-full h-10 w-10">
-          <HelpCircle className="w-5 h-5 group-hover:text-brand-primary" />
+        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
+          <HelpCircle className="w-6 h-6 group-hover:text-brand-primary" />
         </Button>
 
-        <div className="w-px h-6 bg-divider mx-2"></div>
+        <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger 
             render={
               <Button 
-                className="relative px-11 h-14 rounded-full bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl hover:bg-white/90 dark:hover:bg-slate-900/90 text-slate-900 dark:text-white font-black text-[10px] tracking-[0.2em] gap-4 shadow-sm hover:shadow-[0_15px_40px_rgba(45,212,191,0.18)] flex items-center overflow-hidden active:scale-95 transition-all duration-500 border border-slate-200/60 dark:border-slate-800 hover:border-teal-400/40 group/btn"
+                className="relative px-6 h-11 rounded-full bg-background/70 dark:bg-card/70 backdrop-blur-xl hover:bg-background/90 dark:hover:bg-card/90 text-foreground dark:text-white font-black text-[9px] tracking-[0.1em] gap-3 shadow-sm hover:shadow-[0_10px_30px_rgba(45,212,191,0.12)] flex items-center overflow-hidden active:scale-95 transition-all duration-500 border border-slate-200/60 dark:border-white/5 hover:border-teal-400/40 group/btn"
               >
                 {/* Subtle Kinetic Mesh for Hover */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/0 via-transparent to-sky-500/0 group-hover/btn:from-teal-500/15 group-hover/btn:to-sky-500/15 transition-all duration-700"></div>
+                <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/0 via-transparent to-brand-primary/0 group-hover/btn:from-teal-500/10 group-hover/btn:to-brand-primary/10 transition-all duration-700"></div>
                 
-                {/* Vibrant Icon Circle - Tight shadow at rest */}
-                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center shadow-[0_2px_8px_rgba(20,184,166,0.15)] group-hover/btn:shadow-teal-500/40 group-hover/btn:rotate-180 transition-all duration-700">
+                {/* Vibrant Icon Circle - Smaller size */}
+                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-brand-primary/100 flex items-center justify-center shadow-[0_2px_6px_rgba(20,184,166,0.1)] group-hover/btn:shadow-teal-500/30 group-hover/btn:rotate-180 transition-all duration-700">
                   <Plus className="w-5 h-5 text-white" strokeWidth={3} />
                 </div>
                 
-                <span className="relative uppercase z-10 group-hover/btn:text-teal-600 dark:group-hover/btn:text-teal-400 transition-colors">VẬN HÀNH NHANH</span>
+                <span className="relative uppercase z-10 group-hover/btn:text-teal-600 dark:group-hover/btn:text-teal-400 transition-colors">KHỞI TẠO NHANH</span>
                 
-                {/* Neon Bottom Highlight - Shrunk at rest, Expanded on hover */}
-                <div className="absolute inset-x-12 group-hover/btn:inset-x-0 bottom-0 h-[2px] group-hover/btn:h-[3px] bg-gradient-to-r from-transparent via-teal-400 to-transparent opacity-0 group-hover/btn:opacity-100 transition-all duration-500 blur-[0.5px] group-hover/btn:blur-none"></div>
+                {/* Neon Bottom Highlight */}
+                <div className="absolute inset-x-8 group-hover/btn:inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent opacity-0 group-hover/btn:opacity-100 transition-all duration-500 blur-[0.5px]"></div>
               </Button>
             }
           />
-          <DropdownMenuContent align="end" className="w-72 rounded-[28px] p-4 shadow-ambient border-ghost glass mt-3 animate-in fade-in zoom-in-95 duration-200">
+          <DropdownMenuContent align="end" className="w-72 rounded-[28px] p-4 shadow-depth-3 border-ghost glass mt-3 animate-in fade-in zoom-in-95 duration-200">
             {workspaceId && (
               <>
                 <DropdownMenuGroup className="space-y-1">
@@ -119,9 +160,9 @@ export default function Header() {
                   )}
                   <DropdownMenuItem
                     onClick={() => setIsCreateTaskModalOpen(true)}
-                    className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-sky-50 text-slate-600 hover:text-sky-600"
+                    className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-brand-primary/5 text-slate-600 hover:text-brand-primary"
                   >
-                    <CheckSquare className="w-4.5 h-4.5 mr-3 text-sky-400 group-hover:text-sky-600" />
+                    <CheckSquare className="w-4.5 h-4.5 mr-3 text-brand-primary/60 group-hover:text-brand-primary" />
                     Thiết lập Nhiệm vụ
                   </DropdownMenuItem>
                 </DropdownMenuGroup>

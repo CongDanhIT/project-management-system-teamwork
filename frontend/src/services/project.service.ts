@@ -27,6 +27,10 @@ export interface Project {
     };
     role: string;
   }[];
+  coverUrl?: string;
+  coverPositionX: number;
+  coverPositionY: number;
+  favoritedBy?: string[];
 }
 
 export const projectService = {
@@ -47,7 +51,7 @@ export const projectService = {
     return response.data.analytics;
   },
 
-  createProject: async (workspaceId: string, data: { name: string; description?: string; emoji?: string; startDate?: Date; endDate?: Date; status?: string }) => {
+  createProject: async (workspaceId: string, data: { name: string; description?: string; emoji?: string; startDate?: Date; endDate?: Date; status?: string; coverUrl?: string; coverPositionX?: number; coverPositionY?: number }) => {
     const response = await api.post(`/project/workspace/${workspaceId}/create`, data);
     return response.data.project;
   },
@@ -75,5 +79,15 @@ export const projectService = {
   permanentDeleteProject: async (workspaceId: string, projectId: string) => {
     const response = await api.delete(`/project/workspace/${workspaceId}/hard-delete/${projectId}`);
     return response.data;
+  },
+  
+  toggleFavorite: async (workspaceId: string, projectId: string) => {
+    const response = await api.patch(`/project/workspace/${workspaceId}/favorite/${projectId}`);
+    return response.data;
+  },
+
+  getFavoriteProjects: async (workspaceId: string) => {
+    const response = await api.get(`/project/workspace/${workspaceId}/favorites/all`);
+    return response.data.projects as Project[];
   },
 };

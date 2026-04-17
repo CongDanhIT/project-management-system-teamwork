@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Geist } from "next/font/google";
+import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const manrope = Manrope({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-sans",
+});
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
@@ -27,11 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning className={geist.variable}>
+    <html lang="vi" suppressHydrationWarning className={manrope.variable}>
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
-          geist.variable,
+          manrope.variable,
           jetbrainsMono.variable
         )}
       >

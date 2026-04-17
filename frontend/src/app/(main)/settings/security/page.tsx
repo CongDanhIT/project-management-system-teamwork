@@ -50,7 +50,7 @@ export default function SecurityPage() {
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-indigo-600" />
+                <KeyRound className="w-5 h-5 text-brand-primary" />
                 Thay đổi mật khẩu
               </CardTitle>
               <CardDescription>Chúng tôi khuyên bạn nên sử dụng mật khẩu mạnh mà bạn chưa sử dụng ở nơi khác.</CardDescription>
@@ -62,7 +62,7 @@ export default function SecurityPage() {
                   <Input 
                     type={showCurrent ? "text" : "password"}
                     {...register('currentPassword', { required: "Vui lòng nhập mật khẩu hiện tại" })}
-                    className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-bold pl-10"
+                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-bold pl-10"
                   />
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
                   <Button 
@@ -87,7 +87,7 @@ export default function SecurityPage() {
                         required: "Vui lòng nhập mật khẩu mới",
                         minLength: { value: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" }
                     })}
-                    className="h-12 rounded-xl border-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-bold pl-10"
+                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-bold pl-10"
                   />
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
                   <Button 
@@ -107,7 +107,7 @@ export default function SecurityPage() {
               <Button 
                 type="submit" 
                 disabled={!isDirty || mutation.isPending}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-indigo-200"
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-brand-primary/20"
               >
                 {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Cập nhật mật khẩu
@@ -117,9 +117,9 @@ export default function SecurityPage() {
         </Card>
 
         <div className="space-y-6">
-           <Card className="border-indigo-100 bg-indigo-50/30 overflow-hidden rounded-3xl p-6">
+           <Card className="border-brand-primary/10 bg-brand-primary/10/30 overflow-hidden rounded-3xl p-6">
               <div className="flex items-center gap-2 mb-4">
-                 <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                 <ShieldCheck className="w-5 h-5 text-brand-primary" />
                  <h4 className="font-bold text-slate-900">Bảo mật tài khoản</h4>
               </div>
               <ul className="space-y-3">
@@ -130,7 +130,7 @@ export default function SecurityPage() {
                    "Không sử dụng thông tin cá nhân"
                  ].map((tip, i) => (
                    <li key={i} className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-tight">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-brand-secondary"></div>
                       {tip}
                    </li>
                  ))}
