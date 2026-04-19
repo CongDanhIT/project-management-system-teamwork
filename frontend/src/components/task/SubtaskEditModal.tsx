@@ -115,7 +115,7 @@ export const SubtaskEditModal: React.FC<SubtaskEditModalProps> = ({
       });
 
       // 1. Cập nhật tất cả các danh sách task trong cache (bao gồm cả subtasks view)
-      queryClient.setQueriesData({ queryKey: ['workspace-tasks-list', subtask.workspaceId] }, (oldData: any) => {
+      queryClient.setQueriesData({ queryKey: ['workspace-tasks', 'list', subtask.workspaceId] }, (oldData: any) => {
         if (!oldData || !oldData.tasks) return oldData;
         return {
           ...oldData,
@@ -350,8 +350,8 @@ export const SubtaskEditModal: React.FC<SubtaskEditModalProps> = ({
                     const projId = typeof subtask.projectId === 'object' ? subtask.projectId?._id : subtask.projectId;
                     await taskService.deleteTask(subtask.workspaceId, projId || '', subtask._id);
 
-                    queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', subtask.workspaceId] });
-                    queryClient.invalidateQueries({ queryKey: ['project-tasks', subtask.workspaceId] });
+                    queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', subtask.workspaceId] });
+                    queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'project', subtask.workspaceId] });
                     queryClient.invalidateQueries({ queryKey: ['workspace-tasks', subtask.workspaceId] });
                     queryClient.invalidateQueries({ queryKey: ['workspace-analytics', subtask.workspaceId] });
                     queryClient.invalidateQueries({ queryKey: ['workspace-projects', subtask.workspaceId] });

@@ -7,16 +7,16 @@ import { projectService, Project } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { 
-  FolderKanban, 
-  Plus, 
-  Trash2, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Clock, 
-  Users, 
-  Layout, 
+import {
+  FolderKanban,
+  Plus,
+  Trash2,
+  Search,
+  Filter,
+  MoreVertical,
+  Clock,
+  Users,
+  Layout,
   Heart,
   HeartOff,
   Pencil,
@@ -126,7 +126,7 @@ function ProjectCard({
               if (p._id === pId) {
                 const uId = user?.id;
                 const isFav = p.favoritedBy?.some((id: any) => (id._id || id) === uId);
-                const newFavs = isFav 
+                const newFavs = isFav
                   ? p.favoritedBy.filter((id: any) => (id._id || id) !== uId)
                   : [...(p.favoritedBy || []), uId];
                 return { ...p, favoritedBy: newFavs };
@@ -144,7 +144,7 @@ function ProjectCard({
         if (!oldData || !oldData.projects) return oldData;
         return {
           ...oldData,
-          projects: oldData.projects.map((p: any) => 
+          projects: oldData.projects.map((p: any) =>
             p._id === project._id ? responseData.project : p
           )
         };
@@ -193,7 +193,7 @@ function ProjectCard({
         {project.coverUrl ? (
           <div
             className="w-full h-full bg-cover bg-no-repeat transition-transform duration-1000 group-hover:scale-110 transform-gpu will-change-transform scale-[1.01]"
-            style={{ 
+            style={{
               backgroundImage: `url(${project.coverUrl})`,
               backgroundPosition: `${project.coverPositionX ?? 50}% ${project.coverPositionY ?? 50}%`,
               backfaceVisibility: 'hidden',
@@ -206,7 +206,7 @@ function ProjectCard({
 
         {/* Cinematic Overlay - Subtly darkening the bottom to prevent gaps */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30 z-10 pointer-events-none" />
-        
+
         {/* Anti-pixel-gap line: A 1px solid color matching the card background */}
         <div className="absolute left-0 right-0 -bottom-[0.5px] h-[1.5px] bg-card dark:bg-[#072221] z-20 pointer-events-none" />
 
@@ -303,13 +303,13 @@ function ProjectCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
-                variant="ghost" 
+                variant="ghost"
                 size="icon"
                 title={isFavorited ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
                 className={cn(
                   "h-9 w-9 rounded-full transition-all duration-300 transform-gpu z-30 border border-slate-100 dark:border-white/5 shadow-sm group/fav",
-                  isFavorited 
-                    ? "text-rose-500 border-rose-200 bg-rose-50 dark:bg-rose-500/10 scale-105" 
+                  isFavorited
+                    ? "text-rose-500 border-rose-200 bg-rose-50 dark:bg-rose-500/10 scale-105"
                     : "text-slate-300 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/5 hover:border-rose-200"
                 )}
                 onClick={(e) => {
@@ -532,13 +532,13 @@ export default function ProjectsPage() {
   const restoreTaskMutation = useMutation({
     mutationFn: async (task: any) => {
       // Kiểm tra nếu dự án cha đang bị xoá
-      const isProjectDeleted = task.projectId?.isDeleted || 
-                               deletedData?.some((p: any) => p._id === task.projectId?._id);
-      
+      const isProjectDeleted = task.projectId?.isDeleted ||
+        deletedData?.some((p: any) => p._id === task.projectId?._id);
+
       if (isProjectDeleted) {
         throw new Error(`Dự án "${task.projectId?.name || 'liên quan'}" đang nằm trong thùng rác. Vui lòng khôi phục dự án trước.`);
       }
-      
+
       return taskService.restoreTask(workspaceId, task._id);
     },
     onSuccess: () => {
@@ -694,9 +694,9 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 pt-10 pb-16">
           {activeTab === 'active' && isAdminOrOwner && (
-            <CreateProjectPlaceholder 
+            <CreateProjectPlaceholder
               key="create-project-placeholder"
-              onClick={() => { setEditingProject(null); setFormOpen(true); }} 
+              onClick={() => { setEditingProject(null); setFormOpen(true); }}
             />
           )}
 

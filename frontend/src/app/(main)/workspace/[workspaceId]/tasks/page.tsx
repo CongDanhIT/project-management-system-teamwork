@@ -89,7 +89,11 @@ export default function TaskListPage() {
 
   const handleUpdateTask = async (taskId: string, updateData: any) => {
     try {
-        const updatedTask = await taskService.updateTask(workspaceId, selectedTask?.projectId?._id || '', taskId, updateData);
+        const pId = typeof selectedTask?.projectId === 'object' 
+          ? (selectedTask.projectId as any)._id 
+          : selectedTask?.projectId;
+
+        const updatedTask = await taskService.updateTask(workspaceId, pId || '', taskId, updateData);
         
         // 1. Cập nhật tất cả các danh sách task trong cache (bao quát cả Task List và Dashboard Overdue)
         queryClient.setQueriesData({ queryKey: ['workspace-tasks', workspaceId] }, (oldData: any) => {
@@ -106,7 +110,16 @@ export default function TaskListPage() {
 
         // 3. Invalidate analytics & projects vì status thay đổi có thể ảnh hưởng đến tiến độ
         queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId] });
         queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
+        
+        // Refresh project board tasks
+        const finalProjectId = typeof updatedTask?.projectId === 'object' ? (updatedTask.projectId as any)?._id : updatedTask?.projectId;
+        if (finalProjectId) {
+            queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, finalProjectId] });
+        }
 
         toast.success("Đã cập nhật công việc");
     } catch (error) {
@@ -149,6 +162,9 @@ export default function TaskListPage() {
 
         // 3. Invalidate analytics
         queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId] });
         
         toast.success("Đã xóa công việc");
     } catch (error) {
@@ -188,6 +204,9 @@ export default function TaskListPage() {
 
         // 3. Invalidate analytics
         queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId] });
         
         toast.success(subtasksCount > 0 
             ? `Đã tạo công việc và ${subtasksCount} nhiệm vụ con!` 

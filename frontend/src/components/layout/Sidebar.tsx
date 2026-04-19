@@ -95,8 +95,7 @@ export default function Sidebar() {
 
       {/* Blurry Separator Gradient Line - Top (Enhanced Clarity) */}
       <div className="relative h-[1.5px] w-full mb-2">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-400/30 dark:via-white/30 to-transparent" />
-        <div className="absolute inset-0 shadow-[0_4px_8px_-2px_rgba(0,0,0,0.08)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-400/30 dark:via-brand-secondary/10 to-transparent" />
       </div>
 
       {/* Navigation */}
@@ -118,8 +117,8 @@ export default function Sidebar() {
               className={cn(
                 "group flex items-center gap-3 px-5 py-3 rounded-2xl text-[14px] font-medium transition-all duration-300",
                 isActive
-                  ? "bg-[#035D5B] text-white shadow-lg shadow-[#035D5B]/20"
-                  : "text-[#3F4948] dark:text-[#E5F4EF]/60 hover:bg-[#035D5B]/5 dark:hover:bg-[#C7F964]/5 hover:text-[#035D5B] dark:hover:text-[#C7F964]"
+                  ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                  : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary"
               )}
             >
               <item.icon className={cn("w-5 h-5 transition-all duration-300", isActive ? "text-[#C7F964] scale-105" : "text-current opacity-70 group-hover:opacity-100")} />
@@ -136,7 +135,7 @@ export default function Sidebar() {
               onClick={() => setIsFavoritesOpen(!isFavoritesOpen)}
               className="flex items-center justify-between w-full px-5 mb-2 group outline-none"
             >
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">
                 Dự án yêu thích
               </span>
               <ChevronDown 
@@ -182,8 +181,7 @@ export default function Sidebar() {
       {/* Footer / User Profile (Redesigned Profile Block) */}
       <div className="mt-auto relative">
         {/* Blurry Separator Gradient Line - Ultra Soft (Enhanced Clarity) */}
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-slate-400/30 dark:via-white/30 to-transparent" />
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.1)]" />
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-slate-400/30 dark:via-brand-secondary/10 to-transparent" />
         <div className="p-4">
 
         <DropdownMenu>
@@ -206,10 +204,10 @@ export default function Sidebar() {
                 </div>
 
                 <div className="flex flex-col items-start min-w-0 flex-1 relative z-10 text-left">
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/20 uppercase tracking-widest leading-none mb-1">
                     Tài khoản
                   </span>
-                  <span className="text-sm font-bold text-[#3F4948] dark:text-[#E5F4EF] truncate w-full group-hover:text-[#035D5B] dark:group-hover:text-[#C7F964] transition-colors">
+                  <span className="text-sm font-bold text-[#3F4948] dark:text-slate-50 truncate w-full group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
                     {user?.name || 'Guest'}
                   </span>
                 </div>

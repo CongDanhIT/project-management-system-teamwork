@@ -22,13 +22,13 @@ export const updateWorkspaceSchema = z.object({
 
 export const WorkSpaceIdSchema = z.string()
     .trim()
-    .min(1, "Workspace ID không được để trống");
+    .regex(/^[0-9a-fA-F]{24}$/, "ID không gian làm việc không hợp lệ");
 
 export const changeWorkSpaceMemberRoleSchema = z.object({
     memberId: z.string()
         .trim()
-        .min(1, "Member ID không được để trống"),
+        .regex(/^[0-9a-fA-F]{24}$/, "ID thành viên không hợp lệ"),
     roleId: z.string()
         .trim()
-        .min(1, "Role ID không được để trống")
+        .regex(/^[0-9a-fA-F]{24}$/, "ID vai trò không hợp lệ")
 })

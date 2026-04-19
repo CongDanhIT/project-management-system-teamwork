@@ -9,8 +9,10 @@ import {
     deleteWorkspaceByIdService,
     getAllWorkspaceIsMemberService,
     getWorkspaceAnalyticsService,
+    getWorkspaceAnalyticsHistoryService,
     getWorkspaceByIdService,
     getWorkspaceMemberService,
+
     updateWorkspaceByIdService,
     resetInviteCodeService,
     removeMemberFromWorkspaceService,
@@ -105,6 +107,26 @@ export const getWorkspaceAnalyticsController = asyncHandler(
         });
     }
 );
+
+export const getWorkspaceAnalyticsHistoryController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        // Kiểm tra quyền truy cập (chỉ thành viên mới được xem)
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.VIEW_ONLY]);
+
+        const history = await getWorkspaceAnalyticsHistoryService(workspaceId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy lịch sử analytics thành công",
+            history
+        });
+    }
+);
+
 
 export const changeWorkSpaceMemberRoleController = asyncHandler(
     async (req, res, next) => {

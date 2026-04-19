@@ -102,7 +102,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   // Fetch parent tasks
   const { data: parentTasksData } = useQuery({
-    queryKey: ['project-tasks', workspaceId, projectId],
+    queryKey: ['workspace-tasks', 'project', workspaceId, projectId],
     queryFn: () => taskService.getProjectTasks(workspaceId!, projectId, { pageSize: 1000 }), // Lấy nhiều để chọn parent
     enabled: !!workspaceId && !!projectId,
   });

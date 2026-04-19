@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { TaskStatus } from '@/types/task';
 import { createPortal } from 'react-dom';
+import { useWorkspaceSync } from '@/hooks/useWorkspaceSync';
 
 export default function MainLayout({
   children,
@@ -28,6 +29,9 @@ export default function MainLayout({
 
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
+
+  // Tự động đồng bộ currentWorkspaceId khi URL thay đổi
+  useWorkspaceSync();
 
   const handleDragStart = (event: DragStartEvent) => {
     if (event.active.data.current?.type === 'InboxTask') {
@@ -55,7 +59,7 @@ export default function MainLayout({
               loading: 'Đang chuyển đổi thành công việc...',
               success: () => {
                 queryClient.invalidateQueries({ queryKey: ['personal-inbox-drafts'] });
-                queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+                queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'project', workspaceId, projectId] });
                 return 'Đã thêm vào dự án thành công!';
               },
               error: 'Không thể chuyển đổi công việc. Vui lòng thử lại.',

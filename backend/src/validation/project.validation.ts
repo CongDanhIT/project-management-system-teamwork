@@ -24,33 +24,32 @@ export const dateSchema = z.string()
 
 export const projectIdSchema = z.string()
     .trim()
-    .min(1, "Id dự án phải có ít nhất 1 ký tự")
-    .max(255, "Id dự án phải có nhiều nhất 255 ký tự");
+    .regex(/^[0-9a-fA-F]{24}$/, "ID dự án không hợp lệ");
+
 export const taskIdSchema = z.string()
     .trim()
-    .min(1, "Id task phải có ít nhất 1 ký tự")
-    .max(255, "Id task phải có nhiều nhất 255 ký tự");
+    .regex(/^[0-9a-fA-F]{24}$/, "ID nhiệm vụ không hợp lệ");
 //---------------------------------------------------------------------
-export const createProjectSchema = z.object({
+export const createProjectSchemaV2 = z.object({
     emoji: emojiSchema,
     name: nameSchema,
     description: descriptionSchema,
     status: statusSchema,
     startDate: dateSchema,
     endDate: dateSchema,
-    coverUrl: z.string().url().optional().nullable(),
+    coverUrl: z.any().optional().nullable(),
     coverPositionX: z.number().min(0).max(100).default(50).optional(),
     coverPositionY: z.number().min(0).max(100).default(50).optional(),
 });
 
-export const updateProjectSchema = z.object({
+export const updateProjectSchemaV2 = z.object({
     emoji: emojiSchema,
     name: nameSchema,
     description: descriptionSchema,
     status: statusSchema,
     startDate: dateSchema,
     endDate: dateSchema,
-    coverUrl: z.string().url().optional().nullable(),
+    coverUrl: z.any().optional().nullable(),
     coverPositionX: z.number().min(0).max(100).optional(),
     coverPositionY: z.number().min(0).max(100).optional(),
 });

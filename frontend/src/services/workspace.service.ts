@@ -1,5 +1,10 @@
 import api from './api';
 
+export interface WorkspaceAnalyticsTrend {
+  value: number;
+  percent: number;
+}
+
 export interface WorkspaceAnalytics {
   totalTasks: number;
   inProgressTasks: number;
@@ -9,7 +14,26 @@ export interface WorkspaceAnalytics {
   summary: {
     completionRate: number;
   };
+  trends: {
+    totalTasksTrend: WorkspaceAnalyticsTrend;
+    completedTasksTrend: WorkspaceAnalyticsTrend;
+    inProgressTasksTrend: WorkspaceAnalyticsTrend;
+    overdueTasksTrend: WorkspaceAnalyticsTrend;
+  };
 }
+
+export interface WorkspaceAnalyticsSnapshot {
+  _id: string;
+  workspaceId: string;
+  date: string;
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  overdueTasks: number;
+  totalProjects: number;
+}
+
+
 
 export interface Workspace {
   _id: string;
@@ -37,6 +61,12 @@ export const workspaceService = {
     const response = await api.get(`/workspace/analytics/${id}`);
     return response.data.analytics as WorkspaceAnalytics;
   },
+
+  getWorkspaceAnalyticsHistory: async (id: string) => {
+    const response = await api.get(`/workspace/analytics/history/${id}`);
+    return response.data.history as WorkspaceAnalyticsSnapshot[];
+  },
+
 
   createWorkspace: async (data: { name: string; description?: string }) => {
     console.log('Creating workspace with data:', data);

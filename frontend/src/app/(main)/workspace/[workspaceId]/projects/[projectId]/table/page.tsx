@@ -41,7 +41,7 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { TaskDrawer } from '@/components/task/TaskDrawer';
+import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
@@ -65,9 +65,9 @@ export default function ProjectTablePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Drawer state
+  // Modal state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -141,7 +141,7 @@ export default function ProjectTablePage() {
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
-    setIsDrawerOpen(true);
+    setIsTaskModalOpen(true);
   };
 
   const toggleRow = (taskId: string, e: React.MouseEvent) => {
@@ -172,9 +172,13 @@ export default function ProjectTablePage() {
       }
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
       toast.success('Cập nhật công việc thành công');
     } catch (error) {
@@ -188,11 +192,15 @@ export default function ProjectTablePage() {
       await taskService.deleteTask(workspaceId, projectId, taskId);
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
-      setIsDrawerOpen(false);
+      setIsTaskModalOpen(false);
       toast.success('Đã xóa công việc');
     } catch (error) {
       console.error('Delete task error:', error);
@@ -207,12 +215,16 @@ export default function ProjectTablePage() {
 
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
 
-      if (isDrawerOpen && selectedTask && taskData.parentId === selectedTask._id) {
+      if (isTaskModalOpen && selectedTask && taskData.parentId === selectedTask._id) {
         const updatedParent = await taskService.getTaskById(workspaceId, pId, selectedTask._id);
         setSelectedTask(updatedParent);
       }
@@ -597,10 +609,10 @@ export default function ProjectTablePage() {
         </div>
       </div>
 
-      <TaskDrawer
+      <TaskDetailModal
         task={selectedTask}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
         onSubtaskUpdate={refreshTasks}

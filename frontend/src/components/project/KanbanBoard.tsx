@@ -128,28 +128,46 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
         if (originalStatus === targetStatus) return;
 
         try {
-          await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
+          const updatedTaskFromApi = await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
           
-          // 1. Cập nhật cache Kanban (workspace-tasks)
+          // 1. Cập nhật cache cho Project Tasks (Dùng cho Board hiện tại)
+          queryClient.setQueryData(['project-tasks', workspaceId, projectId], (oldData: any) => {
+            if (!oldData || !oldData.tasks) return oldData;
+            return {
+              ...oldData,
+              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, ...updatedTaskFromApi } : t)
+            };
+          });
+
+          // 2. Cập nhật cache Kanban chung (nếu có - workspace-tasks)
           queryClient.setQueryData(['workspace-tasks', workspaceId], (oldData: any) => {
             if (!oldData || !oldData.tasks) return oldData;
             return {
               ...oldData,
-              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, status: targetStatus } : t)
+              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, ...updatedTaskFromApi } : t)
             };
           });
 
-          // 2. Cập nhật cache Task List (workspace-tasks-list)
+          // 3. Cập nhật cache Task List (workspace-tasks-list)
           queryClient.setQueriesData({ queryKey: ['workspace-tasks-list', workspaceId] }, (oldData: any) => {
             if (!oldData || !oldData.tasks) return oldData;
             return {
               ...oldData,
-              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, status: targetStatus } : t)
+              tasks: oldData.tasks.map((t: any) => t._id === taskId ? { ...t, ...updatedTaskFromApi } : t)
             };
           });
 
-          // 3. Invalidate analytics
+          // 4. Invalidate analytics & synchronized views
           queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+          queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+          queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+          queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
+          
+          // 5. Invalidate Table View specifically
+          queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] }); 
+          queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
+          
+          queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] }); // Ensure absolute sync
 
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || "Không thể cập nhật trạng thái công việc.";

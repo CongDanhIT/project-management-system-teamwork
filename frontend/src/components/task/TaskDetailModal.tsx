@@ -195,19 +195,24 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (!task) return;
     setIsUpdating(true);
     try {
+      // Prepare date values: only send null if explicitly intended, 
+      // otherwise send the current state or fallback to original task value
+      const finalDueDate = dueDate ? dueDate.toISOString() : (task.dueDate || null);
+      const finalStartDate = startDate ? startDate.toISOString() : (task.startDate || null);
+
       await onUpdate(task._id, {
         title,
         description,
         status,
         priority,
         assignedTo: assigneeIds, // [MULTI-ASSIGNEE] Gửi mảng ID
-        dueDate: dueDate?.toISOString() || null,
-        startDate: startDate?.toISOString() || null,
+        dueDate: finalDueDate,
+        startDate: finalStartDate,
         estimatedHours: estimatedHours === '' ? 0 : Number(estimatedHours),
         loggedHours: loggedHours === '' ? 0 : Number(loggedHours),
         parentId: parentId === 'none' ? null : parentId,
       });
-      toast.success("Đã cập nhật công việc thành công");
+      // toast.success("Đã cập nhật công việc thành công"); // [REDUNDANT] Xóa vì parent page đã có toast
       onClose();
     } finally {
       setIsUpdating(false);

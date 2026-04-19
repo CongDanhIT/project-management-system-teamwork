@@ -19,6 +19,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { workspaceService } from '@/services/workspace.service';
 import { useWorkspaceStore } from '@/stores/workspace.store';
+import { userService } from '@/services/user.service';
 import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -46,8 +47,16 @@ export default function WorkspaceSelector() {
     }
   }, [workspaceId, setCurrentWorkspaceId]);
 
-  const handleSwitchWorkspace = (id: string) => {
-    router.push(`/workspace/${id}`);
+  const handleSwitchWorkspace = async (id: string) => {
+    try {
+      // Cập nhật lên backend để lưu trạng thái workspace cuối cùng
+      await userService.switchWorkspace(id);
+      router.push(`/workspace/${id}`);
+    } catch (error) {
+      console.error('Failed to switch workspace:', error);
+      // Vẫn cho phép chuyển URL dù fail cập nhật backend để không chặn người dùng
+      router.push(`/workspace/${id}`);
+    }
   };
 
   if (!mounted) {

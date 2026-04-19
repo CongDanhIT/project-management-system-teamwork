@@ -89,6 +89,7 @@ export const createTaskService = async (
         description: description ?? null,
         priority: (priority as TaskPriorityEnumType) || TaskPriorityEnum.MEDIUM,
         status: (status as TaskStatusEnumType) || TaskStatusEnum.TODO,
+        completedAt: ((status === TaskStatusEnum.DONE || status === TaskStatusEnum.COMPLETED) ? new Date() : null),
         startDate: startDate || null,
         dueDate: dueDate || null,
         assignedTo: (assignedTo && assignedTo.length > 0) ? assignedTo.map(id => new mongoose.Types.ObjectId(id)) : [],
@@ -184,9 +185,26 @@ export const updateTaskService = async (
         }
     }
 
-    if (body.status !== undefined) task.status = body.status as TaskStatusEnumType;
-    if (body.startDate !== undefined) task.startDate = body.startDate;
-    if (body.dueDate !== undefined) task.dueDate = body.dueDate;
+    if (body.status !== undefined) {
+        const isDone = body.status === TaskStatusEnum.DONE || body.status === TaskStatusEnum.COMPLETED;
+        const wasDone = task.status === TaskStatusEnum.DONE || task.status === TaskStatusEnum.COMPLETED;
+
+        if (isDone && !wasDone) {
+            task.completedAt = new Date();
+        } else if (!isDone) {
+            task.completedAt = null;
+        }
+
+        task.status = body.status as TaskStatusEnumType;
+    }
+    // Update dates - Only update if explicitly provided and not null to prevent accidental data loss
+    if (body.startDate !== undefined && body.startDate !== null) {
+      task.startDate = body.startDate;
+    }
+    
+    if (body.dueDate !== undefined && body.dueDate !== null) {
+      task.dueDate = body.dueDate;
+    }
     if (body.assignedTo !== undefined) {
         task.assignedTo = body.assignedTo.length > 0
             ? body.assignedTo.map(id => new mongoose.Types.ObjectId(id)) as any
@@ -333,8 +351,13 @@ export const getSubtasksService = async (
     parentId: string,
     pagination: { page: number; pageSize: number } = { page: 1, pageSize: 4 }
 ) => {
-    const query = {
-        workspaceId,
+    // Đảm bảo ID hợp lệ trước khi truy vấn
+    if (!mongoose.Types.ObjectId.isValid(workspaceId) || !mongoose.Types.ObjectId.isValid(parentId)) {
+        return { tasks: [], totalCount: 0, totalPages: 0, currentPage: pagination.page, pageSize: pagination.pageSize };
+    }
+
+    const query: any = {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
         parentId: new mongoose.Types.ObjectId(parentId),
         deletedAt: null
     };

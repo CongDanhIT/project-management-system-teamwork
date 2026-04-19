@@ -51,6 +51,11 @@ export const projectService = {
     return response.data.analytics;
   },
 
+  getProjectAnalyticsHistory: async (workspaceId: string, projectId: string) => {
+    const response = await api.get(`/project/workspace/${workspaceId}/analytics/history/${projectId}`);
+    return response.data.history;
+  },
+
   createProject: async (workspaceId: string, data: { name: string; description?: string; emoji?: string; startDate?: Date; endDate?: Date; status?: string; coverUrl?: string; coverPositionX?: number; coverPositionY?: number }) => {
     const response = await api.post(`/project/workspace/${workspaceId}/create`, data);
     return response.data.project;

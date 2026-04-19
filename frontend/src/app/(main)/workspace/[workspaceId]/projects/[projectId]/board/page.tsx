@@ -80,9 +80,14 @@ export default function ProjectBoardPage() {
         setSelectedTask({ ...selectedTask, ...updatedTask });
       }
       queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
       toast.success('Cập nhật công việc thành công');
     } catch (error) {
@@ -96,9 +101,14 @@ export default function ProjectBoardPage() {
       await taskService.deleteTask(workspaceId, projectId, taskId);
       setIsModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
       toast.success('Đã xóa công việc');
     } catch (error) {
@@ -116,6 +126,9 @@ export default function ProjectBoardPage() {
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
       
       if (isModalOpen && selectedTask && taskData.parentId === selectedTask._id) {

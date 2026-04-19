@@ -22,6 +22,10 @@ export const userService = {
   },
 
   switchWorkspace: async (workspaceId: string) => {
+    // [GUARD] Ngăn chặn gọi API với ID không hợp lệ (ví dụ chuỗi "undefined")
+    if (!workspaceId || !/^[0-9a-fA-F]{24}$/.test(workspaceId)) {
+      return null;
+    }
     const response = await api.patch(`/user/workspace/switch/${workspaceId}`);
     return response.data;
   },

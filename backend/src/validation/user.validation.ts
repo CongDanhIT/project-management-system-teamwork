@@ -7,11 +7,10 @@ export const updateProfileSchema = z.object({
         .min(2, "Tên phải có ít nhất 2 ký tự")
         .max(100, "Tên không được vượt quá 100 ký tự")
         .optional(),
-    profilePicture: z
-        .string()
-        .url("URL ảnh đại diện không hợp lệ")
-        .nullable()
-        .optional(),
+    profilePicture: z.preprocess(
+        (val) => (val === "" ? null : val),
+        z.string().url("URL ảnh đại diện không hợp lệ").nullable().optional()
+    ),
 });
 
 // Schema đổi mật khẩu

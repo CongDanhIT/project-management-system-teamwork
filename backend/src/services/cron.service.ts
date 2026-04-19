@@ -4,6 +4,8 @@ import TaskModel from "../models/task.model";
 import UserModel from "../models/user.model";
 import logger from "../utils/logger";
 import cloudinary from "../config/cloudinary.config";
+import { saveDailySnapshotsForAllWorkspaces } from "./workspace.service";
+import { saveDailySnapshotsForAllProjects } from "./project.service";
 
 /**
  * Trích xuất public_id từ Cloudinary URL
@@ -136,6 +138,12 @@ export const startCronService = () => {
     // 2. Dọn dẹp Cloudinary: Chạy vào 01:00 ngày đầu tiên mỗi tháng
     cron.schedule("0 1 1 * *", () => {
         cleanupOrphanedCloudinaryFiles();
+    });
+
+    // 3. Analytics Snapshot: Chạy vào 23:55 hàng ngày
+    cron.schedule("55 23 * * *", () => {
+        saveDailySnapshotsForAllWorkspaces();
+        saveDailySnapshotsForAllProjects();
     });
 
     logger.info("[CRON] Hệ thống Lập lịch (node-cron) đã kích hoạt.");

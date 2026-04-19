@@ -5,7 +5,9 @@ import {
     deleteWorkspaceByIdController,
     getAllWorkspaceIsMemberController,
     getWorkspaceAnalyticsController,
+    getWorkspaceAnalyticsHistoryController,
     getWorkspaceByIdController,
+
     getWorkspaceMemberController,
     updateWorkspaceByIdController,
     resetInviteCodeController,
@@ -23,6 +25,9 @@ workspaceRoutes.get("/:id", getWorkspaceByIdController);
 workspaceRoutes.get("/member/:id", getWorkspaceMemberController);
 // lấy thông tin analytics trong workspace
 workspaceRoutes.get("/analytics/:id", getWorkspaceAnalyticsController);
+// lấy lịch sử analytics (15 ngày gần nhất)
+workspaceRoutes.get("/analytics/history/:id", getWorkspaceAnalyticsHistoryController);
+
 // thay đổi vai trò của thành viên trong workspace
 workspaceRoutes.put("/change/member/role/:id", changeWorkSpaceMemberRoleController);
 // update workspace

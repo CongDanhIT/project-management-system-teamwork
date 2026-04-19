@@ -14,6 +14,7 @@ export interface TaskDocument extends mongoose.Document {
     createdBy: mongoose.Types.ObjectId;
     startDate: Date | null; // [AI-ADDED] Ngày bắt đầu (Cho Calendar/Gantt)
     dueDate: Date | null;
+    completedAt: Date | null; // [AI-ADDED] Ngày thực tế hoàn thành để tính chỉ số Performance
     estimatedHours: number; // [AI-ADDED] Thời gian dự tính (Giờ)
     loggedHours: number;    // [AI-ADDED] Thời gian thực tế đã dùng (Giờ)
     deletedAt: Date | null; // [AI-ADDED] Ngày xóa (Cho Soft Delete dự án cha)
@@ -33,6 +34,7 @@ const taskSchema = new Schema<TaskDocument>({
     createdBy: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     startDate: { type: Date, default: null },
     dueDate: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
     estimatedHours: { type: Number, default: 0 },
     loggedHours: { type: Number, default: 0 },
     deletedAt: { type: Date, default: null },
@@ -44,6 +46,7 @@ const taskSchema = new Schema<TaskDocument>({
 // Tối ưu hoá truy vấn Database với Index
 taskSchema.index({ workspaceId: 1, status: 1 });
 taskSchema.index({ projectId: 1, status: 1 });
+taskSchema.index({ completedAt: 1 }); // Quan trọng cho Analytics Performance
 taskSchema.index({ parentId: 1 }); // Quan trọng: Lấy Subtasks của 1 Task
 taskSchema.index({ deletedAt: 1 }); // Lọc các Task bị ẩn theo Dự án
 taskSchema.index({ assignedTo: 1 });

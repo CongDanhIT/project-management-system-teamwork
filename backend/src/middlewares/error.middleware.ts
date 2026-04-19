@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 import logger from '../utils/logger';
 import { env } from '../config/env';
 import HTTP_STATUS from '../config/http.config';
@@ -25,11 +26,18 @@ export const errorHandler = (
     });
 
     // 2. Xác định mã trạng thái và mã lỗi nghiệp vụ
-    // Nếu là lỗi chúng ta định nghĩa (AppError), lấy đúng mã đó. 
-    // Nếu là lỗi lạ (ví dụ lỗi code), trả về 500.
-    const statusCode = err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
-    const message = err.message || "Lỗi máy chủ nội bộ";
-    const errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+    let statusCode = err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
+    let message = err.message || "Lỗi máy chủ nội bộ";
+    let errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
+    let errors = err.errors || undefined;
+
+    // Bổ sung: Xử lý lỗi từ Zod Validation
+    if (err instanceof ZodError) {
+        statusCode = HTTP_STATUS.BAD_REQUEST;
+        message = "Dữ liệu đầu vào không hợp lệ";
+        errorCode = "VALIDATION_ERROR";
+        errors = err.issues;
+    }
 
     // 3. Trả về thông báo cho người dùng
     res.status(statusCode).json({
@@ -37,7 +45,7 @@ export const errorHandler = (
         status: statusCode, // Bổ sung mã trạng thái vào body để tiện debug
         message: message,
         errorCode: errorCode, // Mã lỗi để Frontend xử lý
-        errors: err.errors || undefined, // Chi tiết lỗi (nếu có, ví dụ từ Zod)
+        errors: errors, // Chi tiết lỗi (nếu có, ví dụ từ Zod)
         // Chú ý: Chỉ hiện Stack Trace khi đang ở môi trường Dev để bảo mật
         stack: env.isDev ? err.stack : undefined,
     });

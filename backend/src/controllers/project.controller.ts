@@ -1,11 +1,11 @@
 import { asyncHandler } from "../middlewares/asyncHandle";
 import { getMemberRoleInWorkspace } from "../services/member.service";
 import { roleGuard } from "../utils/roleGuard";
-import { createProjectSchema, updateProjectSchema } from "../validation/project.validation";
+import { createProjectSchemaV2, updateProjectSchemaV2 } from "../validation/project.validation";
 import { WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
 import HTTP_STATUS from "../config/http.config";
-import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService, toggleFavoriteProjectService, getFavoriteProjectsInWorkspaceService } from "../services/project.service";
+import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService, toggleFavoriteProjectService, getFavoriteProjectsInWorkspaceService, getProjectAnalyticsHistoryService } from "../services/project.service";
 import { projectIdSchema } from "../validation/project.validation";
 import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 
@@ -30,7 +30,7 @@ export const getDeletedProjectsController = asyncHandler(
 
 export const createProjectController = asyncHandler(
     async (req, res, next) => {
-        const body = createProjectSchema.parse(req.body);
+        const body = createProjectSchemaV2.parse(req.body);
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const userId = req.user?._id;
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
@@ -106,12 +106,29 @@ export const getProjectAnalyticsController = asyncHandler(
     }
 )
 
+export const getProjectAnalyticsHistoryController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const projectId = projectIdSchema.parse(req.params.projectId);
+        const userId = req.user?._id;
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.VIEW_ONLY]);
+
+        const history = await getProjectAnalyticsHistoryService(projectId, workspaceId);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy lịch sử analytics dự án thành công",
+            history
+        })
+    }
+)
+
 export const updateProjectController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
         const userId = req.user?._id;
-        const body = updateProjectSchema.parse(req.body);
+        const body = updateProjectSchemaV2.parse(req.body);
 
         const projectData = await getProjectByIdService(projectId, workspaceId);
 

@@ -33,13 +33,13 @@
   --color-disabled: #CBD5E1;
   --color-divider: #F2F4F6;
 
-  /* Redirect slate for text primary and dividers */
-  --color-slate-50: #F7F9FB;
-  --color-slate-100: #F2F4F6;
-  --color-slate-200: #E2E8F0;
-  --color-slate-600: #475569;
-  --color-slate-900: #0F172A;
-  --color-slate-950: #020617;
+  /* Redirect slate to Forest Tones for Neon Forest Aesthetic */
+  --color-slate-50: #E5F4EF;
+  --color-slate-100: #D1E8E2;
+  --color-slate-200: #B3D1CA;
+  --color-slate-600: #173B38;
+  --color-slate-900: #071613; /* Forest Surface Low */
+  --color-slate-950: #04100E; /* Forest Void Background */
 
   /* Shadcn standard mappings */
   --color-primary: var(--primary);
@@ -167,59 +167,59 @@
 }
 
 .dark {
-  --background: #04100E;
-  --foreground: #E5F4EF;
+  --background: #020807; /* Pure Deepest Forest (Green-tinted void) */
+  --foreground: #E5F4EF; /* Soft Mint Text */
 
-  --card: #072221;
+  --card: #041412; /* Forest Surface - Purified Green-Dark */
   --card-foreground: #E5F4EF;
 
-  --popover: #072221;
+  --popover: #041412;
   --popover-foreground: #E5F4EF;
 
-  --primary: #035D5B;
-  --primary-foreground: #FFFFFF;
+  --primary: #C7F964; 
+  --primary-foreground: #020807;
 
-  --secondary: #0B2F2E;
+  --secondary: #0D1F1D; 
   --secondary-foreground: #C7F964;
 
-  --muted: #0B2F2E;
+  --muted: #050E0C; 
   --muted-foreground: #A8EFEC;
 
-  --accent: #0B2F2E;
+  --accent: #0D1F1D;
   --accent-foreground: #C7F964;
 
   --destructive: #EF4444;
   --destructive-foreground: #F8FAFC;
 
-  --border: rgba(255, 255, 255, 0.05);
-  --input: #0B2F2E;
-  --ring: #2DD4BF;
+  --border: rgba(199, 249, 100, 0.08); /* Lime-tinted border for better Forest integration */
+  --input: #0D1F1D;
+  --ring: #C7F964;
 
-  --sidebar: #001717;
+  --sidebar: #010605; 
   --sidebar-foreground: #E5F4EF;
-  --sidebar-primary: #035D5B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #072221;
+  --sidebar-primary: #C7F964;
+  --sidebar-primary-foreground: #020807;
+  --sidebar-accent: #0D1F1D;
   --sidebar-accent-foreground: #C7F964;
-  --sidebar-border: rgba(255, 255, 255, 0.05);
-  --sidebar-ring: #2DD4BF;
+  --sidebar-border: rgba(199, 249, 100, 0.05);
+  --sidebar-ring: #C7F964;
 
   /* Surface System - Dark */
-  --surface-primary: #072221;
-  --surface-secondary: #001717;
-  --surface-tertiary: #0B2F2E;
+  --surface-primary: #041412;
+  --surface-secondary: #0D1F1D;
+  --surface-tertiary: #050E0C;
 
   /* Border System - Dark */
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-strong: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(229, 244, 239, 0.05);
+  --border-strong: rgba(229, 244, 239, 0.1);
 
   /* Modal & Surface System - Dark Mode */
-  --modal-bg: #072221;
+  --modal-bg: #0D1F1D;
   --modal-surface: #04100E;
-  --modal-aside: #051817;
-  --modal-section: rgba(11, 47, 46, 0.5);
-  --modal-border: rgba(255, 255, 255, 0.05);
-  --input-bg: #0B2F2E;
+  --modal-aside: #071613;
+  --modal-section: rgba(23, 41, 37, 0.5);
+  --modal-border: rgba(229, 244, 239, 0.08);
+  --input-bg: #172925;
   --text-dim: #A8EFEC;
 
   /* Force Kill all depth shadows in Dark Mode */

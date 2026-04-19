@@ -79,18 +79,19 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
       return projectService.createProject(workspaceId, data);
     },
     onSuccess: (data: Project) => {
-      // Cập nhật tất cả danh sách dự án trong cache (bao quát mọi view: Dashboard, Projects Page...)
+      // 1. Cụ thể: Làm tươi danh sách dự án của workspace này
+      queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
+
+      // 2. Cập nhật cache thủ công (giúp UI phản hồi nhanh hơn - Optimistic)
       queryClient.setQueriesData({ queryKey: ['workspace-projects', workspaceId] }, (oldData: any) => {
         if (!oldData || !oldData.projects) return oldData;
         
         if (isEdit) {
-          // Cập nhật thông tin dự án mới nhất vào mảng projects
           const updatedProjects = oldData.projects.map((p: Project) =>
             p._id === data._id ? { ...p, ...data } : p
           );
           return { ...oldData, projects: updatedProjects };
         } else {
-          // Thêm dự án mới vào đầu danh sách nếu đang ở trang đầu
           return {
             ...oldData,
             projects: [data, ...oldData.projects],
@@ -99,8 +100,7 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
         }
       });
 
-
-      // Luôn làm mới analytics vì số lượng/trạng thái dự án thay đổi
+      // 3. Luôn làm mới analytics vì số lượng/trạng thái dự án thay đổi
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
       
       toast.success(isEdit ? 'Đã cập nhật dự án!' : 'Đã tạo dự án mới!');

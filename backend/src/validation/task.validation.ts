@@ -13,8 +13,7 @@ export const descriptionSchema = z.string()
 
 // [MULTI-ASSIGNEE] Mảng ID người thực hiện, mảng rỗng = chưa gán
 export const assignedToSchema = z.array(z.string().trim())
-    .optional()
-    .default([]);
+    .optional();
 
 export const parentIdSchema = z.string()
     .trim()
@@ -32,7 +31,6 @@ export const dateSchema = z.string()
 
 export const hoursSchema = z.number()
     .min(0, "Thời gian không được nhỏ hơn 0")
-    .default(0)
     .optional();
 
 export const prioritySchema = z.nativeEnum(TaskPriorityEnum);

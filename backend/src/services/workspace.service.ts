@@ -10,6 +10,7 @@ import { BadRequestException, NotFoundException } from "../utils/appError";
 import TaskModel from "../models/task.model";
 import { TaskStatusEnum } from "../enums/task.enum";
 import ProjectModel from "../models/project.model";
+import WorkspaceAnalyticsSnapshotModel from "../models/workspace-analytics-snapshot.model";
 // tạo workspace
 export const createWorkspaceService = async (userId: string, body: {
     name: string;
@@ -99,7 +100,7 @@ export const getWorkspaceByIdService = async (workspaceId: string, userId: strin
     };
     return WorkspaceWithMember;
 };
-// lấy tất cả member trong workspace
+// lấy tất cả member trong workspace kèm thống kê công việc
 export const getWorkspaceMemberService = async (workspaceId: string) => {
     // 1. Lấy danh sách thành viên và populate thông tin User + Role
     const members = await MemberModel.find({ workspaceId: workspaceId })
@@ -107,10 +108,104 @@ export const getWorkspaceMemberService = async (workspaceId: string) => {
         .populate("role", "name") // Lấy tên của Role (Owner, Admin, Member)
         .lean();
 
-    // 2. Lấy danh sách toàn bộ các Role hiện có trong hệ thống (để Frontend dùng cho Dropdown)
+    // 2. Thống kê công việc cho từng user trong Workspace (Aggregation)
+    const currentDate = new Date();
+    const taskStats = await TaskModel.aggregate([
+        { 
+            $match: { 
+                workspaceId: new mongoose.Types.ObjectId(workspaceId), 
+                deletedAt: null 
+            } 
+        },
+        { $unwind: "$assignedTo" },
+        {
+            $group: {
+                _id: { $toString: "$assignedTo" },
+                totalTasks: { $sum: 1 },
+                completedTasks: {
+                    $sum: {
+                        $cond: [
+                            { 
+                                $and: [
+                                    { $in: ["$status", [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED]] },
+                                    { 
+                                        $or: [
+                                            { $eq: ["$dueDate", null] },
+                                            { $eq: ["$completedAt", null] },
+                                            { $lte: ["$completedAt", "$dueDate"] }
+                                        ]
+                                    }
+                                ]
+                            }, 
+                            1, 
+                            0
+                        ]
+                    }
+                },
+                completedLateTasks: {
+                    $sum: {
+                        $cond: [
+                            { 
+                                $and: [
+                                    { $in: ["$status", [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED]] },
+                                    { $ne: ["$dueDate", null] },
+                                    { $ne: ["$completedAt", null] },
+                                    { $gt: ["$completedAt", "$dueDate"] }
+                                ]
+                            }, 
+                            1, 
+                            0
+                        ]
+                    }
+                },
+                overdueTasks: {
+                    $sum: {
+                        $cond: [
+                            {
+                                $and: [
+                                    { $ne: ["$dueDate", null] },
+                                    { $lt: ["$dueDate", currentDate] },
+                                    { $not: { $in: ["$status", [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED]] } }
+                                ]
+                            },
+                            1,
+                            0
+                        ]
+                    }
+                }
+            }
+        }
+    ]);
+
+    // Chuyển stats thành map để truy xuất nhanh
+    const statsMap = new Map();
+    taskStats.forEach((stat: any) => {
+        // stat._id đã là string do có $toString ở bước group trong aggregate
+        statsMap.set(String(stat._id), {
+            totalTasks: stat.totalTasks,
+            completedTasks: stat.completedTasks,
+            completedLateTasks: stat.completedLateTasks,
+            overdueTasks: stat.overdueTasks
+        });
+    });
+
+    // 3. Gộp stats vào members
+    const membersWithStats = members.map((member: any) => {
+        // Đảm bảo lấy ID dưới dạng string để so khớp với statsMap
+        const userObj = member.userId;
+        const userId = String(userObj?._id || userObj || "");
+        
+        const stats = statsMap.get(userId) || { totalTasks: 0, completedTasks: 0, overdueTasks: 0 };
+        return {
+            ...member,
+            taskStats: stats
+        };
+    });
+
+    // 4. Lấy danh sách toàn bộ các Role hiện có trong hệ thống
     const roles = await RoleModel.find({}, "name _id").lean();
 
-    return { members, roles };
+    return { members: membersWithStats, roles };
 };
 // lấy thông tin analytics trong workspace
 export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
@@ -124,13 +219,13 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
         TaskModel.countDocuments({
             workspaceId: workspaceId,
             dueDate: { $lt: currentDate },
-            status: { $ne: TaskStatusEnum.DONE },
+            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
             deletedAt: null
         }),
 
         TaskModel.countDocuments({
             workspaceId: workspaceId,
-            status: TaskStatusEnum.DONE,
+            status: { $in: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
             deletedAt: null
         }),
 
@@ -146,10 +241,15 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
                 $gte: currentDate,
                 $lte: twentyFourHoursLater
             },
-            status: { $ne: TaskStatusEnum.DONE },
+            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
             deletedAt: null
         }).sort({ dueDate: 1 })
     ]);
+
+    // Lấy snapshot gần nhất (thường là của ngày hôm trước) để tính trend
+    const yesterdaySnapshot = await WorkspaceAnalyticsSnapshotModel.findOne({
+        workspaceId: workspaceId
+    }).sort({ date: -1 });
 
     const analytics = {
         totalTasks,
@@ -159,10 +259,75 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
         nearDueDateTasks,
         summary: {
             completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+        },
+        trends: {
+            totalTasksTrend: {
+                value: yesterdaySnapshot ? totalTasks - yesterdaySnapshot.totalTasks : totalTasks,
+                percent: yesterdaySnapshot && yesterdaySnapshot.totalTasks > 0 
+                    ? ((totalTasks - yesterdaySnapshot.totalTasks) / yesterdaySnapshot.totalTasks) * 100 
+                    : 0
+            },
+            completedTasksTrend: {
+                value: yesterdaySnapshot ? completedTasks - yesterdaySnapshot.completedTasks : completedTasks,
+                percent: yesterdaySnapshot && yesterdaySnapshot.completedTasks > 0 
+                    ? ((completedTasks - yesterdaySnapshot.completedTasks) / yesterdaySnapshot.completedTasks) * 100 
+                    : 0
+            },
+            inProgressTasksTrend: {
+                value: yesterdaySnapshot ? inProgressTasks - yesterdaySnapshot.inProgressTasks : inProgressTasks,
+                percent: yesterdaySnapshot && yesterdaySnapshot.inProgressTasks > 0 
+                    ? ((inProgressTasks - yesterdaySnapshot.inProgressTasks) / yesterdaySnapshot.inProgressTasks) * 100 
+                    : 0
+            },
+            overdueTasksTrend: {
+                value: yesterdaySnapshot ? overdueTasks - yesterdaySnapshot.overdueTasks : overdueTasks,
+                percent: yesterdaySnapshot && yesterdaySnapshot.overdueTasks > 0 
+                    ? ((overdueTasks - yesterdaySnapshot.overdueTasks) / yesterdaySnapshot.overdueTasks) * 100 
+                    : 0
+            },
         }
+
     };
     // Trả về một object chứa toàn bộ thông tin
     return analytics;
+};
+
+/**
+ * Hàm thực hiện snapshot dữ liệu cho TẤT CẢ các workspace
+ * Thường được gọi bởi Cron Job vào cuối ngày
+ */
+export const saveDailySnapshotsForAllWorkspaces = async () => {
+    try {
+        const workspaces = await WorkspaceModel.find({}).select("_id");
+        logger.info(`[SNAPSHOT] Bắt đầu lưu snapshot cho ${workspaces.length} workspace...`);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (const workspace of workspaces) {
+            const workspaceId = (workspace._id as mongoose.Types.ObjectId).toString();
+            
+            // Tận dụng logic lấy analytics hiện có
+            const data = await getWorkspaceAnalyticsService(workspaceId);
+
+            // Cập nhật hoặc thêm mới snapshot cho ngày hôm nay
+            await WorkspaceAnalyticsSnapshotModel.findOneAndUpdate(
+                { workspaceId, date: today },
+                {
+                    totalTasks: data.totalTasks,
+                    completedTasks: data.completedTasks,
+                    inProgressTasks: data.inProgressTasks,
+                    overdueTasks: data.overdueTasks,
+                    totalProjects: await ProjectModel.countDocuments({ workspaceId, deletedAt: null })
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        logger.info("[SNAPSHOT] Đã hoàn thành lưu snapshot hàng ngày.");
+    } catch (error) {
+        logger.error("[SNAPSHOT-ERR] Lỗi khi lưu snapshot:", { error });
+    }
 };
 // thay đổi vai trò của thành viên trong workspace
 export const changeMemberRoleService = async (workspaceId: string, memberId: string, roleId: string) => {
@@ -312,3 +477,47 @@ export const removeMemberFromWorkspaceService = async (
     await MemberModel.deleteOne({ workspaceId, userId: memberId });
     return { memberId };
 };
+
+/**
+ * Lấy lịch sử dữ liệu analytics trong 15 ngày gần nhất
+ * Dùng cho biểu đồ xu hướng (Activity Pulse)
+ * Đã cập nhật: Tự động gộp dữ liệu real-time của ngày hôm nay vào điểm cuối
+ */
+export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string) => {
+    // 1. Lấy dữ liệu analytics thực tế hiện tại của toàn bộ workspace
+    const currentData = await getWorkspaceAnalyticsService(workspaceId);
+
+    // 2. Lấy 14 ngày lịch sử gần nhất từ snapshot
+    const history = await WorkspaceAnalyticsSnapshotModel.find({
+        workspaceId: workspaceId
+    })
+    .sort({ date: -1 })
+    .limit(14)
+    .lean();
+
+    const formattedHistory = history.reverse();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 3. Chuẩn bị dữ liệu thực tế cho ngày hôm nay
+    const todayEntry = {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        date: today,
+        totalTasks: currentData.totalTasks,
+        completedTasks: currentData.completedTasks,
+        inProgressTasks: currentData.inProgressTasks,
+        overdueTasks: currentData.overdueTasks,
+        isRealTime: true
+    };
+
+    // 4. Kiểm tra điểm cuối và gộp vào (tránh bị lặp ngày hôm nay nếu snapshot đã tạo)
+    const lastEntry = formattedHistory[formattedHistory.length - 1];
+    if (lastEntry && new Date(lastEntry.date).toDateString() === today.toDateString()) {
+        formattedHistory[formattedHistory.length - 1] = todayEntry as any;
+    } else {
+        formattedHistory.push(todayEntry as any);
+    }
+
+    return formattedHistory;
+};
+

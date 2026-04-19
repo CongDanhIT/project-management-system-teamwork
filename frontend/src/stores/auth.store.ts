@@ -33,7 +33,9 @@ export const useAuthStore = create<AuthState>()(
           name: user.name,
           email: user.email,
           avatar: user.profilePicture,
-          currentWorkspaceId: typeof user.currentWorkspace === 'object' ? user.currentWorkspace?._id : user.currentWorkspace,
+          currentWorkspaceId: user.currentWorkspace 
+            ? (typeof user.currentWorkspace === 'object' ? user.currentWorkspace._id : user.currentWorkspace)
+            : undefined,
         }, 
         token: token || null, 
         isAuthenticated: true,
