@@ -49,6 +49,7 @@ export const createTaskSchema = z.object({
     estimatedHours: hoursSchema,
     loggedHours: hoursSchema,
     subtasks: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -62,6 +63,7 @@ export const updateTaskSchema = z.object({
     parentId: parentIdSchema,
     estimatedHours: hoursSchema,
     loggedHours: hoursSchema,
+    tags: z.array(z.string()).optional(),
 }).partial();
 
 export const getTasksQuerySchema = z.object({
@@ -73,6 +75,7 @@ export const getTasksQuerySchema = z.object({
     keyword: z.string().optional(),
     dueDate: z.string().optional(),
     isOverdue: z.string().optional(),
+    tags: z.string().optional(), // Lọc theo nhãn (chuỗi ID cách nhau bởi dấu phẩy)
     pageNumber: z.string().transform((val) => parseInt(val) || 1).optional(),
     pageSize: z.string().transform((val) => parseInt(val) || 10).optional(),
 });

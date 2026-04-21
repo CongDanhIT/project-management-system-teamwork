@@ -3,6 +3,7 @@ import TaskModel from "../models/task.model";
 import { TaskPriorityEnum, TaskStatusEnum, TaskPriorityEnumType, TaskStatusEnumType } from "../enums/task.enum";
 import MemberModel from "../models/member.model";
 import ProjectModel from "../models/project.model";
+import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -31,10 +32,11 @@ export const createTaskService = async (
         estimatedHours?: number;
         loggedHours?: number;
         subtasks?: string[];
+        tags?: string[]; // Mảng ID nhãn
     },
     userId: string
 ) => {
-    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks } = body;
+    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks, tags } = body;
     
     // 1. [MULTI-ASSIGNEE] Kiểm tra tất cả Workspace Members
     if (assignedTo && assignedTo.length > 0) {
@@ -52,6 +54,9 @@ export const createTaskService = async (
     // 2. Kiểm tra Dự án để lấy Prefix
     const project = await ProjectModel.findById(projectId);
     if (!project) throw new Error("Dự án không tồn tại");
+    if (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD) {
+        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+    }
     
     // Tạo mác Prefix (ví dụ: My Project -> MP)
     let prefix = project.name.split(' ').filter(word => word.length > 0)
@@ -100,6 +105,7 @@ export const createTaskService = async (
         workspaceId,
         projectId,
         createdBy: userId,
+        tags: (tags && tags.length > 0) ? tags.map(id => new mongoose.Types.ObjectId(id)) : [],
     });
 
     await task.save();
@@ -124,7 +130,8 @@ export const createTaskService = async (
     return task.populate([
         { path: "assignedTo", select: "_id name email profilePicture" },
         { path: "projectId", select: "_id name emoji" },
-        { path: "parentId", select: "_id title taskCode" }
+        { path: "parentId", select: "_id title taskCode" },
+        { path: "tags" }
     ]);
 };
 
@@ -142,6 +149,7 @@ export const updateTaskService = async (
         parentId?: string | null;
         estimatedHours?: number;
         loggedHours?: number;
+        tags?: string[]; // Thêm tags vào đây
     },
     userId: string,
     taskId: string
@@ -156,6 +164,11 @@ export const updateTaskService = async (
 
     if (!task) {
         throw new Error("Không tìm thấy công việc hoặc bạn không có quyền sửa");
+    }
+
+    const project = await ProjectModel.findById(projectId);
+    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD)) {
+        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
     }
 
     // 2. [MULTI-ASSIGNEE] Kiểm tra tất cả Assignees mới
@@ -213,6 +226,9 @@ export const updateTaskService = async (
     
     if (body.estimatedHours !== undefined) task.estimatedHours = body.estimatedHours;
     if (body.loggedHours !== undefined) task.loggedHours = body.loggedHours;
+    if (body.tags !== undefined) {
+        task.tags = body.tags.map(id => new mongoose.Types.ObjectId(id)) as any;
+    }
 
     await task.save();
 
@@ -224,7 +240,8 @@ export const updateTaskService = async (
     return task.populate([
         { path: "assignedTo", select: "_id name email profilePicture" },
         { path: "projectId", select: "_id name emoji" },
-        { path: "parentId", select: "_id title taskCode" }
+        { path: "parentId", select: "_id title taskCode" },
+        { path: "tags" }
     ]);
 }
 
@@ -239,6 +256,7 @@ export const getAllTasksService = async (
         keyword?: string;
         dueDate?: string;
         isOverdue?: string;
+        tags?: string[];
     },
     pagination: {
         page: number;
@@ -279,6 +297,10 @@ export const getAllTasksService = async (
         query.title = { $regex: filters.keyword, $options: "i" };
     }
 
+    if (filters.tags && filters.tags.length > 0) {
+        query.tags = { $in: filters.tags.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
     if (filters.dueDate) {
         const startOfDay = new Date(filters.dueDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -304,6 +326,7 @@ export const getAllTasksService = async (
             .populate("assignedTo", "_id name email profilePicture")
             .populate("projectId", "_id name")
             .populate("parentId", "_id title taskCode")
+            .populate("tags")
             .sort(sortOptions)
             .skip(skip)
             .limit(pagination.pageSize),
@@ -338,7 +361,8 @@ export const getTaskByIdService = async (
         .populate("assignedTo", "_id name email profilePicture")
         .populate("projectId", "_id name")
         .populate("parentId", "_id title taskCode")
-        .populate("createdBy", "_id name email profilePicture");
+        .populate("createdBy", "_id name email profilePicture")
+        .populate("tags");
     if (!task) {
         throw new Error("Không tìm thấy công việc");
     }
@@ -387,6 +411,14 @@ export const deleteTaskService = async (
     workspaceId: string,
     taskId: string
 ) => {
+    const existingTask = await TaskModel.findOne({ _id: taskId, workspaceId, deletedAt: null });
+    if (!existingTask) throw new Error("Không tìm thấy công việc để xóa hoặc đã bị xóa trước đó");
+    
+    const project = await ProjectModel.findById(existingTask.projectId);
+    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD)) {
+        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+    }
+
     // Soft Delete: Chỉ đánh dấu deletedAt thay vì xóa vĩnh viễn
     const task = await TaskModel.findOneAndUpdate(
         {
@@ -445,6 +477,9 @@ export const restoreTaskService = async (
     const project = await ProjectModel.findById(task.projectId);
     if (!project || project.deletedAt !== null) {
         throw new Error("Khôi phục thất bại vì dự án của công việc này vẫn đang ở trong thùng rác. Vui lòng khôi phục dự án trước để tiếp tục.");
+    }
+    if (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD) {
+        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
     }
 
     task.deletedAt = null;

@@ -65,6 +65,7 @@ export const getAllTasksController = asyncHandler(
             keyword: query.keyword,
             dueDate: query.dueDate,
             isOverdue: query.isOverdue,
+            tags: query.tags?.split(","),
         };
 
         const pagination = {
@@ -164,6 +165,7 @@ export const getTasksByProjectController = asyncHandler(
             assignedTo: query.assignedTo?.split(","),
             keyword: query.keyword,
             dueDate: query.dueDate,
+            tags: query.tags?.split(","),
         };
         const pagination = {
             page: query.pageNumber || 1,

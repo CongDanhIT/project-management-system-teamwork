@@ -22,6 +22,8 @@ import taskRoutes from './routes/task.route';
 import aiRoutes from './routes/ai.route';
 import uploadRoutes from './routes/upload.route';
 import inboxRoutes from './routes/inbox.route';
+import announcementRoutes from './routes/announcement.route';
+import tagRoutes from './routes/tag.route';
 import { startCronService } from './services/cron.service';
 dotenv.config();
 
@@ -102,6 +104,8 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);       // 🔒 BẢO MẬT: bắt buộc auth
         app.use(`${BASE_PATH}/inbox`, isAuthenticated, inboxRoutes);     // 🚀 MỚI: Inbox cá nhân
         app.use(`${BASE_PATH}/upload`, isAuthenticated, uploadRoutes);   // 🚀 MỚI: upload ảnh bìa
+        app.use(`${BASE_PATH}/workspace/:workspaceId/announcements`, isAuthenticated, announcementRoutes); // 🚀 Bản tin dự án
+        app.use(`${BASE_PATH}/workspace/:workspaceId/tags`, isAuthenticated, tagRoutes); // 🚀 Tags cho task
 
         app.use(errorHandler);
 

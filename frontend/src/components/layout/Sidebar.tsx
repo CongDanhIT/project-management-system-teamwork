@@ -17,7 +17,8 @@ import {
   Moon,
   Sun,
   Heart,
-  ChevronDown
+  ChevronDown,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -102,6 +103,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
         {[
           { label: 'Dashboard', icon: LayoutDashboard, href: `/workspace/${workspaceId}` },
+          { label: 'Bản tin', icon: Megaphone, href: `/workspace/${workspaceId}/newsfeed` },
           { label: 'Dự án', icon: FolderKanban, href: `/workspace/${workspaceId}/projects` },
           { label: 'Công việc của tôi', icon: CheckSquare, href: `/workspace/${workspaceId}/tasks` },
           { label: 'Thành viên', icon: Users, href: `/workspace/${workspaceId}/members` },

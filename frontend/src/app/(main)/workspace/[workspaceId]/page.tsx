@@ -488,7 +488,7 @@ export default function WorkspaceDashboardPage() {
                     </div>
 
                     <div>
-                      <span className="text-[11px] font-bold text-slate-400 dark:text-text-dim uppercase tracking-[0.3em]">{stat.label}</span>
+                      <span className="text-[11px] font-black text-slate-400 dark:text-brand-primary/80 uppercase tracking-[0.2em]">{stat.label}</span>
                       <div className="flex items-baseline gap-2 mt-2">
                         <h3 className={cn(
                           "text-[32px] font-black tracking-[-0.06em] leading-none transition-all duration-700",
@@ -665,7 +665,7 @@ export default function WorkspaceDashboardPage() {
                                 )}
                               </div>
 
-                              <span className="text-[10px] font-bold text-[#3F4948]/60 dark:text-[#E5F4EF]/50 uppercase tracking-widest">
+                              <span className="text-[10px] font-bold text-[#3F4948]/60 dark:text-brand-primary/80 uppercase tracking-[0.2em]">
                                 {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true, locale: vi })}
                               </span>
                             </div>
@@ -840,8 +840,8 @@ export default function WorkspaceDashboardPage() {
                 {/* Team Members Section */}
                 <section className="space-y-6 pb-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black text-[#191C1E] dark:text-[#E5F4EF] tracking-tight flex items-center gap-3 uppercase">
-                      <Users className="w-5 h-5 text-[#035D5B]" />
+                    <h3 className="text-xl font-black text-[#035D5B] dark:text-[#C7F964] tracking-tight flex items-center gap-3 uppercase">
+                      <Users className="w-5 h-5 text-[#035D5B] dark:text-[#C7F964]" />
                       Đội ngũ
                     </h3>
                     <span className="text-[10px] font-black text-[#035D5B] dark:text-[#C7F964] bg-[#035D5B]/5 dark:bg-[#C7F964]/5 px-3 py-1 rounded-full uppercase tracking-widest">
@@ -924,7 +924,7 @@ export default function WorkspaceDashboardPage() {
 
                 {/* Workplace Pulse / Analytics Sidebar */}
                 <section className="space-y-6 pb-4">
-                  <h3 className="text-xl font-black text-[#191C1E] dark:text-[#E5F4EF] tracking-tight flex items-center gap-3 uppercase">
+                  <h3 className="text-xl font-black text-[#035D5B] dark:text-[#C7F964] tracking-tight flex items-center gap-3 uppercase">
                     <Activity className="w-5 h-5 text-amber-500" />
                     Nhịp độ
                   </h3>
@@ -941,7 +941,7 @@ export default function WorkspaceDashboardPage() {
 
                     <div className="space-y-6 relative z-10">
                       <div>
-                        <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.25em] mb-2">Dự án hoàn tất</p>
+                        <p className="text-[10px] font-black text-white/50 dark:text-brand-primary/80 uppercase tracking-[0.2em] mb-2">Dự án hoàn tất</p>
                         <div className="flex items-end gap-2">
                           <span className="text-5xl font-black text-white tracking-tighter drop-shadow-sm">
                             {projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length || 0}

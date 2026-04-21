@@ -78,9 +78,32 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
         </button>
       </div>
 
-      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 mb-4 leading-relaxed">
+      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 mb-3 leading-relaxed">
         {task.title}
       </h4>
+
+      {/* Tags Row */}
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {task.tags.map((tag) => (
+            <span
+              key={tag._id}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border border-divider/10"
+              style={{
+                backgroundColor: `${tag.color}10`,
+                color: tag.color,
+                borderColor: `${tag.color}25`,
+              }}
+            >
+              <span 
+                className="w-1.5 h-1.5 rounded-full shadow-sm" 
+                style={{ backgroundColor: tag.color }}
+              />
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mt-auto">
         <div className="flex items-center gap-2">

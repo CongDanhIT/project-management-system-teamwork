@@ -65,6 +65,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SubtaskEditModal } from './SubtaskEditModal';
 import { taskService } from '@/services/task.service';
+import { tagService } from '@/services/tag.service';
+import { Tag as TagType } from '@/types/task';
 import { toast } from 'sonner';
 
 interface TaskDetailModalProps {
@@ -110,12 +112,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [isSubtaskModalOpen, setIsSubtaskModalOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isActivityOpen, setIsActivityOpen] = useState(true);
-
-  // MOCK DATA for tags and attachments
-  const [taskTags, setTaskTags] = useState([
-    { id: '1', name: 'Giao diện', color: '#00d2d3' },
-    { id: '2', name: 'Ưu tiên cao', color: '#ff4d4d' },
-  ]);
+  const [availableTags, setAvailableTags] = useState<TagType[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const [attachments, setAttachments] = useState([
     { id: '1', name: 'design_specs.pdf', size: '2.4 MB', type: 'pdf', url: '#' },
@@ -147,8 +145,39 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         ? task.assignedTo.map((u: any) => (typeof u === 'object' ? u._id : u)).filter(Boolean)
         : [];
       setAssigneeIds(ids);
+
+      // Khởi tạo Tags
+      const tIds = Array.isArray(task.tags)
+        ? task.tags.map((t: any) => (typeof t === 'object' ? t._id : t)).filter(Boolean)
+        : [];
+      setSelectedTagIds(tIds);
+
+      // Seed availableTags từ tags hiện có của task để tránh flash trắng
+      if (Array.isArray(task.tags)) {
+        const initialTags = task.tags.filter(t => typeof t === 'object') as TagType[];
+        setAvailableTags((prev: TagType[]) => {
+          const existingIds = new Set(prev.map((item: TagType) => item._id));
+          const newItems = initialTags.filter((item: TagType) => !existingIds.has(item._id));
+          return [...prev, ...newItems];
+        });
+      }
     }
   }, [task]);
+
+  // Lấy toàn bộ nhãn có sẵn của workspace
+  useEffect(() => {
+    const fetchAvailableTags = async () => {
+      if (isOpen && task?.workspaceId) {
+        try {
+          const tags = await tagService.getTags(task.workspaceId);
+          setAvailableTags(tags);
+        } catch (error) {
+          console.error("Failed to fetch available tags", error);
+        }
+      }
+    };
+    fetchAvailableTags();
+  }, [isOpen, task?.workspaceId]);
 
   const fetchSubtasks = async (page: number) => {
     if (!task || !isOpen) return;
@@ -211,6 +240,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         estimatedHours: estimatedHours === '' ? 0 : Number(estimatedHours),
         loggedHours: loggedHours === '' ? 0 : Number(loggedHours),
         parentId: parentId === 'none' ? null : parentId,
+        tags: selectedTagIds,
       });
       // toast.success("Đã cập nhật công việc thành công"); // [REDUNDANT] Xóa vì parent page đã có toast
       onClose();
@@ -225,6 +255,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds((prev: string[]) => 
+      prev.includes(tagId) ? prev.filter((id: string) => id !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const currentTags = availableTags.filter((t: TagType) => selectedTagIds.includes(t._id));
 
   const activeAssignees = Array.isArray(members) 
     ? members.filter(m => {
@@ -339,7 +377,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <CheckCircle2 className="w-3.5 h-3.5 text-brand-primary/40" /> Trạng thái
+                    <CheckCircle2 className="w-3.5 h-3.5 text-brand-primary/80" /> Trạng thái
                   </label>
                   <Select
                     value={status}
@@ -364,7 +402,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <AlertCircle className="w-3.5 h-3.5 text-brand-primary/40" /> Ưu tiên
+                    <AlertCircle className="w-3.5 h-3.5 text-brand-primary/80" /> Ưu tiên
                   </label>
                   <Select
                     value={priority}
@@ -387,7 +425,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3 col-span-2">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <User className="w-3.5 h-3.5 text-brand-primary/40" /> Người thực hiện
+                    <User className="w-3.5 h-3.5 text-brand-primary/80" /> Người thực hiện
                     {assigneeIds.length > 0 && (
                       <span className="ml-auto bg-brand-primary/10 text-brand-primary text-[9px] font-black px-2 py-0.5 rounded-full">
                         {assigneeIds.length} người
@@ -501,30 +539,73 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3 col-span-2">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <Tag className="w-3.5 h-3.5 text-brand-primary/40" /> Nhãn (Tags)
+                    <Tag className="w-3.5 h-3.5 text-brand-primary/80" /> Nhãn (Tags)
                   </label>
-                  <div className="flex flex-wrap gap-2 items-center p-4 bg-input-bg border border-modal-border rounded-2xl min-h-[56px]">
-                    {taskTags.map(tag => (
+                  <div className="flex flex-wrap gap-2 items-center p-4 bg-input-bg border border-modal-border rounded-2xl min-h-[56px] group/tag-container relative">
+                    {currentTags.map((tag: TagType) => (
                       <Badge 
-                        key={tag.id}
+                        key={tag._id}
                         style={{ backgroundColor: `${tag.color}15`, color: tag.color, borderColor: `${tag.color}30` }}
-                        className="px-3 py-1 text-[10px] font-black uppercase tracking-wider border flex items-center gap-1.5 rounded-lg group cursor-default"
+                        className="px-3 py-1 text-[10px] font-black uppercase tracking-wider border flex items-center gap-1.5 rounded-lg group/item cursor-default"
                       >
                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
                         {tag.name}
-                        <X className="w-3 h-3 ml-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleTag(tag._id); }}
+                          className="hover:scale-125 transition-transform"
+                        >
+                          <X className="w-3 h-3 ml-1 cursor-pointer opacity-40 group-hover/item:opacity-100 transition-opacity" />
+                        </button>
                       </Badge>
                     ))}
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-text-dim hover:text-brand-primary rounded-lg text-[10px] font-black uppercase tracking-widest gap-1">
-                      <Plus className="w-3 h-3" /> Thêm nhãn
-                    </Button>
+                    
+                    <Popover
+                      open={activeDropdown === 'tags'}
+                      onOpenChange={(open) => setActiveDropdown(open ? 'tags' : null)}
+                    >
+                      <PopoverTrigger className={cn(
+                        "h-7 px-2 text-text-dim hover:text-brand-primary rounded-lg text-[10px] font-black uppercase tracking-widest gap-1 flex items-center transition-colors",
+                        activeDropdown === 'tags' && "text-brand-primary bg-brand-primary/5"
+                      )}>
+                        <Plus className="w-3 h-3" /> Thêm nhãn
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3 rounded-2xl border-modal-border shadow-2xl bg-modal-bg/95 backdrop-blur-xl" align="start">
+                        <div className="space-y-2">
+                          <div className="text-[10px] font-black text-text-dim uppercase tracking-widest pb-1 border-b border-modal-border">
+                            Chọn Nhãn Công Việc
+                          </div>
+                          <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                            {availableTags.map((tag: TagType) => {
+                              const isSelected = selectedTagIds.includes(tag._id);
+                              return (
+                                <button
+                                  key={tag._id}
+                                  onClick={() => toggleTag(tag._id)}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left group/tag-btn",
+                                    isSelected ? "bg-brand-primary/5" : "hover:bg-modal-surface"
+                                  )}
+                                >
+                                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                                  <span className="text-[12px] font-bold text-foreground flex-1 truncate">{tag.name}</span>
+                                  {isSelected && <Check className="w-3 h-3 text-brand-primary" strokeWidth={3} />}
+                                </button>
+                              );
+                            })}
+                            {availableTags.length === 0 && (
+                              <p className="text-[10px] text-text-dim/60 italic p-3 text-center">Chưa có nhãn nào trong workspace này</p>
+                            )}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <CalendarIcon className="w-3.5 h-3.5 text-brand-primary/40" /> Ngày bắt đầu
+                    <CalendarIcon className="w-3.5 h-3.5 text-brand-primary/80" /> Ngày bắt đầu
                   </label>
                   <Popover
                     open={activeDropdown === 'startDate'}
@@ -553,7 +634,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <Clock className="w-3.5 h-3.5 text-brand-primary/40" /> Hạn chót
+                    <Clock className="w-3.5 h-3.5 text-brand-primary/80" /> Hạn chót
                   </label>
                   <Popover
                     open={activeDropdown === 'dueDate'}
@@ -582,7 +663,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="space-y-3 col-span-2">
                   <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <GitBranch className="w-3.5 h-3.5 text-brand-primary/40" /> Nhiệm vụ cha
+                    <GitBranch className="w-3.5 h-3.5 text-brand-primary/80" /> Nhiệm vụ cha
                   </label>
                   <div className="w-full border border-modal-border bg-input-bg px-4 h-14 rounded-2xl transition-colors duration-200 shadow-sm flex items-center gap-3">
                     <GitBranch className="w-4 h-4 text-brand-primary/30" />
@@ -634,7 +715,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-foreground">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <MessageSquare className="w-3.5 h-3.5 text-brand-primary/40" />
+                    <MessageSquare className="w-3.5 h-3.5 text-brand-primary/80" />
                     <span className="text-[11px] font-black uppercase tracking-[0.25em]">Mô tả nhiệm vụ</span>
                   </div>
 
@@ -677,7 +758,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-foreground">
                     <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                    <Paperclip className="w-3.5 h-3.5 text-brand-primary/40" />
+                    <Paperclip className="w-3.5 h-3.5 text-brand-primary/80" />
                     <span className="text-[11px] font-black uppercase tracking-[0.25em]">Tệp đính kèm ({attachments.length})</span>
                   </div>
                   <Button variant="ghost" size="sm" className="text-[10px] font-black text-brand-primary uppercase tracking-widest hover:bg-brand-primary/5 rounded-xl px-3">
@@ -729,7 +810,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                               {st.title}
                             </span>
                           </div>
-                          <div className="text-[10px] font-mono font-black text-brand-primary/40 bg-brand-primary/5 px-2.5 py-1 rounded-full group-hover:bg-brand-secondary group-hover:text-brand-primary transition-colors">
+                          <div className="text-[10px] font-mono font-black text-brand-primary/80 bg-brand-primary/5 px-2.5 py-1 rounded-full group-hover:bg-brand-secondary group-hover:text-brand-primary transition-colors">
                             {st.taskCode}
                           </div>
                         </div>
@@ -782,7 +863,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </div>
                 ) : isLoadingSubtasks ? (
                   <div className="flex items-center justify-center p-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary/40" />
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary/80" />
                   </div>
                 ) : (
                   <div className="text-sm text-text-dim font-medium px-6 py-10 bg-modal-surface rounded-3xl border-2 border-dashed border-modal-border text-center">
@@ -844,7 +925,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <div className="flex items-center justify-between p-6 pb-4 relative z-10">
                 <h3 className="text-[11px] font-black text-text-dim uppercase tracking-[0.25em] flex items-center gap-3">
                   <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
-                  <MessageSquare className="w-4 h-4 text-brand-primary/40" />
+                  <MessageSquare className="w-4 h-4 text-brand-primary/80" />
                   Activity Hub
                 </h3>
               </div>

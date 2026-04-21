@@ -63,7 +63,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; progress: nu
   ACTIVE: { label: 'ĐANG HOẠT ĐỘNG', color: 'bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 dark:text-brand-primary', progress: 45 },
   ON_HOLD: { label: 'TẠM DỪNG', color: 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400', progress: 15 },
   COMPLETED: { label: 'HOÀN THÀNH', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', progress: 100 },
-  FROZEN: { label: 'ĐÓNG BĂNG', color: 'bg-slate-100/50 text-slate-500 dark:bg-slate-800/20 dark:text-slate-500', progress: 0 },
+  FROZEN: { label: 'ĐÓNG BĂNG', color: 'bg-slate-200/50 text-slate-500 dark:bg-slate-700/30 dark:text-slate-400 border border-slate-200/50', progress: 100 },
 };
 
 /**

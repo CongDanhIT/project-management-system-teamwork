@@ -12,7 +12,7 @@ import {
   LabelList
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Activity, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Users, Activity, CheckCircle2, Clock, AlertCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TeamPerformanceChartProps {
@@ -38,7 +38,8 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
         overdue,
         inProgress,
         total,
-        completionRate: total > 0 ? Math.round(((completedOnTime + completedLate) / total) * 100) : 0
+        completionRate: total > 0 ? Math.round(((completedOnTime + completedLate) / total) * 100) : 0,
+        phantomBar: 0.01 // Ghế ảo để giữ LabelList luôn hiển thị ở cuối stack
       };
     })
     .sort((a, b) => b.total - a.total)
@@ -54,7 +55,9 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
             <span className="text-[10px] font-bold text-white/40">TỔNG: {total}</span>
           </div>
           <div className="space-y-2">
-            {payload.map((entry: any, index: number) => (
+            {payload
+              .filter((entry: any) => entry.dataKey !== 'phantomBar')
+              .map((entry: any, index: number) => (
               <div key={index} className="flex items-center justify-between gap-8 text-[10px] font-bold uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
@@ -75,7 +78,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
 
   return (
     <Card className={cn(
-      "rounded-[48px] border-none bg-white/40 dark:bg-[#071613]/40 backdrop-blur-md shadow-ambient overflow-hidden",
+      "rounded-[48px] border-none bg-white/40 dark:bg-[#071613]/40 backdrop-blur-md shadow-ambient overflow-visible",
       className
     )}>
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-12 px-10 pt-10">
@@ -88,7 +91,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
               <CardTitle className="text-xl font-black text-[#035D5B] dark:text-[#C7F964] uppercase tracking-tighter leading-none">
                 Bản đồ tải trọng đội ngũ
               </CardTitle>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-[#E5F4EF]/40 uppercase tracking-[0.2em] mt-1">
+              <p className="text-[10px] font-black text-slate-400 dark:text-brand-primary/80 uppercase tracking-[0.2em] mt-1">
                 Phân tích mật độ công việc & hiệu suất thành viên
               </p>
             </div>
@@ -99,19 +102,19 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
         <div className="flex flex-wrap gap-5 bg-slate-500/5 dark:bg-white/5 p-3 px-5 rounded-3xl backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-white/60 tracking-widest">Đúng hạn</span>
+            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Đúng hạn</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#6366F1]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-white/60 tracking-widest">Xong trễ</span>
+            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Xong trễ</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-white/60 tracking-widest">Đang chạy</span>
+            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Đang chạy</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#EF4444]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-white/60 tracking-widest">Quá hạn</span>
+            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Quá hạn</span>
           </div>
         </div>
       </CardHeader>
@@ -184,6 +187,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorCompleted)" 
                   barSize={20}
+                  radius={[0, 10, 10, 0]}
                 />
                 <Bar 
                   dataKey="completedLate" 
@@ -191,6 +195,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorLate)" 
                   barSize={20}
+                  radius={[0, 10, 10, 0]}
                 />
                 <Bar 
                   dataKey="inProgress" 
@@ -198,6 +203,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorInProgress)" 
                   barSize={20}
+                  radius={[0, 10, 10, 0]}
                 />
                 <Bar 
                   dataKey="overdue" 
@@ -206,6 +212,14 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   fill="url(#colorOverdue)" 
                   barSize={20}
                   radius={[0, 10, 10, 0]}
+                />
+                
+                {/* Ghost bar to host the Task Count Label - ensures it always shows even if segments are 0 */}
+                <Bar 
+                  dataKey="phantomBar" 
+                  stackId="performance" 
+                  fill="transparent"
+                  isAnimationActive={false}
                 >
                   <LabelList 
                     dataKey="total" 
@@ -264,22 +278,53 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
         {/* Summary Footer */}
         {chartData.length > 0 && (
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5 flex flex-wrap gap-8 justify-center sm:justify-start">
-             <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Thành viên nòng cốt</span>
+             {/* Thành viên nòng cốt */}
+             <div className="flex flex-col gap-1 group relative">
+                <div className="flex items-center gap-1 cursor-help">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Thành viên nòng cốt</span>
+                  <Info className="w-2.5 h-2.5 text-slate-300" />
+                </div>
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-900/95 dark:bg-[#1C2322] text-[10px] text-white dark:text-[#E5F4EF] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 shadow-2xl border border-white/10 backdrop-blur-md">
+                  Tổng số nhân sự thực tế đang tham gia thực hiện các công việc trong dự án này.
+                </div>
                 <span className="text-sm font-bold text-[#035D5B] dark:text-[#C7F964]">{chartData.length} nhân sự</span>
              </div>
-             <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Khối lượng lớn nhất</span>
+
+             {/* Khối lượng lớn nhất */}
+             <div className="flex flex-col gap-1 group relative">
+                <div className="flex items-center gap-1 cursor-help">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Khối lượng lớn nhất</span>
+                  <Info className="w-2.5 h-2.5 text-slate-300" />
+                </div>
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-900/95 dark:bg-[#1C2322] text-[10px] text-white dark:text-[#E5F4EF] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 shadow-2xl border border-white/10 backdrop-blur-md">
+                  Thành viên đang đảm nhận số lượng đầu việc cao nhất, giúp nhận diện rủi ro quá tải.
+                </div>
                 <span className="text-sm font-bold text-slate-700 dark:text-white/80">{chartData[0].name} ({chartData[0].total} CV)</span>
              </div>
-             <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tỷ lệ hoàn thành</span>
+
+             {/* Tỷ lệ hoàn thành */}
+             <div className="flex flex-col gap-1 group relative">
+                <div className="flex items-center gap-1 cursor-help">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tỷ lệ hoàn thành</span>
+                  <Info className="w-2.5 h-2.5 text-slate-300" />
+                </div>
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-900/95 dark:bg-[#1C2322] text-[10px] text-white dark:text-[#E5F4EF] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 shadow-2xl border border-white/10 backdrop-blur-md">
+                  Trung bình cộng % tiến độ của tất cả thành viên trong dự án.
+                </div>
                 <span className="text-sm font-bold text-emerald-500">
                   {Math.round(chartData.reduce((acc, curr) => acc + curr.completionRate, 0) / chartData.length)}%
                 </span>
              </div>
-             <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chỉ số đúng hạn</span>
+
+             {/* Chỉ số đúng hạn */}
+             <div className="flex flex-col gap-1 group relative">
+                <div className="flex items-center gap-1 cursor-help">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chỉ số đúng hạn</span>
+                  <Info className="w-2.5 h-2.5 text-slate-300" />
+                </div>
+                <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-900/95 dark:bg-[#1C2322] text-[10px] text-white dark:text-[#E5F4EF] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 shadow-2xl border border-white/10 backdrop-blur-md">
+                  Tỷ lệ phần trăm các công việc hoàn thành trước/đúng hạn trên tổng số việc đã xong.
+                </div>
                 <span className="text-sm font-bold text-[#6366F1]">
                   {(() => {
                     const totalCompleted = chartData.reduce((acc, curr) => acc + curr.completedOnTime + curr.completedLate, 0);

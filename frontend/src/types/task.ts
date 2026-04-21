@@ -14,6 +14,12 @@ export enum TaskPriority {
   HIGH = 'HIGH',
 }
 
+export interface Tag {
+  _id: string;
+  name: string;
+  color: string;
+}
+
 export interface Task {
   _id: string;
   taskCode: string;
@@ -42,4 +48,5 @@ export interface Task {
   loggedHours?: number;
   startDate?: string | null;
   deletedAt?: string | null;
+  tags: Tag[]; // Danh sách nhãn thực tế
 }

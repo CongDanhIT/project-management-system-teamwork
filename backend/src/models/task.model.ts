@@ -17,6 +17,7 @@ export interface TaskDocument extends mongoose.Document {
     completedAt: Date | null; // [AI-ADDED] Ngày thực tế hoàn thành để tính chỉ số Performance
     estimatedHours: number; // [AI-ADDED] Thời gian dự tính (Giờ)
     loggedHours: number;    // [AI-ADDED] Thời gian thực tế đã dùng (Giờ)
+    tags: mongoose.Types.ObjectId[]; // Danh sách nhãn cho Task
     deletedAt: Date | null; // [AI-ADDED] Ngày xóa (Cho Soft Delete dự án cha)
     createdAt: Date;
     updatedAt: Date;
@@ -37,6 +38,7 @@ const taskSchema = new Schema<TaskDocument>({
     completedAt: { type: Date, default: null },
     estimatedHours: { type: Number, default: 0 },
     loggedHours: { type: Number, default: 0 },
+    tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tag" }],
     deletedAt: { type: Date, default: null },
 
 }, {

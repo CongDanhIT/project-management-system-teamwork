@@ -32,7 +32,8 @@ import {
   TrendingDown,
   FastForward,
   History,
-  Timer
+  Timer,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -117,7 +118,7 @@ const PerformanceCard = ({ title, value, subtitle, icon: Icon, color }: { title:
     
     <div className="flex items-start justify-between relative z-10">
       <div className="space-y-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/40">{title}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">{title}</p>
         <h3 className={cn(
           "text-3xl font-black tracking-tight",
           color === 'emerald' ? "text-emerald-600 dark:text-emerald-400" :
@@ -241,6 +242,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               icon={Target} 
               color="text-brand-primary"
               subValue={`${analytics?.completedTasks || 0}/${analytics?.totalTasks || 0} công việc`}
+              tooltip="Phần trăm tổng khối lượng công việc đã được hoàn thành trong dự án."
             />
             <MetricCard 
               label="Đang xử lý" 
@@ -248,6 +250,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               icon={Clock} 
               color="text-amber-500"
               subValue="Cần sự tập trung cao"
+              tooltip="Các công việc đang được triển khai hoặc trong giai đoạn kiểm tra chất lượng."
             />
             <MetricCard 
               label="Quá hạn" 
@@ -255,13 +258,15 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               icon={AlertCircle} 
               color="text-red-500"
               subValue="Rủi ro tiến độ"
+              tooltip="Số lượng các đầu việc đã quá ngày hạn định nhưng vẫn chưa hoàn thành."
             />
             <MetricCard 
               label="Chưa phân công" 
               value={analytics?.unassignedTasks || 0} 
-              icon={Zap} 
-              color="text-indigo-500"
-              subValue="Cần điều phối viên"
+              icon={User} 
+              color="text-slate-500"
+              subValue="Cần được điều phối"
+              tooltip="Các công việc chưa được giao cho bất kỳ thành viên nào chịu trách nhiệm."
             />
           </div>
 
@@ -305,7 +310,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                 {/* Status Distribution */}
                 <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Trạng thái công việc</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Trạng thái công việc</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -336,7 +341,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                 {/* Priority Distribution */}
                 <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Mức độ ưu tiên</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Mức độ ưu tiên</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -370,77 +375,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                  <TeamPerformanceChart members={membersData?.members || []} />
               </div>
 
-              {/* Productivity Insights - Professional Multi-theme Refinement */}
-              <div className={cn(
-                "p-10 rounded-[40px] relative overflow-hidden group transition-all duration-700",
-                "bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 border border-emerald-100/80 shadow-sm", // Light Mode: Solid & Crisp
-                "dark:from-card/80 dark:via-card/40 dark:to-background/90 dark:border-brand-secondary/10 dark:shadow-ambient backdrop-blur-2xl" // Dark Mode: Deep & Ethereal
-              )}>
-                  {/* Decorative Elements - Theme aware */}
-                  <div className="absolute -right-10 -top-10 w-80 h-80 bg-emerald-200/20 dark:bg-brand-primary/10 rounded-full blur-[100px] group-hover:dark:bg-brand-primary/20 transition-all duration-1000" />
-                  <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-emerald-100/30 dark:bg-brand-secondary/5 rounded-full blur-[80px]" />
-                  
-                  <div className="relative z-10 space-y-6">
-                    <div className={cn(
-                      "inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest leading-none",
-                      "bg-emerald-50 border-emerald-200 text-emerald-700", // Light
-                      "dark:bg-brand-primary/10 dark:border-brand-primary/20 dark:text-brand-primary" // Dark
-                    )}>
-                      <Activity className="w-3 h-3" />
-                      Gợi ý chiến thuật
-                    </div>
-                    
-                    <h3 className="text-3xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white">
-                      Dự án đã hoàn thành <span className="text-emerald-600 dark:text-brand-primary">{Number(analytics?.completionRate || 0).toFixed(1)}%</span>. 
-                    </h3>
-                    
-                    <div className="space-y-4">
-                      <p className="text-slate-600 dark:text-slate-300 font-medium max-w-xl leading-relaxed">
-                        {analytics?.overdueTasks > 0 
-                          ? `Hiện có ${analytics.overdueTasks} công việc quá hạn. Hãy ưu tiên xử lý các đầu việc có mức ưu tiên CAO và KHẨN CẤP để đảm bảo dự án không bị đình trệ.`
-                          : "Tiến độ dự án đang rất tốt! Hãy duy trì nhịp độ và đảm bảo tất cả các công việc mới đều được phân công người chịu trách nhiệm chính xác."}
-                      </p>
-                      
-                      {/* Metric Section */}
-                      <div className="pt-6 border-t border-slate-200/60 dark:border-white/5">
-                        <div className="flex items-center gap-4">
-                           <div className={cn(
-                             "w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors",
-                             "bg-emerald-50 border-emerald-100 text-emerald-600", // Light
-                             "dark:bg-brand-primary/5 dark:border-brand-primary/10 dark:text-brand-primary" // Dark
-                           )}>
-                              <Zap className="w-6 h-6" />
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/40">Hiệu suất hôm nay</p>
-                              <div className="flex items-baseline gap-2">
-                                 <p className="text-xl font-black text-slate-900 dark:text-white">
-                                   {analytics?.todayPerformance?.toFixed(0)}%
-                                 </p>
-                                 {analytics?.todayPerformance !== 100 && (
-                                   <div className={cn(
-                                     "flex items-center text-xs font-bold px-2 py-0.5 rounded-full",
-                                     analytics?.todayPerformance > 100 
-                                       ? "bg-emerald-50 text-emerald-600 dark:bg-brand-primary/10 dark:text-brand-primary" 
-                                       : "bg-red-50 text-red-600 dark:bg-red-400/10 dark:text-red-400"
-                                   )}>
-                                     {analytics?.todayPerformance > 100 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                                     {analytics?.todayPerformance > 100 ? "Tăng tốc" : "Chậm lại"}
-                                   </div>
-                                 )}
-                              </div>
-                              <p className="text-xs font-medium text-slate-400 dark:text-white/30 italic leading-tight mt-1">
-                                 {analytics?.tasksDoneToday > 0 
-                                   ? `Đã xong ${analytics.tasksDoneToday} việc hôm nay. `
-                                   : "Chưa hoàn thành việc nào hôm nay. "}
-                                 So với nhịp độ trung bình.
-                              </p>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              </div>
+
 
             </div>
 
@@ -448,7 +383,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
             <div className="lg:col-span-4 h-full">
               <div className="h-full relative bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[40px] border border-white/40 dark:border-white/5 p-8 flex flex-col shadow-ambient">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black text-[#035D5B] dark:text-[#C7F964] uppercase tracking-tight flex items-center gap-2">
+                  <h3 className="text-xl font-black text-[#035D5B] dark:text-[#C7F964] uppercase tracking-tight flex items-center gap-2">
                      <Calendar className="w-5 h-5" />
                      Hạn task
                   </h3>
@@ -459,7 +394,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                   <div className="flex-1 flex flex-col min-h-0 pb-6">
                      <div className="flex items-center gap-2 mb-4 shrink-0">
                         <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-red-500/80">Hết hạn</span>
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-red-500/80">Hết hạn</span>
                      </div>
                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
                         {analytics?.overdueTasksList?.length > 0 ? (
@@ -487,7 +422,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                   <div className="flex-1 flex flex-col min-h-0">
                      <div className="flex items-center gap-2 mb-4 shrink-0">
                         <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                        <span className="text-[11px] font-black uppercase tracking-wider text-amber-500/80">Sắp hết hạn (24h)</span>
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-500/80">Sắp hết hạn (24h)</span>
                      </div>
                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
                         {analytics?.upcomingTasksList?.length > 0 ? (
@@ -519,6 +454,78 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Productivity Insights - Fullwidth Row */}
+            <div className={cn(
+               "w-full mt-10 p-10 rounded-[40px] relative overflow-hidden group transition-all duration-700",
+               "bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 border border-emerald-100/80 shadow-sm", // Light Mode: Solid & Crisp
+               "dark:from-card/80 dark:via-card/40 dark:to-background/90 dark:border-brand-secondary/10 dark:shadow-ambient backdrop-blur-2xl" // Dark Mode: Deep & Ethereal
+            )}>
+               {/* Decorative Elements - Theme aware */}
+               <div className="absolute -right-10 -top-10 w-80 h-80 bg-emerald-200/20 dark:bg-brand-primary/10 rounded-full blur-[100px] group-hover:dark:bg-brand-primary/20 transition-all duration-1000" />
+               <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-emerald-100/30 dark:bg-brand-secondary/5 rounded-full blur-[80px]" />
+               
+               <div className="relative z-10 space-y-6">
+                 <div className={cn(
+                   "inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest leading-none",
+                   "bg-emerald-50 border-emerald-200 text-emerald-700", // Light
+                   "dark:bg-brand-primary/10 dark:border-brand-primary/20 dark:text-brand-primary" // Dark
+                 )}>
+                   <Activity className="w-3 h-3" />
+                   Gợi ý chiến thuật
+                 </div>
+                 
+                 <h3 className="text-3xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white">
+                   Dự án đã hoàn thành <span className="text-emerald-600 dark:text-brand-primary">{Number(analytics?.completionRate || 0).toFixed(1)}%</span>. 
+                 </h3>
+                 
+                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+                   <p className="text-slate-600 dark:text-slate-300 font-medium max-w-2xl leading-relaxed">
+                     {analytics?.overdueTasks > 0 
+                       ? `Hiện có ${analytics.overdueTasks} công việc quá hạn. Hãy ưu tiên xử lý các đầu việc có mức ưu tiên CAO và KHẨN CẤP để đảm bảo dự án không bị đình trệ.`
+                       : "Tiến độ dự án đang rất tốt! Hãy duy trì nhịp độ và đảm bảo tất cả các công việc mới đều được phân công người chịu trách nhiệm chính xác."}
+                   </p>
+                   
+                   {/* Metric Section */}
+                   <div className="lg:pl-10 lg:border-l border-slate-200/60 dark:border-white/5 shrink-0">
+                     <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors",
+                          "bg-emerald-50 border-emerald-100 text-emerald-600", // Light
+                          "dark:bg-brand-primary/5 dark:border-brand-primary/10 dark:text-brand-primary" // Dark
+                        )}>
+                           <Zap className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Hiệu suất hôm nay</p>
+                           <div className="flex items-baseline gap-2">
+                              <p className="text-xl font-black text-slate-900 dark:text-white">
+                                {analytics?.todayPerformance?.toFixed(0)}%
+                              </p>
+                              {analytics?.todayPerformance !== 100 && (
+                                <div className={cn(
+                                  "flex items-center text-xs font-bold px-2 py-0.5 rounded-full",
+                                  analytics?.todayPerformance > 100 
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-brand-primary/10 dark:text-brand-primary" 
+                                    : "bg-red-50 text-red-600 dark:bg-red-400/10 dark:text-red-400"
+                                )}>
+                                  {analytics?.todayPerformance > 100 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                                  {analytics?.todayPerformance > 100 ? "Tăng tốc" : "Chậm lại"}
+                                </div>
+                              )}
+                           </div>
+                           <p className="text-xs font-medium text-slate-400 dark:text-white/30 italic leading-tight mt-1">
+                              {analytics?.tasksDoneToday > 0 
+                                ? `Đã xong ${analytics.tasksDoneToday} việc hôm nay. `
+                                : "Chưa hoàn thành việc nào hôm nay. "}
+                              So với nhịp độ trung bình.
+                           </p>
+                        </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
             </div>
           </>
         )}
@@ -526,16 +533,24 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     );
 }
 
-function MetricCard({ label, value, icon: Icon, color, subValue }: any) {
+function MetricCard({ label, value, icon: Icon, color, subValue, tooltip }: any) {
   return (
-    <Card className="group rounded-[28px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient hover:shadow-lg transition-all duration-500">
+    <Card className="group/metric rounded-[28px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient hover:shadow-lg transition-all duration-500 relative overflow-visible">
       <CardContent className="p-6">
+        {tooltip && (
+          <div className="absolute top-4 right-4 z-20 group/info cursor-help">
+            <Info className="w-3 h-3 text-slate-300 opacity-50 group-hover/info:opacity-100 transition-opacity" />
+            <div className="absolute right-0 top-full mt-2 w-48 p-2 bg-slate-900/95 dark:bg-[#1C2322] text-[10px] text-white dark:text-[#E5F4EF] rounded-xl opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-300 z-50 shadow-2xl border border-white/10 backdrop-blur-md font-medium leading-relaxed">
+              {tooltip}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-4">
-          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-50 dark:bg-white/5 group-hover:scale-110 transition-transform duration-500", color)}>
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center bg-slate-50 dark:bg-white/5 group-hover/metric:scale-110 transition-transform duration-500", color)}>
             <Icon className="w-6 h-6" />
           </div>
           <div className="space-y-0.5">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-brand-primary/80 uppercase tracking-[0.2em]">{label}</p>
             <h3 className={cn("text-2xl font-black tracking-tighter", color)}>{value}</h3>
           </div>
         </div>

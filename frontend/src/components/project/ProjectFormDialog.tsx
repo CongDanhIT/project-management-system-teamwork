@@ -32,7 +32,6 @@ const EMOJI_LIST = ['📁', '🚀', '🎨', '💡', '🔧', '📊', '🌟', '�
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Lập kế hoạch' },
   { value: 'ACTIVE', label: 'Đang hoạt động' },
-  { value: 'IN_PROGRESS', label: 'Đang triển khai' },
   { value: 'ON_HOLD', label: 'Tạm dừng' },
   { value: 'COMPLETED', label: 'Hoàn thành' },
   { value: 'FROZEN', label: 'Đóng băng' },

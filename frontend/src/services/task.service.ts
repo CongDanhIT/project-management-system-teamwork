@@ -2,8 +2,9 @@ import api from './api';
 import { Task, TaskStatus } from '../types/task';
 
 // [MULTI-ASSIGNEE] DTO riêng cho update - gửi ID thay vì object đầy đủ
-export interface UpdateTaskRequest extends Omit<Partial<Task>, 'assignedTo'> {
+export interface UpdateTaskRequest extends Omit<Partial<Task>, 'assignedTo' | 'tags'> {
   assignedTo?: string[];
+  tags?: string[];
 }
 
 export const taskService = {
