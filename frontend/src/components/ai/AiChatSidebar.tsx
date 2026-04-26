@@ -14,8 +14,14 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const MODELS = [
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3', provider: 'Groq' },
+    { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek V4', provider: 'NVIDIA' },
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -44,15 +50,16 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
     setIsLoading(true);
 
     try {
-      console.log("[AI-Chat] Gửi tin nhắn:", { userMessage, context });
+      console.log("[AI-Chat] Gửi tin nhắn:", { userMessage, context, modelId: selectedModel });
       // Lấy history KHÔNG bao gồm message welcome ban đầu
       const historyForApi = updatedMessages.slice(1);
-      const reply = await sendAiChatMessage(userMessage, historyForApi, context);
+      const reply = await sendAiChatMessage(userMessage, historyForApi, context, selectedModel);
       console.log("[AI-Chat] Phản hồi từ AI:", reply);
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (error: any) {
       console.error("[AI-Chat] Lỗi khi gọi AI:", error.response?.data || error.message);
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại.' }]);
+      const errorMsg = error.response?.data?.message || '❌ Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại.';
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
     } finally {
       setIsLoading(false);
     }
@@ -165,6 +172,23 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
           )}
 
           <div ref={messagesEndRef} />
+        </div>
+
+        {/* Model Selector */}
+        <div className="px-6 py-2 flex gap-2 border-t border-slate-50 bg-slate-50/30">
+          {MODELS.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setSelectedModel(m.id)}
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border ${
+                selectedModel === m.id
+                  ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                  : 'bg-white text-slate-500 border-slate-200 hover:border-brand-primary/30'
+              }`}
+            >
+              {m.name} <span className="opacity-60 font-normal ml-0.5">({m.provider})</span>
+            </button>
+          ))}
         </div>
 
         {/* Input area */}

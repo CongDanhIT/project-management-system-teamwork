@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '../shared/ThemeToggle';
+import { NotificationCenter } from './NotificationCenter';
 
 export default function Header() {
   const router = useRouter();
@@ -112,10 +113,7 @@ export default function Header() {
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
         </Button>
 
-        <Button variant="ghost" size="icon" className="group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
-          <Bell className="w-6 h-6 group-hover:text-brand-primary" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
-        </Button>
+        {workspaceId && <NotificationCenter workspaceId={workspaceId} />}
 
         <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
           <HelpCircle className="w-6 h-6 group-hover:text-brand-primary" />

@@ -12,9 +12,15 @@ import { FeedComposer } from './components/FeedComposer';
 import { PulseSidebar } from './components/PulseSidebar';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 
+import { useSearchParams } from 'next/navigation';
+
 export default function NewsfeedPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
+  const targetAnnouncementId = searchParams.get('announcementId');
+  const targetCommentId = searchParams.get('commentId');
+  
   const queryClient = useQueryClient();
   const { isAdminOrOwner } = useWorkspaceRole();
 
@@ -23,6 +29,18 @@ export default function NewsfeedPage() {
     queryFn: () => announcementService.getAnnouncements(workspaceId),
     enabled: !!workspaceId
   });
+
+  // Tự động cuộn đến bài viết mục tiêu
+  React.useEffect(() => {
+    if (!isLoading && targetAnnouncementId) {
+      setTimeout(() => {
+        const element = document.getElementById(`announcement-${targetAnnouncementId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500); // Đợi render xong
+    }
+  }, [isLoading, targetAnnouncementId]);
 
   const createMut = useMutation({
     mutationFn: (formData: { title: string; content: string; type: string }) => 
@@ -83,12 +101,14 @@ export default function NewsfeedPage() {
             ) : (
               <div className="space-y-6">
                 {announcements.map((announcement) => (
-                  <FeedCard 
-                    key={announcement._id} 
-                    announcement={announcement} 
-                    isAdminOrOwner={isAdminOrOwner}
-                    onToggleReaction={(emoji) => handleToggleReaction(announcement._id, emoji)}
-                  />
+                  <div id={`announcement-${announcement._id}`} key={announcement._id}>
+                    <FeedCard 
+                      announcement={announcement} 
+                      isAdminOrOwner={isAdminOrOwner}
+                      onToggleReaction={(emoji) => handleToggleReaction(announcement._id, emoji)}
+                      highlightCommentId={targetCommentId || undefined}
+                    />
+                  </div>
                 ))}
               </div>
             )}

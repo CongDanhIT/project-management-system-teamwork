@@ -24,7 +24,12 @@ import uploadRoutes from './routes/upload.route';
 import inboxRoutes from './routes/inbox.route';
 import announcementRoutes from './routes/announcement.route';
 import tagRoutes from './routes/tag.route';
+import interactionRoutes from './routes/interaction.route';
 import { startCronService } from './services/cron.service';
+import { createServer } from 'http';
+import { initSocket } from './config/socket';
+import { initExternalListeners } from './listeners/external.listener';
+
 dotenv.config();
 
 // Trigger restart
@@ -36,6 +41,10 @@ const startServer = async () => {
         await connectDatabase();
 
         const PORT = env.PORT;
+        const httpServer = createServer(app);
+        
+        // Khởi tạo Socket.io
+        initSocket(httpServer);
 
         console.log(">>> SERVER INDEX IS LOADING ROUTES <<<");
         // 1. Logger (Debug mọi request)
@@ -95,7 +104,7 @@ const startServer = async () => {
 
         // TODO: app.use("/api/auth", authRoutes);
         app.use(`${BASE_PATH}/auth`, authRoutes);
-        // TODO: app.use("/api/user", userRoutes);
+        app.use(`${BASE_PATH}/upload`, uploadRoutes); // 🚀 Di chuyển lên đầu để tránh bị intercept
         app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
 
         app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
@@ -103,15 +112,28 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes); // 🔒 BẢO MẬT: bắt buộc auth
         app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);       // 🔒 BẢO MẬT: bắt buộc auth
         app.use(`${BASE_PATH}/inbox`, isAuthenticated, inboxRoutes);     // 🚀 MỚI: Inbox cá nhân
-        app.use(`${BASE_PATH}/upload`, isAuthenticated, uploadRoutes);   // 🚀 MỚI: upload ảnh bìa
         app.use(`${BASE_PATH}/workspace/:workspaceId/announcements`, isAuthenticated, announcementRoutes); // 🚀 Bản tin dự án
         app.use(`${BASE_PATH}/workspace/:workspaceId/tags`, isAuthenticated, tagRoutes); // 🚀 Tags cho task
+        app.use(`${BASE_PATH}/interaction`, isAuthenticated, interactionRoutes); // 🚀 Bình luận & Thông báo
+        logger.info(">>> INTERACTION ROUTES LOADED <<<");
+
+        // Catch-all 404: Bắt các request không khớp bất kỳ route nào
+        app.use((req: Request, res: Response) => {
+            logger.warn(`🚫 404: [${req.method}] ${req.originalUrl}`);
+            res.status(404).json({
+                success: false,
+                message: `Route ${req.originalUrl} không tồn tại.`
+            });
+        });
 
         app.use(errorHandler);
 
-        app.listen(PORT, () => {
+        httpServer.listen(PORT, () => {
             logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${env.NODE_ENV} mode`);
-            logger.info(`📝[session]: Switched back to cookie-session.`);
+            logger.info(`📝[session]: Socket.io initialized.`);
+            
+            // Kích hoạt External Listeners (Slack, v.v.)
+            initExternalListeners();
             
             // Kích hoạt Cron dọn dẹp thùng rác sau 30 ngày
             startCronService();
@@ -123,3 +145,4 @@ const startServer = async () => {
 }
 
 startServer();
+ 

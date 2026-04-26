@@ -42,6 +42,8 @@ export interface Workspace {
   inviteCode: string;
   owner: string;
   members: any[];
+  slackWebhookUrl?: string | null;
+  dailyDigestEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -80,7 +82,7 @@ export const workspaceService = {
     }
   },
 
-  updateWorkspace: async (id: string, data: { name?: string; description?: string }) => {
+  updateWorkspace: async (id: string, data: { name?: string; description?: string; slackWebhookUrl?: string | null; dailyDigestEnabled?: boolean }) => {
     const response = await api.put(`/workspace/update/${id}`, data);
     return response.data.workspace as Workspace;
   },
@@ -112,6 +114,16 @@ export const workspaceService = {
 
   joinWorkspace: async (inviteCode: string) => {
     const response = await api.post(`/member/workspace/${inviteCode}/join`);
+    return response.data;
+  },
+
+  triggerSlackTest: async (workspaceId: string) => {
+    const response = await api.post(`/workspace/${workspaceId}/trigger-slack-test`);
+    return response.data;
+  },
+
+  triggerEmailTest: async () => {
+    const response = await api.post(`/workspace/trigger-email-test`);
     return response.data;
   },
 };

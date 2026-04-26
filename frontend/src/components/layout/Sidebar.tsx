@@ -44,8 +44,12 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const params = useParams();
-  const workspaceId = params?.workspaceId as string;
   
+  // Lấy workspaceId từ params hoặc fallback từ pathname nếu params bị rỗng (thường gặp khi đang chuyển hướng hoặc hydration)
+  const workspaceIdFromParams = params?.workspaceId as string;
+  const workspaceIdFromPath = pathname?.split('/')[2];
+  const workspaceId = (workspaceIdFromParams || (workspaceIdFromPath && /^[0-9a-fA-F]{24}$/.test(workspaceIdFromPath) ? workspaceIdFromPath : '')) as string;
+
   const { user, logout } = useAuthStore();
   const { setCurrentWorkspaceId } = useWorkspaceStore();
   const { isAdminOrOwner } = useWorkspaceRole();

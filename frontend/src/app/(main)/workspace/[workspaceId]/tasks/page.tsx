@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskService } from '@/services/task.service';
 import { projectService } from '@/services/project.service';
 import { TaskRow } from '@/components/task/TaskRow';
@@ -16,15 +16,19 @@ import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
 import { workspaceService } from '@/services/workspace.service';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function TaskListPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
+  const targetTaskId = searchParams.get('taskId');
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { isAdminOrOwner } = useWorkspaceRole();
-  
+
+  const { user } = useAuthStore();
   const [filters, setFilters] = useState<{
     search: string;
     status: string;
@@ -37,9 +41,16 @@ export default function TaskListPage() {
     status: 'all',
     priority: 'all',
     projectId: 'all',
-    assigneeIds: [],
+    assigneeIds: user?.id ? [user.id] : [],
     parentId: 'all',
   });
+
+  // Đảm bảo cập nhật filter khi user load xong (nếu chưa có ở lần render đầu)
+  useEffect(() => {
+    if (user?.id && filters.assigneeIds.length === 0 && filters.search === '' && filters.status === 'all' && filters.priority === 'all' && filters.projectId === 'all' && filters.parentId === 'all') {
+      setFilters(prev => ({ ...prev, assigneeIds: [user.id] }));
+    }
+  }, [user?.id]);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -59,6 +70,42 @@ export default function TaskListPage() {
     enabled: !!workspaceId,
   });
 
+  const tasks = data?.tasks || [];
+
+  // Tự động mở Task nếu có taskId trong URL
+  useEffect(() => {
+    if (targetTaskId && workspaceId) {
+      // 1. Tìm trong danh sách hiện tại trước
+      const taskInList = tasks.find((t: Task) => t._id === targetTaskId);
+      if (taskInList) {
+        setSelectedTask(taskInList);
+        setIsDrawerOpen(true);
+        return;
+      }
+
+      // 2. Nếu không có trong danh sách (do filter), fetch trực tiếp
+      const fetchAndOpenTask = async () => {
+        try {
+          // Thử tìm trong project của task (nếu biết) hoặc fetch đại diện
+          // Ở trang TaskListPage, ta có thể fetch trực tiếp task bằng ID nếu API hỗ trợ không cần projectId
+          // Hoặc dùng queryClient để lấy từ cache toàn cục
+          const task = await taskService.getTaskById(workspaceId, 'any', targetTaskId);
+          if (task) {
+            setSelectedTask(task);
+            setIsDrawerOpen(true);
+          }
+        } catch (error) {
+          console.error("Failed to fetch target task for list page:", error);
+        }
+      };
+      
+      // Chỉ fetch nếu tasks đã load xong mà không thấy
+      if (!isLoading) {
+        fetchAndOpenTask();
+      }
+    }
+  }, [targetTaskId, tasks, workspaceId, isLoading]);
+
   const { data: projectsData } = useQuery({
     queryKey: ['workspace-projects', workspaceId],
     queryFn: () => projectService.getProjectsByWorkspace(workspaceId),
@@ -77,7 +124,6 @@ export default function TaskListPage() {
     enabled: !!workspaceId,
   });
 
-  const tasks = data?.tasks || [];
   const members = membersData?.members || [];
   const projects = projectsData?.projects || [];
   const allTasks = allTasksData?.tasks || [];
@@ -298,7 +344,15 @@ export default function TaskListPage() {
       <TaskDetailModal 
         task={selectedTask}
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          // Xóa taskId và commentId khỏi URL khi đóng
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete('taskId');
+          params.delete('commentId');
+          const newQuery = params.toString();
+          router.replace(`${window.location.pathname}${newQuery ? `?${newQuery}` : ''}`);
+        }}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
         members={membersData?.members || []}

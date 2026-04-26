@@ -11,4 +11,9 @@ announcementRoutes.delete("/:announcementId", AnnouncementController.deleteAnnou
 announcementRoutes.patch("/:announcementId/pin", AnnouncementController.togglePinAnnouncement);
 announcementRoutes.patch("/:announcementId/react", AnnouncementController.toggleReaction);
 
+// Bình luận bản tin
+announcementRoutes.post("/:announcementId/comments", AnnouncementController.addComment);
+announcementRoutes.delete("/:announcementId/comments/:commentId", AnnouncementController.deleteComment);
+announcementRoutes.patch("/:announcementId/comments/:commentId/react", AnnouncementController.toggleCommentReaction);
+
 export default announcementRoutes;

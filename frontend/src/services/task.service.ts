@@ -42,7 +42,11 @@ export const taskService = {
   },
 
   getTaskById: async (workspaceId: string, projectId: string, taskId: string) => {
-    const response = await api.get(`/task/workspace/${workspaceId}/project/${projectId}/${taskId}`);
+    // Nếu projectId là 'any' hoặc không có, sử dụng route generic
+    const url = (projectId && projectId !== 'any') 
+      ? `/task/workspace/${workspaceId}/project/${projectId}/${taskId}`
+      : `/task/workspace/${workspaceId}/task/${taskId}`;
+    const response = await api.get(url);
     return response.data.task as Task;
   },
 

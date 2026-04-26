@@ -9,6 +9,7 @@ export interface Comment {
   _id: string;
   authorId: any;
   content: string;
+  reactions: Reaction[];
   createdAt: string;
 }
 
@@ -67,6 +68,21 @@ export const announcementService = {
 
   toggleReaction: async (workspaceId: string, announcementId: string, emoji: string) => {
     const res = await api.patch(`/workspace/${workspaceId}/announcements/${announcementId}/react`, { emoji });
+    return res.data;
+  },
+
+  addComment: async (workspaceId: string, announcementId: string, content: string, replyTo?: string, mentions?: string[]) => {
+    const res = await api.post(`/workspace/${workspaceId}/announcements/${announcementId}/comments`, { content, replyTo, mentions });
+    return res.data;
+  },
+
+  deleteComment: async (workspaceId: string, announcementId: string, commentId: string) => {
+    const res = await api.delete(`/workspace/${workspaceId}/announcements/${announcementId}/comments/${commentId}`);
+    return res.data;
+  },
+
+  toggleCommentReaction: async (workspaceId: string, announcementId: string, commentId: string, emoji: string) => {
+    const res = await api.patch(`/workspace/${workspaceId}/announcements/${announcementId}/comments/${commentId}/react`, { emoji });
     return res.data;
   }
 };

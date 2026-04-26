@@ -128,8 +128,8 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
 
     try {
       setIsUploading(true);
-      const url = await uploadService.uploadImage(file);
-      setCoverUrl(url);
+      const result = await uploadService.uploadImage(file);
+      setCoverUrl(result.fileUrl);
       toast.success("Đã tải ảnh lên thành công!");
     } catch (error) {
       toast.error("Lỗi khi tải ảnh lên, thử lại nhé!");

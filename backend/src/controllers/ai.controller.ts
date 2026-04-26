@@ -58,11 +58,12 @@ export const suggestSubtasksController = asyncHandler(
  */
 export const chatController = asyncHandler(
     async (req: Request, res: Response) => {
-        const { message, history = [], context = {} } = req.body;
+        const { message, history = [], context = {}, modelId } = req.body;
         logger.info("[AI-Controller] Nhận được yêu cầu chat", { 
             message: message?.substring(0, 50), 
             historyLength: history?.length, 
-            context: context?.projectName 
+            context: context?.projectName,
+            modelId
         });
 
         if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -72,7 +73,7 @@ export const chatController = asyncHandler(
             });
         }
 
-        const reply = await chatWithContextService(message.trim(), history, context);
+        const reply = await chatWithContextService(message.trim(), history, context, modelId);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             reply,

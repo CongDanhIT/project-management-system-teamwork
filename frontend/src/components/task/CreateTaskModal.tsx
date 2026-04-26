@@ -30,6 +30,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from '@/lib/utils';
 import { suggestTaskDescription, suggestSubtasks } from '@/services/ai.service';
+import { tagService } from '@/services/tag.service';
+import { workspaceService } from '@/services/workspace.service';
+import { Tag as TagType } from '@/types/task';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Tag as TagIcon, Check, X, Users } from 'lucide-react';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -38,8 +44,30 @@ interface CreateTaskModalProps {
   onSubmit: (projectId: string, data: any) => Promise<void>;
   parentId?: string;
   initialStatus?: TaskStatus;
-  workspaceId?: string; // Dùng để fetch tasks
+  workspaceId?: string; // Dùng để fetch tasks và members
 }
+
+const getInitials = (name: string) => {
+  if (!name) return '??';
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (name: string) => {
+  const colors = [
+    'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 
+    'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 
+    'bg-orange-500', 'bg-indigo-500'
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
 
 export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   isOpen,
@@ -59,7 +87,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [selectedParentId, setSelectedParentId] = useState<string>(parentId || 'none');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   // === AI States ===
   const [isAiDescLoading, setIsAiDescLoading] = useState(false);
@@ -108,6 +139,36 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   });
   const availableParentTasks = (parentTasksData?.tasks || []).filter(t => !t.parentId);
 
+  // Fetch available tags
+  const { data: availableTags = [] } = useQuery({
+    queryKey: ['workspace-tags', workspaceId],
+    queryFn: () => tagService.getTags(workspaceId!),
+    enabled: !!workspaceId,
+  });
+
+  // Fetch workspace members
+  const { data: membersData } = useQuery({
+    queryKey: ['workspace-members', workspaceId],
+    queryFn: () => workspaceService.getMembers(workspaceId!),
+    enabled: !!workspaceId,
+  });
+  const availableMembers = membersData?.members || [];
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds(prev => 
+      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const toggleAssignee = (memberId: string) => {
+    setSelectedAssigneeIds(prev =>
+      prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]
+    );
+  };
+
+  const currentTags = availableTags.filter(tag => selectedTagIds.includes(tag._id));
+  const currentAssignees = availableMembers.filter(m => selectedAssigneeIds.includes(m.userId?._id || m.userId?.id));
+
   // Set default project when list changes
   React.useEffect(() => {
     if (projects.length > 0 && !projectId) {
@@ -140,6 +201,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         dueDate: selectedParentId === 'none' ? (dueDate ? dueDate.toISOString() : undefined) : null,
         parentId: selectedParentId === 'none' ? undefined : selectedParentId,
         subtasks: selectedSubtasks, // Truyền danh sách subtask đã chọn
+        tags: selectedTagIds,
+        assignedTo: selectedAssigneeIds,
       });
       setTitle('');
       setDescription('');
@@ -151,6 +214,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSelectedParentId('none');
       setSelectedSubtasks([]);
       setAiSubtaskSuggestions([]);
+      setSelectedTagIds([]);
+      setSelectedAssigneeIds([]);
       onClose();
     } catch (error) {
       toast.error("Lỗi khi tạo công việc");
@@ -332,6 +397,181 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  <Users className="w-3.5 h-3.5 text-brand-primary/80" /> Gán cho
+                </label>
+                <div className="flex items-center p-2 bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-2xl h-14 group/assignee-container relative">
+                  <div className="flex -space-x-2 overflow-hidden ml-2">
+                    {currentAssignees.map((member) => (
+                      <Avatar key={member.userId?._id || member.userId?.id} className="w-8 h-8 border-2 border-white dark:border-slate-900 shadow-sm transition-transform hover:scale-110 hover:z-10">
+                        <AvatarImage src={member.userId?.profilePicture} className="object-cover" />
+                        <AvatarFallback className={cn(
+                          "text-white text-[10px] font-black",
+                          getAvatarColor(member.userId?.name || '')
+                        )}>
+                          {getInitials(member.userId?.name || '')}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {currentAssignees.length === 0 && (
+                      <span className="text-xs text-slate-400 font-medium ml-2">Chưa gán</span>
+                    )}
+                  </div>
+
+                  <Popover
+                    open={activeDropdown === 'assignees'}
+                    onOpenChange={(open) => setActiveDropdown(open ? 'assignees' : null)}
+                  >
+                    <PopoverTrigger
+                      type="button"
+                      className={cn(
+                        "w-8 h-8 rounded-full border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center hover:border-brand-primary hover:bg-brand-primary/5 transition-all ml-auto mr-1",
+                        activeDropdown === 'assignees' && "border-brand-primary bg-brand-primary/5"
+                      )}
+                    >
+                      <Plus className="w-4 h-4 text-slate-400" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 rounded-2xl border-ghost shadow-2xl bg-white dark:bg-slate-900" align="end">
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest pb-1 border-b border-ghost">
+                          Gán người thực hiện
+                        </div>
+                        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                          {availableMembers.map((member: any) => {
+                            const mId = member.userId?._id || member.userId?.id;
+                            const isSelected = selectedAssigneeIds.includes(mId);
+                            return (
+                              <button
+                                key={mId}
+                                type="button"
+                                onClick={() => toggleAssignee(mId)}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left group/member-btn",
+                                  isSelected ? "bg-brand-primary/5 shadow-sm" : "hover:bg-slate-50 dark:hover:bg-white/5"
+                                )}
+                              >
+                                <Avatar className="w-8 h-8 border border-slate-100 dark:border-slate-800 shadow-sm">
+                                  <AvatarImage src={member.userId?.profilePicture} className="object-cover" />
+                                  <AvatarFallback className={cn(
+                                    "text-white text-[9px] font-black",
+                                    getAvatarColor(member.userId?.name || '')
+                                  )}>
+                                    {getInitials(member.userId?.name || '')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className={cn(
+                                  "text-[12px] font-bold flex-1 truncate transition-colors",
+                                  isSelected ? "text-brand-primary" : "text-slate-700 dark:text-slate-200 group-hover/member-btn:text-brand-primary"
+                                )}>
+                                  {member.userId?.name}
+                                </span>
+                                {isSelected && <Check className="check-assignee w-3.5 h-3.5 text-brand-primary" strokeWidth={3} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                  Thanh khoản
+                </label>
+                <Input 
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="Ví dụ: 8"
+                  className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 focus:ring-brand-primary/30 focus:bg-white dark:focus:bg-slate-900 rounded-2xl font-bold shadow-sm transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Section TAGS (Nhãn) - NEW */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                <div className="w-1 h-1 bg-brand-primary rounded-full" />
+                <TagIcon className="w-3.5 h-3.5 text-brand-primary/80" /> Nhãn (Tags)
+              </label>
+              <div className="flex flex-wrap gap-2 items-center p-4 bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-2xl min-h-[56px] group/tag-container relative">
+                {currentTags.length > 0 ? (
+                  currentTags.map((tag: TagType) => (
+                    <Badge 
+                      key={tag._id}
+                      style={{ backgroundColor: `${tag.color}15`, color: tag.color, borderColor: `${tag.color}30` }}
+                      className="px-3 py-1 text-[10px] font-black uppercase tracking-wider border flex items-center gap-1.5 rounded-lg group/item cursor-default"
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleTag(tag._id); }}
+                        className="hover:scale-125 transition-transform"
+                      >
+                        <X className="w-3 h-3 ml-1 cursor-pointer opacity-40 group-hover/item:opacity-100 transition-opacity" />
+                      </button>
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400 font-medium ml-2">Chưa có nhãn nào được chọn</span>
+                )}
+                
+                <Popover
+                  open={activeDropdown === 'tags'}
+                  onOpenChange={(open) => setActiveDropdown(open ? 'tags' : null)}
+                >
+                  <PopoverTrigger
+                    type="button"
+                    className={cn(
+                      "h-7 px-2 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/5 rounded-lg text-[10px] font-black uppercase tracking-widest gap-1 flex items-center transition-all ml-auto",
+                      activeDropdown === 'tags' && "text-brand-primary bg-brand-primary/5"
+                    )}
+                  >
+                    <Plus className="w-3 h-3" /> Thêm nhãn
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3 rounded-2xl border-ghost shadow-2xl bg-white dark:bg-slate-900" align="end">
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest pb-1 border-b border-ghost">
+                        Chọn Nhãn Công Việc
+                      </div>
+                      <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                        {availableTags.map((tag: TagType) => {
+                          const isSelected = selectedTagIds.includes(tag._id);
+                          return (
+                            <button
+                              key={tag._id}
+                              type="button"
+                              onClick={() => toggleTag(tag._id)}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left group/tag-btn",
+                                isSelected ? "bg-brand-primary/5" : "hover:bg-slate-50 dark:hover:bg-white/5"
+                              )}
+                            >
+                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                              <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 flex-1 truncate">{tag.name}</span>
+                              {isSelected && <Check className="w-3 h-3 text-brand-primary" strokeWidth={3} />}
+                            </button>
+                          );
+                        })}
+                        {availableTags.length === 0 && (
+                          <p className="text-[10px] text-slate-400 italic p-3 text-center">Chưa có nhãn nào trong workspace này</p>
+                        )}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

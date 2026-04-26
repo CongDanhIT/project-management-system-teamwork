@@ -6,6 +6,8 @@ export interface WorkspaceDocument extends mongoose.Document {
     description?: string | null;
     owner: mongoose.Types.ObjectId;
     inviteCode: string;
+    slackWebhookUrl?: string | null;
+    dailyDigestEnabled: boolean;
     createdAt: Date;
     updatedAt: Date;
     resetInviteCode(): void;
@@ -23,6 +25,16 @@ const workspaceSchema = new Schema<WorkspaceDocument>({
         required: true,
         unique: true,
         default: generateInviteCode,
+    },
+    slackWebhookUrl: {
+        type: String,
+        required: false,
+        trim: true,
+        default: null
+    },
+    dailyDigestEnabled: {
+        type: Boolean,
+        default: true
     },
 },
     {

@@ -33,6 +33,13 @@ export default function MainLayout({
   // Tự động đồng bộ currentWorkspaceId khi URL thay đổi
   useWorkspaceSync();
 
+  React.useEffect(() => {
+    console.log(`[MainLayout] Mounted at: ${window.location.pathname}`);
+    return () => console.log(`[MainLayout] Unmounted from: ${window.location.pathname}`);
+  }, []);
+
+  console.log(`[MainLayout] Rendering... workspaceId: ${workspaceId}, projectId: ${projectId}`);
+
   const handleDragStart = (event: DragStartEvent) => {
     if (event.active.data.current?.type === 'InboxTask') {
       setActiveDraft(event.active.data.current.draft);

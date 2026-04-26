@@ -17,8 +17,10 @@ export const createWorkspaceSchema = z.object({
 
 export const updateWorkspaceSchema = z.object({
     name: nameSchema.optional(),
-    description: descriptionSchema.optional(),
-})
+    description: z.string().nullable().optional(),
+    slackWebhookUrl: z.string().url("Link Slack không đúng định dạng").nullable().optional(),
+    dailyDigestEnabled: z.boolean().optional(),
+});
 
 export const WorkSpaceIdSchema = z.string()
     .trim()

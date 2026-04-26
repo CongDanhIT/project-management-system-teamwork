@@ -8,6 +8,7 @@ import {
     updateUserProfileService,
     changePasswordService,
     switchWorkspaceService,
+    updateUserPreferencesService,
 } from "../services/user.service";
 import {
     updateProfileSchema,
@@ -112,6 +113,21 @@ export const switchWorkspaceController = asyncHandler(async (req, res) => {
     return res.status(HTTP_STATUS.OK).json({
         success: true,
         message: "Chuyển workspace thành công",
+        user,
+    });
+});
+
+/**
+ * Cập nhật cấu hình người dùng (Preferences)
+ * PATCH /api/v1/user/preferences
+ */
+export const updateUserPreferencesController = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { user } = await updateUserPreferencesService(userId, req.body);
+
+    return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Cập nhật cài đặt thành công",
         user,
     });
 });

@@ -5,6 +5,7 @@ import {
     updateUserAvatarController,
     changePasswordController,
     switchWorkspaceController,
+    updateUserPreferencesController,
 } from "../controllers/user.controller";
 import upload from "../middlewares/upload.middleware";
 
@@ -28,5 +29,8 @@ userRoutes.put("/change-password", changePasswordController);
 
 // [AI-ADDED] Chuyển workspace hiện tại đang hoạt động
 userRoutes.patch("/workspace/switch/:workspaceId", switchWorkspaceController);
+
+// [AI-ADDED] Cập nhật cấu hình người dùng (ví dụ: tắt/mở email báo cáo)
+userRoutes.patch("/preferences", updateUserPreferencesController);
 
 export default userRoutes;

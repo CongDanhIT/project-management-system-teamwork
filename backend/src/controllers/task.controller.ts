@@ -6,7 +6,9 @@ import { getMemberRoleInWorkspace } from "../services/member.service";
 import { roleGuard } from "../utils/roleGuard";
 import { Permissions } from "../enums/role.enum";
 import { createTaskService, deleteTaskService, getAllTasksService, getTaskByIdService, updateTaskService, getSubtasksService, getDeletedTasksService, restoreTaskService } from "../services/task.service";
+import { getProjectByIdService } from "../services/project.service";
 import HTTP_STATUS from "../config/http.config";
+import eventDispatcher, { EVENTS } from "../utils/eventDispatcher";
 
 export const createTaskController = asyncHandler(
     async (req, res, next) => {
@@ -19,6 +21,19 @@ export const createTaskController = asyncHandler(
         roleGuard(role.name, [Permissions.CREATE_TASK]);
 
         const task = await createTaskService(workspaceId, projectId, body, userId);
+        const project = await getProjectByIdService(projectId, workspaceId);
+
+        // Phát sự kiện realtime
+        console.log(`[Event] Emitting TASK.CREATED for project: ${projectId}`);
+        eventDispatcher.emit(EVENTS.TASK.CREATED, {
+            projectId,
+            workspaceId,
+            taskId: task._id,
+            task,
+            userName: (req.user as any)?.name || "Thành viên",
+            taskTitle: task.title,
+            projectName: project.name
+        });
 
         return res.status(HTTP_STATUS.CREATED).json({
             success: true,
@@ -40,6 +55,19 @@ export const updateTaskController = asyncHandler(
         roleGuard(role.name, [Permissions.EDIT_TASK]);
 
         const task = await updateTaskService(workspaceId, projectId, body, userId, taskId);
+        const project = await getProjectByIdService(projectId, workspaceId);
+
+        // Phát sự kiện realtime
+        console.log(`[Event] Emitting TASK.UPDATED for project: ${projectId}`);
+        eventDispatcher.emit(EVENTS.TASK.UPDATED, {
+            projectId,
+            workspaceId,
+            taskId,
+            task,
+            userName: (req.user as any)?.name || "Thành viên",
+            taskTitle: task.title,
+            projectName: project.name
+        });
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -113,12 +141,12 @@ export const getTaskByIdController = asyncHandler(
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const userId = req.user?._id;
         const taskId = taskIdSchema.parse(req.params.taskId);
-        const projectId = projectIdSchema.parse(req.params.projectId);
+        const projectId = req.params.projectId ? projectIdSchema.parse(req.params.projectId) : undefined;
 
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
-        const task = await getTaskByIdService(workspaceId, projectId, taskId);
+        const task = await getTaskByIdService(workspaceId, projectId || '', taskId);
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -138,6 +166,18 @@ export const deleteTaskController = asyncHandler(
         roleGuard(role.name, [Permissions.DELETE_TASK]);
 
         const task = await deleteTaskService(workspaceId, taskId);
+        const project = await getProjectByIdService(task.projectId.toString(), workspaceId);
+
+        // Phát sự kiện realtime
+        eventDispatcher.emit(EVENTS.TASK.DELETED, {
+            projectId: task.projectId,
+            workspaceId,
+            taskId,
+            task,
+            userName: (req.user as any)?.name || "Thành viên",
+            taskTitle: task.title,
+            projectName: project.name
+        });
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -210,6 +250,18 @@ export const restoreTaskController = asyncHandler(
         roleGuard(role.name, [Permissions.EDIT_TASK]);
 
         const task = await restoreTaskService(workspaceId, taskId);
+
+        const project = await getProjectByIdService(task.projectId.toString(), workspaceId);
+        // Phát sự kiện realtime (Khi khôi phục, coi như là UPDATE trạng thái deletedAt)
+        eventDispatcher.emit(EVENTS.TASK.UPDATED, {
+            projectId: task.projectId,
+            workspaceId,
+            taskId,
+            task,
+            userName: (req.user as any)?.name || "Thành viên",
+            taskTitle: task.title,
+            projectName: project.name
+        });
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,

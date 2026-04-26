@@ -12,10 +12,11 @@ import {
     getWorkspaceAnalyticsHistoryService,
     getWorkspaceByIdService,
     getWorkspaceMemberService,
-
     updateWorkspaceByIdService,
     resetInviteCodeService,
     removeMemberFromWorkspaceService,
+    triggerSlackTestService,
+    triggerEmailTestService,
 } from "../services/workspace.service";
 import { roleGuard } from "../utils/roleGuard";
 import { changeWorkSpaceMemberRoleSchema, createWorkspaceSchema, updateWorkspaceSchema, WorkSpaceIdSchema } from "../validation/workspace.validation";
@@ -154,7 +155,7 @@ export const updateWorkspaceByIdController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
         const userId = req.user?._id;
-        const { name, description } = updateWorkspaceSchema.parse(req.body);
+        const { name, description, slackWebhookUrl, dailyDigestEnabled } = updateWorkspaceSchema.parse(req.body);
 
         // Lấy Role Document
         const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
@@ -162,7 +163,7 @@ export const updateWorkspaceByIdController = asyncHandler(
         // Kiểm tra quyền
         roleGuard(getRole.name, [Permissions.EDIT_WORKSPACE]);
 
-        const workspace = await updateWorkspaceByIdService(workspaceId, name, description);
+        const workspace = await updateWorkspaceByIdService(workspaceId, name, description, slackWebhookUrl, dailyDigestEnabled);
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -229,4 +230,27 @@ export const removeWorkspaceMemberController = asyncHandler(
             memberId: result.memberId,
         });
     }
-);
+);
+
+// [AI-ADDED] Trigger Slack Test thủ công
+export const triggerSlackTestController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(getRole.name, [Permissions.EDIT_WORKSPACE]);
+
+        const result = await triggerSlackTestService(workspaceId);
+        return res.status(HTTP_STATUS.OK).json(result);
+    }
+);
+
+// [AI-ADDED] Trigger Email Test thủ công (Công việc cá nhân)
+export const triggerEmailTestController = asyncHandler(
+    async (req, res) => {
+        const userId = req.user?._id;
+        const result = await triggerEmailTestService(userId);
+        return res.status(HTTP_STATUS.OK).json(result);
+    }
+);

@@ -1,24 +1,51 @@
 import Groq from "groq-sdk";
+import OpenAI from "openai";
 import { env } from "../config/env";
 import logger from "../utils/logger";
+
+// Các Model IDs định nghĩa sẵn
+export const AI_MODELS = {
+    GROQ_LLAMA_3_3_70B: "llama-3.3-70b-versatile",
+    NVIDIA_DEEPSEEK_V4: "deepseek-ai/deepseek-v4-pro",
+};
 
 // Khởi tạo Groq client
 const getGroqClient = () => {
     const apiKey = env.GROQ_API_KEY;
     if (!apiKey) {
-        throw new Error("GROQ_API_KEY chưa được cấu hình trong file .env");
+        logger.error("[AI-Service] GROQ_API_KEY không tồn tại trong env");
+        throw new Error("GROQ_API_KEY chưa được cấu hình");
     }
+    logger.debug("[AI-Service] Đang khởi tạo Groq client với key", { keyPrefix: apiKey.substring(0, 7) });
     return new Groq({ apiKey });
 };
 
-// Sử dụng Llama 3.3 70B - Model mạnh mẽ nhất hiện có trên Groq free tier
-const MODEL_NAME = "llama-3.3-70b-versatile";
+// Khởi tạo NVIDIA (OpenAI compatible) client
+const getNvidiaClient = () => {
+    const apiKey = env.NVIDIA_API_KEY;
+    if (!apiKey) {
+        logger.error("[AI-Service] NVIDIA_API_KEY không tồn tại trong env");
+        throw new Error("NVIDIA_API_KEY chưa được cấu hình");
+    }
+    logger.debug("[AI-Service] Đang khởi tạo NVIDIA client với key", { keyPrefix: apiKey.substring(0, 7) });
+    return new OpenAI({
+        apiKey,
+        baseURL: "https://integrate.api.nvidia.com/v1",
+    });
+};
+
+// Hàm factory để lấy client phù hợp
+const getAIClient = (modelId: string) => {
+    if (modelId === AI_MODELS.NVIDIA_DEEPSEEK_V4) {
+        return { client: getNvidiaClient(), type: "openai" as const };
+    }
+    return { client: getGroqClient(), type: "groq" as const };
+};
 
 /**
  * [AI Feature 1] Sinh mô tả chi tiết cho một task dựa trên tiêu đề
  */
 export const generateTaskDescriptionService = async (title: string): Promise<string> => {
-    const groq = getGroqClient();
 
     const prompt = `
 Bạn là một Project Manager chuyên về phát triển phần mềm và quản lý tác vụ.
@@ -35,9 +62,9 @@ Yêu cầu về nội dung:
 `;
 
     try {
-        const completion = await groq.chat.completions.create({
+        const completion = await getGroqClient().chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: MODEL_NAME,
+            model: AI_MODELS.GROQ_LLAMA_3_3_70B,
             temperature: 0.7,
             max_tokens: 500,
         });
@@ -55,7 +82,6 @@ Yêu cầu về nội dung:
  * [AI Feature 2] Gợi ý danh sách các subtask cho một task cha
  */
 export const suggestSubtasksService = async (parentTitle: string): Promise<string[]> => {
-    const groq = getGroqClient();
 
     const prompt = `
 Bạn là một Technical Lead. Hãy phân rã công việc sau thành các bước thực hiện (Subtasks) cụ thể:
@@ -73,9 +99,9 @@ Tên Subtask 3
 `;
 
     try {
-        const completion = await groq.chat.completions.create({
+        const completion = await getGroqClient().chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: MODEL_NAME,
+            model: AI_MODELS.GROQ_LLAMA_3_3_70B,
             temperature: 0.6,
         });
 
@@ -99,7 +125,7 @@ Tên Subtask 3
  */
 export const chatWithContextService = async (
     userMessage: string,
-    history: { role: "user" | "assistant"; content: string }[],
+    history: { role: "user" | "assistant" | "system"; content: string }[],
     projectContext: {
         workspaceName?: string;
         projectName?: string;
@@ -108,9 +134,10 @@ export const chatWithContextService = async (
         inProgressTasks?: number;
         overdueTasks?: number;
         memberCount?: number;
-    }
+    },
+    modelId: string = AI_MODELS.GROQ_LLAMA_3_3_70B
 ): Promise<string> => {
-    const groq = getGroqClient();
+    const { client, type } = getAIClient(modelId);
 
     // Xây dựng context dự án
     const contextLines: string[] = [];
@@ -135,18 +162,34 @@ ${contextLines.length > 0 ? contextLines.join("\n") : "Không có context cụ t
             { role: "user", content: userMessage }
         ];
 
-        const completion = await groq.chat.completions.create({
-            messages,
-            model: MODEL_NAME,
-            temperature: 0.7,
-            max_tokens: 1024,
-        });
+        let responseText = "";
 
-        const responseText = completion.choices[0]?.message?.content?.trim() || "";
-        logger.info("[AI-Groq] Chat phản hồi thành công", { msg: userMessage.substring(0, 50) });
+        if (type === "groq") {
+            const completion = await (client as Groq).chat.completions.create({
+                messages,
+                model: modelId,
+                temperature: 0.7,
+                max_tokens: 1024,
+            });
+            responseText = completion.choices[0]?.message?.content?.trim() || "";
+        } else {
+            const completion = await (client as OpenAI).chat.completions.create({
+                messages,
+                model: modelId,
+                temperature: 1, // DeepSeek thường dùng temp 1
+                max_tokens: 4096, // Giới hạn thực tế cho chat thường
+            });
+            responseText = completion.choices[0]?.message?.content?.trim() || "";
+        }
+
+        logger.info("[AI-Service] Chat phản hồi thành công", { provider: type, model: modelId });
         return responseText;
     } catch (error: any) {
-        logger.error("[AI-Groq] Lỗi trong quá trình chat", { error: error?.message });
-        throw new Error("AI gặp sự cố kết nối, vui lòng thử lại sau.");
+        logger.error("[AI-Service] Lỗi trong quá trình chat", { 
+            errorMessage: error?.message,
+            errorStack: error?.stack,
+            errorDetails: error?.response?.data || error
+        });
+        throw new Error("AI hiện đang gặp sự cố kết nối, vui lòng thử lại sau.");
     }
 };

@@ -13,8 +13,16 @@ import {
   RefreshCw,
   Copy,
   Check,
-  UserPlus
+  UserPlus,
+  Slack,
+  ExternalLink,
+  Globe,
+  Mail,
+  Zap,
+  Send
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import Loader from "@/components/ui/Loader";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +38,8 @@ import { cn } from '@/lib/utils';
 interface WorkspaceSettingsForm {
   name: string;
   description: string;
+  slackWebhookUrl: string;
+  dailyDigestEnabled: boolean;
 }
 
 export default function WorkspaceSettingsPage() {
@@ -53,13 +63,20 @@ export default function WorkspaceSettingsPage() {
     queryFn: () => workspaceService.getWorkspaces(),
   });
 
-  const { register, handleSubmit, reset, formState: { isDirty } } = useForm<WorkspaceSettingsForm>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { isDirty } } = useForm<WorkspaceSettingsForm>({
+    defaultValues: {
+      dailyDigestEnabled: true
+    }
+  });
+  const dailyDigestEnabled = watch('dailyDigestEnabled') ?? true;
 
   useEffect(() => {
     if (workspace) {
       reset({
         name: workspace.name,
         description: workspace.description || '',
+        slackWebhookUrl: workspace.slackWebhookUrl || '',
+        dailyDigestEnabled: workspace.dailyDigestEnabled ?? true,
       });
     }
   }, [workspace, reset]);
@@ -119,6 +136,30 @@ export default function WorkspaceSettingsPage() {
 
   const onSubmit = (data: WorkspaceSettingsForm) => {
     updateMutation.mutate(data);
+  };
+
+  const handleTestSlack = async () => {
+    try {
+      toast.promise(workspaceService.triggerSlackTest(workspaceId as string), {
+        loading: 'Đang gửi thông báo test đến Slack...',
+        success: 'Đã gửi thành công! Hãy kiểm tra Slack của bạn.',
+        error: (err: any) => err.response?.data?.message || 'Gửi test Slack thất bại'
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    try {
+      toast.promise(workspaceService.triggerEmailTest(), {
+        loading: 'Đang gửi email báo cáo cá nhân...',
+        success: 'Đã gửi thành công! Hãy kiểm tra hòm thư của bạn.',
+        error: (err: any) => err.response?.data?.message || 'Gửi email test thất bại'
+      });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   if (isWorkspaceLoading || isRoleLoading) {
@@ -187,6 +228,109 @@ export default function WorkspaceSettingsPage() {
               >
                 {updateMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Lưu thay đổi
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+
+        {/* Personal Email Digest */}
+        <Card className="bg-white dark:bg-slate-900/50 dark:backdrop-blur-xl border-slate-200/60 dark:border-white/10 shadow-xl shadow-slate-200/10 dark:shadow-none rounded-3xl overflow-hidden mb-8">
+          <CardHeader className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 py-6">
+            <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Mail className="w-5 h-5 text-brand-primary" />
+              Thông báo Email cá nhân
+            </CardTitle>
+            <CardDescription className="text-slate-500 dark:text-slate-400">Nhận báo cáo tóm tắt công việc cá nhân gửi trực tiếp vào hòm thư của bạn.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-8 space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 group transition-all hover:border-brand-primary/30">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-bold text-slate-900 dark:text-slate-100">Báo cáo công việc cá nhân</Label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Tóm tắt các task đến hạn, quá hạn và thông báo quan trọng dành riêng cho bạn.</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestEmail}
+                  className="h-8 rounded-xl border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-[10px] font-bold gap-2 px-3"
+                >
+                  <Send className="w-3 h-3 text-brand-primary" />
+                  Gửi test ngay
+                </Button>
+                {/* Switch này dùng cấu hình profile cá nhân, tạm thời để hiển thị để user test gửi thủ công */}
+                <span className="text-[10px] text-slate-400 font-medium italic">Luôn bật</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Integrations (Slack) */}
+        <Card className="bg-white dark:bg-slate-900/50 dark:backdrop-blur-xl border-slate-200/60 dark:border-white/10 shadow-xl shadow-slate-200/10 dark:shadow-none rounded-3xl overflow-hidden">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <CardHeader className="bg-slate-50/50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 py-6">
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                <Slack className="w-5 h-5 text-[#4A154B]" />
+                Tích hợp Slack
+              </CardTitle>
+              <CardDescription className="text-slate-500 dark:text-slate-400">Kết nối TeamFlow với Slack để nhận thông báo về Newsfeed và trạng thái dự án.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Slack Webhook URL</label>
+                <div className="relative">
+                  <Input 
+                    {...register('slackWebhookUrl')}
+                    placeholder="https://hooks.slack.com/services/..."
+                    className="h-12 rounded-xl border-slate-200 dark:border-white/10 dark:bg-slate-800 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-mono text-xs dark:text-white pr-10"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Globe className="w-4 h-4 text-slate-300" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 mt-2 group transition-all hover:border-brand-primary/30">
+                <div className="space-y-0.5">
+                  <Label htmlFor="daily-digest" className="text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer">Thông báo tổng kết hàng ngày</Label>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Tự động gửi báo cáo sức khỏe dự án vào 8:00 AM mỗi ngày qua Slack.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestSlack}
+                    className="h-8 rounded-xl border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-[10px] font-bold gap-2 px-3"
+                  >
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    Gửi test ngay
+                  </Button>
+                  <Switch 
+                    id="daily-digest"
+                    checked={dailyDigestEnabled}
+                    onCheckedChange={(checked: boolean) => setValue('dailyDigestEnabled', !!checked, { shouldDirty: true })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 p-4 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-amber-100/50 dark:border-amber-900/20">
+                <Info className="w-4 h-4 text-brand-primary mt-0.5" />
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Webhook URL cho phép TeamFlow gửi thông báo tự động vào một channel Slack cụ thể. 
+                  Bạn có thể tạo mã này tại <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-brand-primary hover:underline inline-flex items-center gap-1">Slack Apps <ExternalLink className="w-3 h-3" /></a>
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="bg-slate-50/30 dark:bg-white/5 border-t border-slate-100 dark:border-white/5 p-6 flex justify-end">
+              <Button 
+                type="submit" 
+                disabled={!isDirty || updateMutation.isPending}
+                className="bg-[#4A154B] hover:bg-[#3d113d] text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-purple-900/20"
+              >
+                {updateMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Lưu cấu hình Slack
               </Button>
             </CardFooter>
           </form>

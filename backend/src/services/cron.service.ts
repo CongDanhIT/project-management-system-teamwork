@@ -4,8 +4,11 @@ import TaskModel from "../models/task.model";
 import UserModel from "../models/user.model";
 import logger from "../utils/logger";
 import cloudinary from "../config/cloudinary.config";
-import { saveDailySnapshotsForAllWorkspaces } from "./workspace.service";
+import WorkspaceModel from "../models/workspace.model";
+import { SlackService } from "./slack.service";
+import { saveDailySnapshotsForAllWorkspaces, getWorkspaceAnalyticsService } from "./workspace.service";
 import { saveDailySnapshotsForAllProjects } from "./project.service";
+import { EmailService } from "./email.service";
 
 /**
  * Trích xuất public_id từ Cloudinary URL
@@ -144,6 +147,54 @@ export const startCronService = () => {
     cron.schedule("55 23 * * *", () => {
         saveDailySnapshotsForAllWorkspaces();
         saveDailySnapshotsForAllProjects();
+    });
+
+    // 4. Daily Digest: Chạy vào 08:00 hàng ngày (Giờ Việt Nam)
+    cron.schedule("0 8 * * *", async () => {
+        logger.info("[CRON] Bắt đầu gửi Daily Digest cho người dùng có đăng ký...");
+        // Chỉ lấy những user đang hoạt động và đồng ý nhận email
+        const users = await UserModel.find({ 
+            isActive: true, 
+            "preferences.receiveDailyDigest": true 
+        }).select("_id email");
+
+        for (const user of users) {
+            try {
+                await EmailService.sendDailyDigest(user._id.toString());
+            } catch (error: any) {
+                logger.error(`[CRON-ERR] Không thể gửi Daily Digest cho user ${user._id}`, { error: error.message });
+            }
+        }
+        logger.info(`[CRON] Đã hoàn thành tiến trình Daily Digest cho ${users.length} người dùng.`);
+
+        // --- Gửi Daily Digest cho Slack của Workspace ---
+        logger.info("[CRON] Bắt đầu gửi Daily Digest cho các Workspace có bật Slack...");
+        const activeWorkspaces = await WorkspaceModel.find({
+            dailyDigestEnabled: true,
+            slackWebhookUrl: { $nin: [null, ""] }
+        });
+
+        for (const workspace of activeWorkspaces) {
+            try {
+                const stats = await getWorkspaceAnalyticsService(workspace._id.toString());
+                await SlackService.sendDailyDigest(
+                    workspace.slackWebhookUrl!,
+                    workspace.name,
+                    {
+                        totalTasks: stats.totalTasks,
+                        completedTasks: stats.completedTasks,
+                        overdueTasks: stats.overdueTasks,
+                        inProgressTasks: stats.inProgressTasks
+                    }
+                );
+                logger.info(`[CRON] Đã gửi Daily Digest Slack cho workspace: ${workspace.name}`);
+            } catch (error: any) {
+                logger.error(`[CRON-ERR] Lỗi khi gửi Slack cho workspace ${workspace.name}`, { error: error.message });
+            }
+        }
+        logger.info(`[CRON] Đã hoàn thành tiến trình Slack Daily Digest cho ${activeWorkspaces.length} workspace.`);
+    }, {
+        timezone: "Asia/Ho_Chi_Minh"
     });
 
     logger.info("[CRON] Hệ thống Lập lịch (node-cron) đã kích hoạt.");

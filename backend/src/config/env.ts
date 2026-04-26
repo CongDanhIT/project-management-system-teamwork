@@ -24,6 +24,21 @@ const envSchema = z.object({
     CLOUDINARY_API_SECRET: z.string().optional(),
 
     GROQ_API_KEY: z.string().optional(),
+    NVIDIA_API_KEY: z.string().optional(),
+
+    // Cloudflare R2
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET_NAME: z.string().default("teamflow-assets"),
+    R2_ENDPOINT: z.string().optional(),
+
+    // SendGrid
+    SENDGRID_API_KEY: z.string().optional(),
+    SENDGRID_FROM_EMAIL: z.string().optional().default("no-reply@teamflow.com"),
+    
+    // Slack Webhook (Global fallback)
+    SLACK_WEBHOOK_URL: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);
@@ -40,4 +55,7 @@ export const env = {
     isDev: envParsed.data.NODE_ENV === "development",
     isProd: envParsed.data.NODE_ENV === "production",
     isTest: envParsed.data.NODE_ENV === "test",
+    // Mapping SendGrid_API_KEY từ .env nếu có
+    SENDGRID_API_KEY: process.env.SendGrid_API_KEY || envParsed.data.SENDGRID_API_KEY,
+    SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_SYSTEM || process.env.SENDGRID_FROM_EMAIL || envParsed.data.SENDGRID_FROM_EMAIL,
 };

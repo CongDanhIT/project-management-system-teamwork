@@ -67,7 +67,13 @@ import { SubtaskEditModal } from './SubtaskEditModal';
 import { taskService } from '@/services/task.service';
 import { tagService } from '@/services/tag.service';
 import { Tag as TagType } from '@/types/task';
+import { interactionService } from '@/services/interaction.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/auth.store';
 import { toast } from 'sonner';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
+
+import { useSearchParams } from 'next/navigation';
 
 interface TaskDetailModalProps {
   task: Task | null;
@@ -92,6 +98,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   tasks,
   isAdminOrOwner = false,
 }) => {
+  const searchParams = useSearchParams();
+  const targetCommentId = searchParams.get('commentId');
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -114,17 +123,103 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [isActivityOpen, setIsActivityOpen] = useState(true);
   const [availableTags, setAvailableTags] = useState<TagType[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { user: currentUser } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [commentText, setCommentText] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
+  const [replyToComment, setReplyToComment] = useState<any | null>(null);
+  const [showMentionList, setShowMentionList] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
+
+  // Tự động mở Activity nếu có commentId
+  useEffect(() => {
+    if (targetCommentId && isOpen) {
+      setIsActivityOpen(true);
+    }
+  }, [targetCommentId, isOpen]);
 
   const [attachments, setAttachments] = useState([
     { id: '1', name: 'design_specs.pdf', size: '2.4 MB', type: 'pdf', url: '#' },
     { id: '2', name: 'hero_section.png', size: '1.8 MB', type: 'image', url: '#' },
   ]);
 
-  const MOCK_ACTIVITIES = [
-    { id: '1', user: 'Hoàng Nam', action: 'đã thay đổi trạng thái thành', target: 'Đang thực hiện', time: '5 phút trước', avatar: '' },
-    { id: '2', user: 'Linh Chi', action: 'đã thêm bình luận', target: 'Cần kiểm tra kỹ phần responsive trên mobile nhé.', time: '15 phút trước', avatar: '' },
-    { id: '3', user: 'Bùi Công Danh', action: 'đã đính kèm tệp', target: 'workflow_v2.fig', time: '1 giờ trước', avatar: '' },
-  ];
+  // --- COMMENTS & ACTIVITIES DATA ---
+  const { data: comments = [], isLoading: isLoadingComments } = useQuery<any[]>({
+    queryKey: ['task-comments', task?._id],
+    queryFn: () => interactionService.getComments(task!._id),
+    enabled: !!task?._id && isOpen,
+  });
+
+  // Tự động cuộn tới comment mục tiêu
+  useEffect(() => {
+    if (targetCommentId && comments.length > 0) {
+      let retryCount = 0;
+      const maxRetries = 5;
+      
+      const tryScroll = () => {
+        const element = document.getElementById(`comment-${targetCommentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Thêm một hiệu ứng nháy nhẹ để người dùng chú ý
+          element.classList.add('ring-2', 'ring-brand-primary', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-brand-primary', 'ring-offset-2');
+          }, 3000);
+        } else if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(tryScroll, 300); // Thử lại sau 300ms
+        }
+      };
+
+      // Đợi một chút để chắc chắn component đã render xong list
+      const timer = setTimeout(tryScroll, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [targetCommentId, comments]);
+
+  // Nếu có targetCommentId mà không thấy trong danh sách, hãy refresh
+  useEffect(() => {
+    if (targetCommentId && comments.length > 0) {
+      const exists = comments.some((c: any) => c._id === targetCommentId);
+      if (!exists && !isLoadingComments) {
+        queryClient.invalidateQueries({ queryKey: ["task-comments", task?._id] });
+      }
+    }
+  }, [targetCommentId, comments, task?._id, queryClient, isLoadingComments]);
+
+  const sendCommentMutation = useMutation({
+    mutationFn: (data: { content: string; mentions?: string[]; replyTo?: string }) => 
+      interactionService.createComment(task!.workspaceId, task!._id, data),
+    onSuccess: () => {
+      setCommentText('');
+      setReplyToComment(null);
+      queryClient.invalidateQueries({ queryKey: ['task-comments', task?._id] });
+    }
+  });
+
+  const handleSendComment = async () => {
+    if (!commentText.trim() || !task) return;
+    setIsSendingComment(true);
+    try {
+      // Logic trích xuất ID người dùng từ văn bản thực tế để đảm bảo tính chính xác
+      const finalMentions = mentionedUserIds.filter(id => {
+        const user = members.find(m => (m.userId?._id || m.userId?.id) === id)?.userId;
+        return user && commentText.includes(`@${user.name}`);
+      });
+
+      await sendCommentMutation.mutateAsync({ 
+        content: commentText,
+        replyTo: replyToComment?._id,
+        mentions: finalMentions
+      });
+      setMentionedUserIds([]);
+    } catch (error) {
+      toast.error("Không thể gửi bình luận");
+    } finally {
+      setIsSendingComment(false);
+    }
+  };
 
   useEffect(() => {
     if (task) {
@@ -270,6 +365,35 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         return assigneeIds.includes(mUserId);
       })
     : [];
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setCommentText(value);
+
+    // Phát hiện ký tự @ ở cuối hoặc sau dấu cách
+    const lastChar = value.slice(-1);
+    const words = value.split(/\s/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord.startsWith('@')) {
+      setMentionSearch(lastWord.slice(1));
+      setShowMentionList(true);
+    } else {
+      setShowMentionList(false);
+    }
+  };
+
+  const insertMention = (user: any) => {
+    const userId = user._id || user.id;
+    if (!userId) return;
+
+    const words = commentText.split(/\s/);
+    words.pop(); // Xóa phần "@search"
+    const newText = words.join(' ') + (words.length > 0 ? ' ' : '') + `@${user.name} `;
+    setCommentText(newText);
+    setMentionedUserIds(prev => [...new Set([...prev, userId])]);
+    setShowMentionList(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -933,51 +1057,292 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <ScrollArea className="flex-1 min-h-0 relative z-10">
                 <div className="px-6 py-4 space-y-6">
                   {/* Activity Input */}
-                  <div className="relative group">
-                    <textarea 
-                      placeholder="Ghi lại tiến độ hoặc bình luận..."
-                      className="w-full min-h-[100px] bg-modal-bg/50 border border-modal-border rounded-2xl p-4 text-sm text-foreground placeholder:text-text-dim/40 focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary/20 transition-all resize-none leading-relaxed"
-                    />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                       <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-text-dim hover:text-brand-primary transition-colors">
-                        <Smile className="w-4 h-4" />
-                      </Button>
-                      <Button className="h-8 px-4 bg-brand-primary hover:bg-brand-primary/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-brand-primary/10">
-                        Gửi
-                      </Button>
+                  <div className="space-y-2">
+                    {replyToComment && (
+                      <div className="flex items-center justify-between px-4 py-2 bg-brand-primary/5 border border-brand-primary/10 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="w-1 h-4 bg-brand-primary rounded-full shrink-0" />
+                          <span className="text-[10px] font-black text-brand-primary uppercase tracking-wider shrink-0">Đang trả lời</span>
+                          <span className="text-[11px] text-text-dim/60 truncate italic">
+                            "{replyToComment.content.substring(0, 40)}{replyToComment.content.length > 40 ? '...' : ''}"
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => setReplyToComment(null)}
+                          className="p-1 hover:bg-brand-primary/10 rounded-lg text-brand-primary transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="relative group">
+                      <textarea 
+                        value={commentText}
+                        onChange={handleCommentChange}
+                        placeholder="Ghi lại tiến độ hoặc bình luận... (Gõ @ để nhắc tên)"
+                        className="w-full min-h-[100px] bg-modal-bg/50 border border-modal-border rounded-2xl p-4 text-sm text-foreground placeholder:text-text-dim/40 focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary/20 transition-all resize-none leading-relaxed"
+                      />
+                      
+                      {/* Mention Suggestion List - Floating Div (Positioned below textarea) */}
+                      {showMentionList && (
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-modal-bg/95 backdrop-blur-3xl border border-modal-border rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] z-[9999] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="p-3 border-b border-modal-border flex items-center justify-between bg-modal-surface/50">
+                            <span className="text-[10px] font-black text-brand-primary uppercase tracking-widest">Nhắc tên thành viên</span>
+                          </div>
+                          <ScrollArea className="max-h-48">
+                            <div className="p-1">
+                              {members
+                                .filter(m => m.userId?.name?.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                .map(m => (
+                                  <button
+                                    key={m.userId?._id}
+                                    onClick={() => insertMention(m.userId)}
+                                    className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-brand-primary/10 transition-colors text-left"
+                                  >
+                                    <Avatar className="w-7 h-7 border border-modal-border">
+                                      <AvatarImage src={m.userId?.profilePicture} />
+                                      <AvatarFallback className="text-[8px] font-bold bg-modal-surface">
+                                        {m.userId?.name?.substring(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-[12px] font-bold text-foreground">{m.userId?.name}</span>
+                                  </button>
+                                ))}
+                              {members.filter(m => m.userId?.name?.toLowerCase().includes(mentionSearch.toLowerCase())).length === 0 && (
+                                <div className="p-4 text-center text-[10px] text-text-dim font-bold italic">Không tìm thấy thành viên</div>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                        <Popover>
+                          <PopoverTrigger className="w-8 h-8 flex items-center justify-center rounded-lg text-text-dim hover:text-brand-primary transition-colors outline-none">
+                            <Smile className="w-4 h-4" />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-2xl border-modal-border bg-modal-bg/95 backdrop-blur-xl shadow-2xl overflow-hidden" side="top" align="end" sideOffset={8}>
+                            <EmojiPicker 
+                              onEmojiClick={(emojiData: any) => setCommentText(prev => prev + emojiData.emoji)}
+                              theme={Theme.LIGHT}
+                              lazyLoadEmojis={true}
+                              skinTonesDisabled
+                              searchPlaceHolder="Tìm emoji..."
+                              width={300}
+                              height={400}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        
+                        <Button 
+                          onClick={handleSendComment}
+                          disabled={isSendingComment || !commentText.trim()}
+                          className="h-8 px-4 bg-brand-primary hover:bg-brand-primary/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-brand-primary/10 disabled:opacity-50"
+                        >
+                          {isSendingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Gửi"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Activity List */}
                   <div className="space-y-6">
-                    {MOCK_ACTIVITIES.map((activity, idx) => (
-                      <div key={activity.id} className="relative pl-8 group">
-                        {/* Timeline Connector */}
-                        {idx !== MOCK_ACTIVITIES.length - 1 && (
-                          <div className="absolute left-[11px] top-6 bottom-[-24px] w-[1px] bg-modal-border group-hover:bg-brand-primary/20 transition-colors" />
-                        )}
+                    {isLoadingComments ? (
+                      <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-brand-primary/40" /></div>
+                    ) : comments.map((comment: any, idx: number) => {
+                      const isSystem = comment.type === 'SYSTEM';
+                      const isHighlighted = targetCommentId === comment._id;
+                      
+                      // [ĐẠI TRUNG TU] Logic trích xuất danh tính: Tin tưởng vào dữ liệu đã nạp từ Server
+                      const resolveAuthor = () => {
+                        // 1. Nếu authorId là object đầy đủ (Populated)
+                        if (typeof comment.authorId === 'object' && comment.authorId !== null) {
+                          return comment.authorId;
+                        }
                         
-                        {/* Timeline Point */}
-                        <div className="absolute left-0 top-1.5 w-[22px] h-[22px] rounded-full border-2 border-modal-bg bg-modal-surface shadow-sm z-10 flex items-center justify-center group-hover:border-brand-primary/40 transition-colors">
-                          <Avatar className="w-full h-full">
-                            <AvatarImage src={activity.avatar} />
-                            <AvatarFallback className="text-[8px] font-black text-brand-primary">
-                              {activity.user.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
+                        // 2. Nếu là chính mình (So sánh string ID)
+                        const rawId = comment.authorId?.toString();
+                        if (rawId === currentUser?.id) return currentUser;
+                        
+                        // 3. Tra cứu trong danh sách thành viên dự án
+                        return members.find(m => {
+                          const mId = m.userId?._id?.toString() || m.userId?.id?.toString() || m.userId?.toString();
+                          return mId === rawId;
+                        })?.userId;
+                      };
 
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[12px] font-black text-foreground">{activity.user}</span>
-                            <span className="text-[10px] font-bold text-text-dim/40 uppercase tracking-tighter">{activity.time}</span>
+                      const author = resolveAuthor();
+                      const authorName = author?.name || 'Thành viên';
+                      const authorAvatar = author?.profilePicture || (author as any)?.avatar;
+                      const timeStr = format(new Date(comment.createdAt), 'HH:mm, dd/MM', { locale: vi });
+
+                      // Kiểm tra xem user hiện tại có quyền xóa không (là tác giả)
+                      const authorId = author?._id?.toString() || author?.id?.toString();
+                      const canDelete = !isSystem && authorId === currentUser?.id;
+
+                      const handleDeleteComment = async (commentId: string) => {
+                        try {
+                          await interactionService.deleteComment(commentId);
+                          toast.success('Đã xóa bình luận');
+                          queryClient.invalidateQueries({ queryKey: ["task-comments", task?._id] });
+                        } catch (error: any) {
+                          toast.error(error.response?.data?.message || 'Không thể xóa bình luận');
+                        }
+                      };
+
+                      const handleToggleReaction = async (commentId: string, emoji: string) => {
+                        try {
+                          await interactionService.toggleReaction(commentId, emoji);
+                          queryClient.invalidateQueries({ queryKey: ["task-comments", task?._id] });
+                        } catch (error: any) {
+                          console.error('Failed to toggle reaction', error);
+                        }
+                      };
+
+                      return (
+                        <div 
+                          key={comment._id} 
+                          id={`comment-${comment._id}`}
+                          className={cn(
+                            "relative pl-8 group transition-all duration-500 rounded-2xl p-2 -ml-2",
+                            isHighlighted && "bg-brand-primary/10 shadow-[0_0_20px_rgba(var(--brand-primary-rgb),0.1)] ring-1 ring-brand-primary/20"
+                          )}
+                        >
+                          {/* Timeline Connector */}
+                          {idx !== comments.length - 1 && (
+                            <div className="absolute left-[11px] top-6 bottom-[-24px] w-[1px] bg-modal-border group-hover:bg-brand-primary/20 transition-colors" />
+                          )}
+                          
+                          {/* Timeline Point */}
+                          <div className={cn(
+                            "absolute left-0 top-1.5 w-[22px] h-[22px] rounded-full border-2 border-modal-bg shadow-sm z-10 flex items-center justify-center transition-all duration-300",
+                            "bg-modal-surface group-hover:border-brand-primary/40",
+                            isHighlighted && "border-brand-primary shadow-glow-sm"
+                          )}>
+                            <Avatar className="w-full h-full">
+                              <AvatarImage src={authorAvatar} />
+                              <AvatarFallback className="text-[8px] font-black text-brand-primary bg-brand-primary/5">
+                                {authorName?.substring(0, 2).toUpperCase() || '??'}
+                              </AvatarFallback>
+                            </Avatar>
                           </div>
-                          <p className="text-[13px] text-text-dim leading-relaxed">
-                            {activity.action} <span className="text-foreground font-bold">{activity.target}</span>
-                          </p>
+
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center justify-between h-5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[12px] font-black text-foreground leading-none">{authorName}</span>
+                                <span className="text-[10px] font-bold text-text-dim/40 uppercase tracking-tighter leading-none">{timeStr}</span>
+                                {isHighlighted && (
+                                  <Badge className="bg-brand-primary text-[8px] h-4 px-1.5 font-black uppercase tracking-widest animate-pulse">Mới</Badge>
+                                )}
+                              </div>
+                              
+                              {canDelete && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteComment(comment._id);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 text-text-dim/30 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                  title="Xóa bình luận"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                            
+                            {isSystem ? (
+                              <div className="flex items-center gap-2 text-[11px] text-text-dim/60 italic leading-relaxed">
+                                <span>{comment.content}</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className={cn(
+                                  "bg-modal-bg/40 border border-modal-border/50 p-3 rounded-2xl rounded-tl-none shadow-sm group-hover:bg-modal-bg/60 transition-colors",
+                                  isHighlighted && "bg-brand-primary/5 border-brand-primary/20"
+                                )}>
+                                  {comment.replyTo && (
+                                    <div className="mb-2 flex items-center gap-1.5 px-2 py-1 bg-brand-primary/5 rounded-lg border border-brand-primary/10 w-fit">
+                                      <GitBranch className="w-2.5 h-2.5 text-brand-primary/60 rotate-180" />
+                                      <span className="text-[9px] font-bold text-brand-primary/80 uppercase tracking-tighter">Trả lời</span>
+                                      <span className="text-[9px] text-text-dim/40 italic truncate max-w-[150px]">
+                                        {(typeof comment.replyTo === 'object' ? (comment.replyTo.authorId?.name || 'Ai đó') : 'bình luận cũ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <p className="text-[13px] text-text-dim leading-relaxed whitespace-pre-wrap">
+                                    {comment.content}
+                                  </p>
+                                  <div className="mt-2 flex items-center gap-3">
+                                    <button 
+                                      onClick={() => {
+                                        setReplyToComment(comment);
+                                        const author = resolveAuthor();
+                                        if (author?.name) {
+                                          setCommentText(`@${author.name} `);
+                                          setMentionedUserIds(prev => [...new Set([...prev, author._id || author.id])]);
+                                        }
+                                        // Scroll to top of activity input for focus
+                                        const scrollArea = document.querySelector('[data-radix-scroll-area-viewport]');
+                                        if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+                                      }}
+                                      className="text-[9px] font-black text-text-dim hover:text-brand-primary uppercase tracking-widest transition-colors"
+                                    >
+                                      Phản hồi
+                                    </button>
+                                    
+                                    <Popover>
+                                      <PopoverTrigger className="flex items-center gap-1 text-[9px] font-black text-text-dim hover:text-brand-primary uppercase tracking-widest transition-colors outline-none">
+                                        <Smile className="w-3.5 h-3.5" />
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-1.5 rounded-full border-modal-border bg-modal-bg/95 backdrop-blur-xl shadow-2xl" side="top" align="start" sideOffset={8}>
+                                        <div className="flex items-center gap-1">
+                                          {['👍', '❤️', '😂', '😮', '😢'].map((emoji) => (
+                                            <motion.button
+                                              key={emoji}
+                                              whileHover={{ scale: 1.3, y: -2 }}
+                                              whileTap={{ scale: 0.9 }}
+                                              onClick={() => handleToggleReaction(comment._id, emoji)}
+                                              className="w-8 h-8 flex items-center justify-center text-xl hover:bg-brand-primary/10 rounded-full transition-colors"
+                                            >
+                                              {emoji}
+                                            </motion.button>
+                                          ))}
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                </div>
+
+                                {/* Hiển thị các reactions đã có */}
+                                {comment.reactions && comment.reactions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 px-1">
+                                    {comment.reactions.map((reaction: any) => {
+                                      const hasReacted = reaction.userIds.includes(currentUser?.id);
+                                      return (
+                                        <button
+                                          key={reaction.emoji}
+                                          onClick={() => handleToggleReaction(comment._id, reaction.emoji)}
+                                          className={cn(
+                                            "flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold transition-all duration-200",
+                                            hasReacted 
+                                              ? "bg-brand-primary/10 border-brand-primary/30 text-brand-primary shadow-sm scale-105" 
+                                              : "bg-modal-surface border-modal-border text-text-dim hover:border-brand-primary/20"
+                                          )}
+                                        >
+                                          <span>{reaction.emoji}</span>
+                                          <span>{reaction.userIds.length}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </ScrollArea>

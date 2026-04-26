@@ -6,12 +6,17 @@ import { workspaceService } from '@/services/workspace.service';
 export function useWorkspaceRole() {
   const params = useParams();
   const { user } = useAuthStore();
-  const workspaceId = params.workspaceId as string;
+  
+  // Lấy workspaceId ổn định hơn
+  const workspaceId = (params?.workspaceId as string) || 
+    (typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : '');
+  
+  const isValidId = /^[0-9a-fA-F]{24}$/.test(workspaceId);
 
   const { data: membersData, isLoading } = useQuery({
     queryKey: ['workspace-members', workspaceId],
     queryFn: () => workspaceService.getMembers(workspaceId),
-    enabled: !!workspaceId && !!user,
+    enabled: isValidId && !!user,
   });
 
   const currentMember = membersData?.members?.find((m: any) => 

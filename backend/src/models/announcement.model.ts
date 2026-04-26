@@ -15,6 +15,9 @@ export interface IComment {
   _id: mongoose.Types.ObjectId;
   authorId: mongoose.Types.ObjectId;
   content: string;
+  reactions: IReaction[];
+  mentions: mongoose.Types.ObjectId[];
+  replyTo: mongoose.Types.ObjectId | null;
   createdAt: Date;
 }
 
@@ -55,6 +58,9 @@ const CommentSchema = new Schema<IComment>(
   {
     authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     content: { type: String, required: true },
+    reactions: [ReactionSchema],
+    mentions: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    replyTo: { type: Schema.Types.ObjectId, ref: "User", default: null },
     createdAt: { type: Date, default: Date.now },
   }
 );
@@ -65,7 +71,19 @@ const AnnouncementSchema = new Schema<IAnnouncement>(
     projectId: { type: Schema.Types.ObjectId, ref: "Project" },
     type: { type: String, enum: ["GENERAL", "MILESTONE", "ALERT"], default: "GENERAL" },
     title: { type: String, required: true },
-    content: { type: String, required: true },
+    content: { 
+      type: String, 
+      default: '',
+      validate: {
+        validator: function(this: any, value: string) {
+          // Nếu có attachments thì content có thể rỗng, nếu không có attachments thì content phải có giá trị
+          const hasAttachments = this.attachments && this.attachments.length > 0;
+          const hasContent = value && value.trim().length > 0;
+          return hasContent || hasAttachments;
+        },
+        message: 'Nội dung bản tin không được để trống khi không có file đính kèm.'
+      }
+    },
     isPinned: { type: Boolean, default: false },
     attachments: [AttachmentSchema],
     reactions: [ReactionSchema],

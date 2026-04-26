@@ -1,20 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Image as ImageIcon, Link as LinkIcon, Smile, FileText } from 'lucide-react';
+import { Send, Image as ImageIcon, Paperclip, Smile, FileText, X, Hash, ImagePlus } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { useAuthStore } from '@/stores/auth.store';
 import EmojiPicker from 'emoji-picker-react';
 import uploadService from '@/services/upload.service';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { tagService } from '@/services/tag.service';
-import { X, Hash } from 'lucide-react'; // Thêm icon X và Hash
+import { Attachment } from '@/services/announcement.service';
 
 interface FeedComposerProps {
-  onCreate: (data: { title: string; content: string; type: string; attachments?: any[] }) => void;
+  onCreate: (data: { title: string; content: string; type: string; attachments?: Attachment[] }) => void;
   isLoading: boolean;
 }
 
@@ -23,18 +24,40 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
   const { workspaceId } = useParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', type: 'GENERAL' });
-  const [attachments, setAttachments] = useState<{fileUrl: string, fileName: string, fileType: string}[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   const { data: workspaceTags } = useQuery({
     queryKey: ['workspaceTags', workspaceId],
     queryFn: () => tagService.getTags(workspaceId as string),
     enabled: !!workspaceId
   });
+
+  const handleAddImageUrl = (url: string) => {
+    if (!url.trim()) return;
+    
+    // Simple validation
+    if (!url.startsWith('http')) {
+       toast.error('Địa chỉ ảnh không hợp lệ!');
+       return;
+    }
+
+    const newAttachment: Attachment = {
+      fileUrl: url,
+      fileName: 'Ảnh từ địa chỉ URL',
+      fileType: 'IMAGE'
+    };
+
+    setAttachments(prev => [...prev, newAttachment]);
+    setIsExpanded(true);
+    toast.success('Đã thêm ảnh từ địa chỉ!');
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -119,21 +142,41 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
     
     try {
       setIsUploading(true);
-      // Thực hiện upload thật lên Cloud
-      const result = await uploadService.uploadFile(file);
+      const result = await uploadService.uploadImage(file);
       
-      const newAttachment = {
-        fileUrl: result.url,
-        fileName: result.fileName,
-        fileType: result.fileType
-      };
-      
-      setAttachments(prev => [...prev, newAttachment]);
+      setAttachments(prev => [...prev, result]);
       setIsExpanded(true);
-      toast.success(`Đã đính kèm: ${file.name}`);
+      toast.success(`Đã đính kèm ảnh: ${file.name}`);
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error('Không thể upload tệp. Vui lòng thử lại.');
+      toast.error('Không thể upload ảnh.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Kiểm tra dung lượng 30MB ở phía client
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('File quá lớn! Giới hạn tối đa là 30MB.');
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      // Upload trực tiếp lên Cloudflare R2
+      const result = await uploadService.uploadDocToR2(file);
+      
+      setAttachments(prev => [...prev, result]);
+      setIsExpanded(true);
+      toast.success(`Đã đính kèm tài liệu: ${file.name}`);
+    } catch (error) {
+      console.error('Doc Upload failed:', error);
+      toast.error('Không thể upload tài liệu.');
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -142,14 +185,6 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
 
   const removeAttachment = (indexToRemove: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== indexToRemove));
-  };
-
-  const handleLinkAttachment = () => {
-    const url = window.prompt('Nhập đường dẫn (URL):', 'https://');
-    if (url && url !== 'https://') {
-      const text = window.prompt('Tiêu đề hiển thị (Không bắt buộc):', 'Link đính kèm');
-      insertToContent(`[${text || url}](${url})`);
-    }
   };
 
   const handleEmojiSelect = (emoji: string) => {
@@ -289,21 +324,77 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
 
               <div className="flex items-center gap-4 relative">
                 <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
-                  {/* Image Tool */}
+                  {/* Image Tool (New: Popover with URL + File options) */}
                   <input 
+                    ref={imageInputRef}
                     type="file" 
-                    id="feed-image-upload" 
                     className="hidden" 
                     accept="image/*"
                     onChange={handleImageUpload}
                   />
-                  <button onClick={() => document.getElementById('feed-image-upload')?.click()} className="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-surface-tertiary transition-colors overflow-hidden relative" title="Đính kèm ảnh">
-                    <ImageIcon className="w-4 h-4" />
-                  </button>
+                  <Popover>
+                    <PopoverTrigger className="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-surface-tertiary transition-colors outline-none" title="Đính kèm ảnh">
+                      <ImageIcon className="w-4 h-4" />
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="start" className="w-80 p-4 rounded-2xl bg-white dark:bg-surface-secondary border-divider shadow-2xl z-50">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Dán địa chỉ ảnh</label>
+                          <div className="flex gap-2">
+                            <Input 
+                              placeholder="https://example.com/image.jpg"
+                              className="flex-1 rounded-xl border-none bg-slate-100 dark:bg-surface-tertiary text-xs h-10 font-bold"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const url = (e.target as HTMLInputElement).value;
+                                  if (url.trim()) {
+                                    handleAddImageUrl(url);
+                                    (e.target as HTMLInputElement).value = '';
+                                  }
+                                }
+                              }}
+                            />
+                            <button 
+                              onClick={(e) => {
+                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                if (input.value.trim()) {
+                                  handleAddImageUrl(input.value);
+                                  input.value = '';
+                                }
+                              }}
+                              className="px-3 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase hover:opacity-90 transition-opacity"
+                            >
+                              Thêm
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-divider"></span></div>
+                          <div className="relative flex justify-center text-[9px] uppercase font-bold"><span className="bg-white dark:bg-surface-secondary px-2 text-slate-400">Hoặc</span></div>
+                        </div>
+
+                        <button 
+                          onClick={() => imageInputRef.current?.click()}
+                          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-[11px] font-bold text-slate-600 dark:text-slate-300"
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                          Tải ảnh từ máy tính
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   
-                  {/* Link Tool */}
-                  <button onClick={handleLinkAttachment} className="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-surface-tertiary transition-colors" title="Đính kèm Link">
-                    <LinkIcon className="w-4 h-4" />
+                  {/* Document Tool (Cloudflare R2) */}
+                  <input 
+                    ref={docInputRef}
+                    type="file" 
+                    className="hidden" 
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                    onChange={handleDocUpload}
+                  />
+                  <button onClick={() => docInputRef.current?.click()} className="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-surface-tertiary transition-colors" title="Đính kèm tài liệu">
+                    <Paperclip className="w-4 h-4" />
                   </button>
                   
                   {/* Emoji Tool & Popover */}

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Image as ImageIcon, Link as LinkIcon, Smile, X, FileText } from 'lucide-react';
+import { Send, Image as ImageIcon, Paperclip, Smile, X, FileText } from 'lucide-react';
 import { Announcement, Attachment } from '@/services/announcement.service';
 import {
   Dialog,
@@ -16,6 +16,9 @@ import { useQuery } from '@tanstack/react-query';
 import { tagService } from '@/services/tag.service';
 import uploadService from '@/services/upload.service';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { ImagePlus } from 'lucide-react';
 
 interface FeedEditModalProps {
   announcement: Announcement;
@@ -38,12 +41,31 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
   const [tagSearch, setTagSearch] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
-
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const { data: workspaceTags } = useQuery({
     queryKey: ['workspaceTags', workspaceId],
     queryFn: () => tagService.getTags(workspaceId as string),
     enabled: !!workspaceId && isOpen
   });
+
+  const handleAddImageUrl = (url: string) => {
+    if (!url.trim()) return;
+    
+    if (!url.startsWith('http')) {
+       toast.error('Địa chỉ ảnh không hợp lệ!');
+       return;
+    }
+
+    const newAttachment: Attachment = {
+      fileUrl: url,
+      fileName: 'Ảnh từ địa chỉ URL',
+      fileType: 'IMAGE'
+    };
+
+    setAttachments(prev => [...prev, newAttachment]);
+    toast.success('Đã thêm ảnh từ địa chỉ!');
+  };
 
   // Sync state when open
   useEffect(() => {
@@ -135,16 +157,33 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
     
     try {
       setIsUploading(true);
-      const result = await uploadService.uploadFile(file);
-      const newAttachment: Attachment = {
-        fileUrl: result.url,
-        fileName: result.fileName,
-        fileType: result.fileType
-      };
-      setAttachments(prev => [...prev, newAttachment]);
-      toast.success(`Đã thêm: ${file.name}`);
+      const result = await uploadService.uploadImage(file);
+      setAttachments(prev => [...prev, result]);
+      toast.success(`Đã thêm ảnh: ${file.name}`);
     } catch (error) {
-      toast.error('Không thể upload tệp.');
+      toast.error('Không thể upload ảnh.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('File quá lớn! Giới hạn tối đa là 30MB.');
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      const result = await uploadService.uploadDocToR2(file);
+      setAttachments(prev => [...prev, result]);
+      toast.success(`Đã thêm tài liệu: ${file.name}`);
+    } catch (error) {
+      toast.error('Không thể upload tài liệu.');
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -237,18 +276,83 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
 
         <DialogFooter className="p-6 bg-slate-50 dark:bg-white/5 flex items-center justify-between sm:justify-between">
           <div className="flex items-center gap-2">
+            {/* Image Upload */}
             <input 
+              ref={imageInputRef}
               type="file" 
-              id="edit-file-upload" 
               className="hidden" 
+              accept="image/*"
               onChange={handleImageUpload}
             />
+            <Popover>
+              <PopoverTrigger className="p-2 rounded-full hover:bg-white dark:hover:bg-surface-tertiary transition-colors text-slate-400 outline-none" title="Đính kèm ảnh">
+                <ImageIcon className="w-5 h-5" />
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-80 p-4 rounded-2xl bg-white dark:bg-surface-secondary border-divider shadow-2xl z-50">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Dán địa chỉ ảnh</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1 rounded-xl border-none bg-slate-100 dark:bg-surface-tertiary text-xs h-10 font-bold"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const url = (e.target as HTMLInputElement).value;
+                            if (url.trim()) {
+                              handleAddImageUrl(url);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={(e) => {
+                          const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                          if (input.value.trim()) {
+                            handleAddImageUrl(input.value);
+                            input.value = '';
+                          }
+                        }}
+                        className="px-3 rounded-xl bg-brand-primary text-white text-[10px] font-black uppercase hover:opacity-90 transition-opacity"
+                      >
+                        Thêm
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-divider"></span></div>
+                    <div className="relative flex justify-center text-[9px] uppercase font-bold"><span className="bg-white dark:bg-surface-secondary px-2 text-slate-400">Hoặc</span></div>
+                  </div>
+
+                  <button 
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-[11px] font-bold text-slate-600 dark:text-slate-300"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                    Tải ảnh từ máy tính
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Document Upload (Cloudflare R2) */}
+            <input 
+              ref={docInputRef}
+              type="file" 
+              className="hidden" 
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+              onChange={handleDocUpload}
+            />
             <button 
-              onClick={() => document.getElementById('edit-file-upload')?.click()}
+              onClick={() => docInputRef.current?.click()}
               className="p-2 rounded-full hover:bg-white dark:hover:bg-surface-tertiary transition-colors text-slate-400"
+              title="Đính kèm tài liệu"
             >
-              <ImageIcon className="w-5 h-5" />
+              <Paperclip className="w-5 h-5" />
             </button>
+
             <button className="p-2 rounded-full hover:bg-white dark:hover:bg-surface-tertiary transition-colors text-slate-400">
               <Smile className="w-5 h-5" />
             </button>
@@ -258,7 +362,7 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
             <Button variant="ghost" onClick={onClose} className="rounded-full font-bold">Hủy</Button>
             <Button 
               onClick={handleSubmit} 
-              disabled={isLoading || isUploading}
+              disabled={isLoading || isUploading || (!formData.content.trim() && attachments.length === 0)}
               className="bg-brand-primary hover:bg-brand-primary/90 text-white px-8 rounded-full font-bold shadow-glow-combined"
             >
               Cập nhật

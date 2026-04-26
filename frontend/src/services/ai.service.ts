@@ -37,8 +37,9 @@ export const suggestSubtasks = async (parentTitle: string): Promise<string[]> =>
 export const sendAiChatMessage = async (
   message: string,
   history: ChatMessage[],
-  context: ProjectAiContext = {}
+  context: ProjectAiContext = {},
+  modelId?: string
 ): Promise<string> => {
-  const response = await api.post("/ai/chat", { message, history, context });
+  const response = await api.post("/ai/chat", { message, history, context, modelId });
   return response.data.reply as string;
 };

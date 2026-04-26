@@ -31,6 +31,7 @@ taskRoutes.get("/workspace/:workspaceId/subtasks/:parentId", getSubtasksControll
 
 // 5. Thao tác trên ID cụ thể công việc
 taskRoutes.get("/workspace/:workspaceId/project/:projectId/:taskId", getTaskByIdController);
+taskRoutes.get("/workspace/:workspaceId/task/:taskId", getTaskByIdController); // Route mới không cần projectId
 taskRoutes.get("/workspace/:workspaceId/deleted/all", getDeletedTasksController);
 taskRoutes.patch("/workspace/:workspaceId/restore/:taskId", restoreTaskController);
 taskRoutes.delete("/workspace/:workspaceId/delete/:taskId", deleteTaskController);

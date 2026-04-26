@@ -39,5 +39,10 @@ export const userService = {
       },
     });
     return response.data as { url: string };
+  },
+  
+  updatePreferences: async (preferences: { receiveDailyDigest: boolean }) => {
+    const response = await api.patch('/user/preferences', preferences);
+    return response.data;
   }
 };

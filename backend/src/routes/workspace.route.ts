@@ -12,6 +12,8 @@ import {
     updateWorkspaceByIdController,
     resetInviteCodeController,
     removeWorkspaceMemberController,
+    triggerSlackTestController,
+    triggerEmailTestController,
 } from "../controllers/workspace.controller";
 const workspaceRoutes = Router();
 
@@ -40,6 +42,10 @@ workspaceRoutes.put("/:id/invite-code", resetInviteCodeController);
 
 // [AI-ADDED] Xóa thành viên khỏi workspace
 workspaceRoutes.delete("/:id/member/:memberId", removeWorkspaceMemberController);
+
+// [AI-ADDED] Trigger gửi thông báo test thủ công
+workspaceRoutes.post("/:id/trigger-slack-test", triggerSlackTestController);
+workspaceRoutes.post("/trigger-email-test", triggerEmailTestController);
 
 
 export default workspaceRoutes;

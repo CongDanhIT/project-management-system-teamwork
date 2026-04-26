@@ -7,6 +7,9 @@ interface User {
   email: string;
   avatar?: string;
   currentWorkspaceId?: string;
+  preferences?: {
+    receiveDailyDigest: boolean;
+  };
 }
 
 interface AuthState {
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
           currentWorkspaceId: user.currentWorkspace 
             ? (typeof user.currentWorkspace === 'object' ? user.currentWorkspace._id : user.currentWorkspace)
             : undefined,
+          preferences: user.preferences,
         }, 
         token: token || null, 
         isAuthenticated: true,

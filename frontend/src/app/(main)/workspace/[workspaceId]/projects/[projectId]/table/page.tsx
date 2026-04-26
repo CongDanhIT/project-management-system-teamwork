@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { projectService, Project } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { workspaceService } from '@/services/workspace.service';
@@ -49,10 +49,31 @@ import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 
 export default function ProjectTablePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
+  const targetTaskId = searchParams.get('taskId');
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { isAdminOrOwner } = useWorkspaceRole();
+
+  // Tự động mở Task nếu có taskId trong URL
+  useEffect(() => {
+    if (targetTaskId && workspaceId && projectId) {
+      const fetchAndOpenTask = async () => {
+        try {
+          const task = await taskService.getTaskById(workspaceId, projectId, targetTaskId);
+          if (task) {
+            setSelectedTask(task);
+            setIsTaskModalOpen(true);
+          }
+        } catch (error) {
+          console.error("Failed to fetch target task:", error);
+        }
+      };
+      fetchAndOpenTask();
+    }
+  }, [targetTaskId, workspaceId, projectId]);
 
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -612,7 +633,15 @@ export default function ProjectTablePage() {
       <TaskDetailModal
         task={selectedTask}
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          // Xóa taskId và commentId khỏi URL khi đóng
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete('taskId');
+          params.delete('commentId');
+          const newQuery = params.toString();
+          router.replace(`${window.location.pathname}${newQuery ? `?${newQuery}` : ''}`);
+        }}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
         onSubtaskUpdate={refreshTasks}

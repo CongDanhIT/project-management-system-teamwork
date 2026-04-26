@@ -462,7 +462,7 @@ export default function WorkspaceDashboardPage() {
                 <div
                   key={stat.label}
                   className={cn(
-                    "group relative bg-white dark:bg-card p-8 rounded-[40px] transition-all duration-500 hover:-translate-y-2 overflow-hidden border border-slate-100 dark:border-white/5 shadow-depth-1 dark:shadow-none"
+                    "group relative bg-white dark:bg-card p-8 rounded-[40px] transition-all duration-500 hover:-translate-y-2 overflow-hidden dark:border dark:border-white/5 shadow-depth-1 dark:shadow-none"
                   )}
                 >
                   {/* Ambient Background Light Source */}

@@ -40,7 +40,18 @@ export default function RootLayout({
       >
         <Providers>
           {children}
-          <Toaster position="top-right" expand={false} richColors />
+          <Toaster 
+            position="bottom-right" 
+            expand={true} 
+            richColors 
+            closeButton
+            toastOptions={{
+              style: {
+                padding: '16px',
+                borderRadius: '12px',
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

@@ -4,6 +4,7 @@ import { TaskPriorityEnum, TaskStatusEnum, TaskPriorityEnumType, TaskStatusEnumT
 import MemberModel from "../models/member.model";
 import ProjectModel from "../models/project.model";
 import { ProjectStatusEnum } from "../enums/projectStatus.enum";
+import { createSystemCommentService } from "./interaction.service";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -184,7 +185,12 @@ export const updateTaskService = async (
     // 3. Update các trường
     if (body.title !== undefined) task.title = body.title;
     if (body.description !== undefined) task.description = body.description;
-    if (body.priority !== undefined) task.priority = body.priority as TaskPriorityEnumType;
+    
+    if (body.priority !== undefined && task.priority !== body.priority) {
+        const oldPriority = task.priority;
+        task.priority = body.priority as TaskPriorityEnumType;
+        await createSystemCommentService(workspaceId, taskId, userId, `đã thay đổi mức ưu tiên từ **${oldPriority}** sang **${body.priority}**`);
+    }
     
     // Kiểm tra quy tắc hoàn thành (DONE)
     if (body.status !== undefined && body.status === TaskStatusEnum.DONE && task.status !== TaskStatusEnum.DONE) {
@@ -208,15 +214,20 @@ export const updateTaskService = async (
             task.completedAt = null;
         }
 
+        const oldStatus = task.status;
         task.status = body.status as TaskStatusEnumType;
+        if (oldStatus !== body.status) {
+            await createSystemCommentService(workspaceId, taskId, userId, `đã chuyển trạng thái từ **${oldStatus}** sang **${body.status}**`);
+        }
     }
     // Update dates - Only update if explicitly provided and not null to prevent accidental data loss
     if (body.startDate !== undefined && body.startDate !== null) {
       task.startDate = body.startDate;
     }
     
-    if (body.dueDate !== undefined && body.dueDate !== null) {
+    if (body.dueDate !== undefined && body.dueDate !== null && task.dueDate?.toString() !== new Date(body.dueDate).toString()) {
       task.dueDate = body.dueDate;
+      await createSystemCommentService(workspaceId, taskId, userId, `đã cập nhật hạn chót mới là **${new Date(body.dueDate).toLocaleDateString('vi-VN')}**`);
     }
     if (body.assignedTo !== undefined) {
         task.assignedTo = body.assignedTo.length > 0
@@ -352,12 +363,17 @@ export const getTaskByIdService = async (
     projectId: string,
     taskId: string
 ) => {
-    const task = await TaskModel.findOne({
+    const query: any = {
         _id: taskId,
         workspaceId,
-        projectId,
         deletedAt: null
-    })
+    };
+
+    if (projectId) {
+        query.projectId = projectId;
+    }
+
+    const task = await TaskModel.findOne(query)
         .populate("assignedTo", "_id name email profilePicture")
         .populate("projectId", "_id name")
         .populate("parentId", "_id title taskCode")

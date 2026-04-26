@@ -15,6 +15,9 @@ export interface UserDocument extends mongoose.Document {
     createdAt: Date;
     updatedAt: Date;
     currentWorkspace: mongoose.Types.ObjectId | null;
+    preferences: {
+        receiveDailyDigest: boolean;
+    };
 
     /** So sánh mật khẩu thuần túy với mật khẩu đã hash của User */
     comparePassword(value: string): Promise<boolean>;
@@ -39,6 +42,9 @@ const userSchema = new Schema<UserDocument>(
         isActive: { type: Boolean, default: true },
         lastLogin: { type: Date, default: null },
         currentWorkspace: { type: Schema.Types.ObjectId, ref: "Workspace", default: null },
+        preferences: {
+            receiveDailyDigest: { type: Boolean, default: true },
+        },
     },
     {
         timestamps: true, // Tự động tạo createdAt và updatedAt

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandle";
 import * as AnnouncementService from "../services/announcement.service";
 import HTTP_STATUS from "../config/http.config";
+import eventDispatcher, { EVENTS } from "../utils/eventDispatcher";
 
 export const getAnnouncements = asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = req.params.workspaceId as string;
@@ -33,6 +34,14 @@ export const createAnnouncement = asyncHandler(async (req: Request, res: Respons
     userId,
     { type, title, content, attachments }
   );
+
+  // Phát sự kiện realtime
+  eventDispatcher.emit(EVENTS.ANNOUNCEMENT.CREATED, {
+    workspaceId,
+    projectId,
+    announcementId: announcement._id,
+    announcement
+  });
 
   return res.status(HTTP_STATUS.CREATED).json({
     message: "Tạo bản tin thành công",
@@ -111,5 +120,80 @@ export const deleteAnnouncement = asyncHandler(async (req: Request, res: Respons
 
   return res.status(HTTP_STATUS.OK).json({
     message: "Xóa bản tin thành công",
+  });
+});
+
+export const addComment = asyncHandler(async (req: Request, res: Response) => {
+  const workspaceId = req.params.workspaceId as string;
+  const announcementId = req.params.announcementId as string;
+  const { content, replyTo, mentions } = req.body;
+  const userId = (req.user as any)?._id?.toString() || (req.user as any)?.id;
+
+  if (!userId) throw new Error("Không tìm thấy User");
+
+  const announcement = await AnnouncementService.addCommentService(
+    workspaceId,
+    announcementId,
+    userId,
+    content,
+    replyTo,
+    mentions
+  );
+
+  // Phát sự kiện realtime
+  eventDispatcher.emit(EVENTS.COMMENT.ADDED, {
+    workspaceId,
+    announcementId,
+    type: 'ANNOUNCEMENT',
+    announcement
+  });
+
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: "Đã đăng bình luận",
+    announcement
+  });
+});
+
+export const deleteComment = asyncHandler(async (req: Request, res: Response) => {
+  const workspaceId = req.params.workspaceId as string;
+  const announcementId = req.params.announcementId as string;
+  const commentId = req.params.commentId as string;
+  const userId = (req.user as any)?._id?.toString() || (req.user as any)?.id;
+
+  if (!userId) throw new Error("Không tìm thấy User");
+
+  const announcement = await AnnouncementService.deleteCommentService(
+    workspaceId,
+    announcementId,
+    commentId,
+    userId
+  );
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: "Đã xóa bình luận",
+    announcement
+  });
+});
+
+export const toggleCommentReaction = asyncHandler(async (req: Request, res: Response) => {
+  const workspaceId = req.params.workspaceId as string;
+  const announcementId = req.params.announcementId as string;
+  const commentId = req.params.commentId as string;
+  const { emoji } = req.body;
+  const userId = (req.user as any)?._id?.toString() || (req.user as any)?.id;
+
+  if (!userId) throw new Error("Không tìm thấy User");
+
+  const announcement = await AnnouncementService.toggleCommentReactionService(
+    workspaceId,
+    announcementId,
+    commentId,
+    userId,
+    emoji
+  );
+
+  return res.status(HTTP_STATUS.OK).json({
+    message: "Cập nhật reaction bình luận thành công",
+    announcement
   });
 });

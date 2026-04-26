@@ -16,11 +16,13 @@ import Loader from "@/components/ui/Loader";
 import { Task, TaskStatus } from '@/types/task';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 
 export default function ProjectBoardPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
   const { currentWorkspaceId } = useWorkspaceStore();
@@ -43,6 +45,23 @@ export default function ProjectBoardPage() {
   const [refreshKey, setRefreshKey] = useState(0); // To refresh KanbanBoard
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<TaskStatus>(TaskStatus.TODO);
+
+  // Auto open task from URL
+  useEffect(() => {
+    const taskId = searchParams.get('taskId');
+    if (taskId && workspaceId && projectId) {
+      const fetchTask = async () => {
+        try {
+          const task = await taskService.getTaskById(workspaceId, projectId, taskId);
+          setSelectedTask(task);
+          setIsModalOpen(true);
+        } catch (error) {
+          console.error('Auto-open task error:', error);
+        }
+      };
+      fetchTask();
+    }
+  }, [searchParams, workspaceId, projectId]);
 
   useEffect(() => {
     const fetchData = async () => {

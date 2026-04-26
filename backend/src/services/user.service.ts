@@ -106,3 +106,28 @@ export const switchWorkspaceService = async (
 
     return { user };
 };
+
+/**
+ * Cập nhật cấu hình người dùng (ví dụ: bật/tắt Daily Digest)
+ */
+export const updateUserPreferencesService = async (
+    userId: string,
+    preferences: { receiveDailyDigest?: boolean }
+) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundException("Không tìm thấy user");
+    }
+
+    // Đảm bảo preferences object tồn tại
+    if (!user.preferences) {
+        user.preferences = { receiveDailyDigest: true };
+    }
+
+    if (preferences.receiveDailyDigest !== undefined) {
+        user.preferences.receiveDailyDigest = preferences.receiveDailyDigest;
+    }
+
+    await user.save();
+    return { user };
+};

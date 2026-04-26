@@ -19,6 +19,7 @@ export interface ProjectDocument extends mongoose.Document {
     coverPositionX: number;
     coverPositionY: number;
     favoritedBy: mongoose.Types.ObjectId[];
+    slackWebhookUrl?: string | null;
 }
 const projectSchema = new Schema<ProjectDocument>({
     name: { type: String, required: true, trim: true },
@@ -36,6 +37,7 @@ const projectSchema = new Schema<ProjectDocument>({
     coverPositionX: { type: Number, default: 50 },
     coverPositionY: { type: Number, default: 50 },
     favoritedBy: [{ type: Schema.Types.ObjectId, ref: "User", default: [] }],
+    slackWebhookUrl: { type: String, required: false, trim: true, default: null },
 }, {
     timestamps: true,
 });

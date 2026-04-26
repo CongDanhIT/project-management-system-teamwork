@@ -10,11 +10,13 @@ import {
   Camera, 
   Save, 
   Loader2,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -48,6 +50,23 @@ export default function ProfilePage() {
       });
     }
   }, [user, reset]);
+
+  // Logic cập nhật Preferences (Daily Digest)
+  const updatePrefMutation = useMutation({
+    mutationFn: (checked: boolean) => userService.updatePreferences({ receiveDailyDigest: checked }),
+    onSuccess: (response) => {
+      const updatedUser = response.user;
+      if (updatedUser) {
+        // Đồng bộ vào Global Store
+        updateUser({
+          preferences: updatedUser.preferences
+        });
+      }
+      toast.success("Đã cập nhật cài đặt thông báo");
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    },
+    onError: () => toast.error("Không thể cập nhật cài đặt thông báo")
+  });
 
   const updateMutation = useMutation({
     mutationFn: (data: ProfileForm) => userService.updateProfile(data),
@@ -106,100 +125,141 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Info Form */}
-        <Card className="lg:col-span-2 border-slate-200/60 shadow-xl shadow-slate-200/10 rounded-3xl overflow-hidden">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <User className="w-5 h-5 text-brand-primary" />
-                Thông tin tài khoản
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
-                <div 
-                  className="relative group cursor-pointer"
-                  onClick={() => !isUploading && fileInputRef.current?.click()}
-                >
-                   <UserAvatar 
-                      name={user?.name} 
-                      image={profilePictureUrl}
-                      size="xl"
-                      showShadow={false}
-                      className="w-24 h-24 rounded-3xl border-4 border-white shadow-xl ring-1 ring-slate-100"
-                   />
-                   <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      {isUploading ? <Loader2 className="text-white w-6 h-6 animate-spin" /> : <Camera className="text-white w-6 h-6" />}
-                   </div>
-                   <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      disabled={isUploading}
-                   />
-                </div>
-                <div className="space-y-1 text-center sm:text-left">
-                   <h3 className="font-bold text-slate-900">Ảnh đại diện</h3>
-                   <p className="text-xs text-slate-500 font-medium max-w-xs">Chúng tôi hỗ trợ định dạng PNG, JPG. Dung lượng tối đa 2MB.</p>
-                   <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-2 text-[10px] h-7 rounded-lg border-brand-primary/10 text-brand-primary hover:bg-brand-primary/10 font-bold"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                   >
-                      CHỌN ẢNH TỪ MÁY
-                   </Button>
-                </div>
-              </div>
-
-              <div className="grid gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Họ và tên</label>
-                  <Input 
-                    {...register('name', { required: true })}
-                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-bold"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Email (Không thể thay đổi)</label>
-                  <div className="relative">
-                    <Input 
-                      value={user?.email}
-                      disabled
-                      className="h-12 rounded-xl bg-slate-50 border-slate-200 font-medium pl-10 cursor-not-allowed"
-                    />
-                    <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+        <div className="lg:col-span-2 space-y-8">
+          {/* Profile Info Form */}
+          <Card className="border-slate-200/60 shadow-xl shadow-slate-200/10 rounded-3xl overflow-hidden">
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <User className="w-5 h-5 text-brand-primary" />
+                  Thông tin tài khoản
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
+                  <div 
+                    className="relative group cursor-pointer"
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                  >
+                     <UserAvatar 
+                        name={user?.name} 
+                        image={profilePictureUrl}
+                        size="xl"
+                        showShadow={false}
+                        className="w-24 h-24 rounded-3xl border-4 border-white shadow-xl ring-1 ring-slate-100"
+                     />
+                     <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {isUploading ? <Loader2 className="text-white w-6 h-6 animate-spin" /> : <Camera className="text-white w-6 h-6" />}
+                     </div>
+                     <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        disabled={isUploading}
+                     />
+                  </div>
+                  <div className="space-y-1 text-center sm:text-left">
+                     <h3 className="font-bold text-slate-900">Ảnh đại diện</h3>
+                     <p className="text-xs text-slate-500 font-medium max-w-xs">Chúng tôi hỗ trợ định dạng PNG, JPG. Dung lượng tối đa 2MB.</p>
+                     <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2 text-[10px] h-7 rounded-lg border-brand-primary/10 text-brand-primary hover:bg-brand-primary/10 font-bold"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                     >
+                        CHỌN ẢNH TỪ MÁY
+                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">URL Ảnh đại diện</label>
-                  <Input 
-                    {...register('profilePicture')}
-                    placeholder="https://..."
-                    className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-medium"
+                <div className="grid gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Họ và tên</label>
+                    <Input 
+                      {...register('name', { required: true })}
+                      className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Email (Không thể thay đổi)</label>
+                    <div className="relative">
+                      <Input 
+                        value={user?.email}
+                        disabled
+                        className="h-12 rounded-xl bg-slate-50 border-slate-200 font-medium pl-10 cursor-not-allowed"
+                      />
+                      <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">URL Ảnh đại diện</label>
+                    <Input 
+                      {...register('profilePicture')}
+                      placeholder="https://..."
+                      className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-medium"
+                    />
+                    <p className="text-[10px] text-slate-400 italic ml-1">* Bạn có thể dán link trực tiếp hoặc chọn ảnh từ máy ở trên.</p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-slate-50/30 border-t border-slate-100 p-6 flex justify-end">
+                <Button 
+                  type="submit" 
+                  disabled={!isDirty || updateMutation.isPending || isUploading}
+                  className="bg-brand-primary hover:bg-brand-primary/90 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-brand-primary/20"
+                >
+                  {(updateMutation.isPending || isUploading) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Lưu hồ sơ
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+
+          {/* Notifications Settings */}
+          <Card className="border-slate-200/60 shadow-xl shadow-slate-200/10 rounded-3xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <Bell className="w-5 h-5 text-brand-primary" />
+                Cài đặt thông báo
+              </CardTitle>
+              <CardDescription className="font-medium">
+                Kiểm soát cách bạn nhận thông báo từ hệ thống.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="flex items-start gap-4 p-4 rounded-2xl border border-slate-100 hover:border-brand-primary/20 transition-colors bg-slate-50/30">
+                <div className="mt-1">
+                  <Checkbox 
+                    id="daily-digest" 
+                    checked={user?.preferences?.receiveDailyDigest ?? true}
+                    onCheckedChange={(checked) => {
+                      updatePrefMutation.mutate(!!checked);
+                    }}
+                    disabled={updatePrefMutation.isPending}
+                    className="w-5 h-5 rounded-md border-slate-300 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
                   />
-                  <p className="text-[10px] text-slate-400 italic ml-1">* Bạn có thể dán link trực tiếp hoặc chọn ảnh từ máy ở trên.</p>
+                </div>
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="daily-digest"
+                    className="text-sm font-bold text-slate-900 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Nhận email tóm tắt hàng ngày (Daily Digest)
+                  </label>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    Hệ thống sẽ gửi email báo cáo công việc vào lúc 8:00 sáng hàng ngày (GMT+7) để bạn nắm bắt kế hoạch trong ngày.
+                  </p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="bg-slate-50/30 border-t border-slate-100 p-6 flex justify-end">
-              <Button 
-                type="submit" 
-                disabled={!isDirty || updateMutation.isPending || isUploading}
-                className="bg-brand-primary hover:bg-brand-primary/90 text-white font-black px-8 h-12 rounded-2xl shadow-lg shadow-brand-primary/20"
-              >
-                {(updateMutation.isPending || isUploading) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Lưu hồ sơ
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+          </Card>
+        </div>
 
         {/* Sidebar help / Promo */}
         <div className="space-y-6">

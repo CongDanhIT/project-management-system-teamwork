@@ -11,6 +11,8 @@ import TaskModel from "../models/task.model";
 import { TaskStatusEnum } from "../enums/task.enum";
 import ProjectModel from "../models/project.model";
 import WorkspaceAnalyticsSnapshotModel from "../models/workspace-analytics-snapshot.model";
+import { EmailService } from "./email.service";
+import { SlackService } from "./slack.service";
 // tạo workspace
 export const createWorkspaceService = async (userId: string, body: {
     name: string;
@@ -355,7 +357,13 @@ export const changeMemberRoleService = async (workspaceId: string, memberId: str
     return member.populate("role");
 };
 //cập nhật workspace
-export const updateWorkspaceByIdService = async (workspaceId: string, name?: string, description?: string | null) => {
+export const updateWorkspaceByIdService = async (
+    workspaceId: string, 
+    name?: string, 
+    description?: string | null,
+    slackWebhookUrl?: string | null,
+    dailyDigestEnabled?: boolean
+) => {
     const workspace = await WorkspaceModel.findById(workspaceId);
     if (!workspace) {
         throw new NotFoundException("không tìm thấy workspace");
@@ -367,6 +375,15 @@ export const updateWorkspaceByIdService = async (workspaceId: string, name?: str
     if (description !== undefined) {
         workspace.description = description;
     }
+
+    if (slackWebhookUrl !== undefined) {
+        workspace.slackWebhookUrl = slackWebhookUrl;
+    }
+    
+    if (dailyDigestEnabled !== undefined) {
+        workspace.dailyDigestEnabled = dailyDigestEnabled;
+    }
+
     await workspace.save();
     return workspace;
 };
@@ -521,3 +538,31 @@ export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string) =
     return formattedHistory;
 };
 
+
+/**
+ * [AI-ADDED] Kích hoạt gửi Slack Daily Digest thủ công để test
+ */
+export const triggerSlackTestService = async (workspaceId: string) => {
+    const workspace = await WorkspaceModel.findById(workspaceId);
+    if (!workspace || !workspace.slackWebhookUrl) {
+        throw new BadRequestException("Workspace chưa cấu hình Slack Webhook");
+    }
+
+    // Lấy analytics thực tế
+    const analytics = await getWorkspaceAnalyticsService(workspaceId);
+    
+    // Gửi Slack
+    await SlackService.sendDailyDigest(workspace.slackWebhookUrl, workspace.name, analytics);
+    
+    return { success: true, message: "Đã gửi Slack thành công" };
+};
+
+/**
+ * [AI-ADDED] Kích hoạt gửi Email Daily Digest thủ công cho cá nhân để test
+ */
+export const triggerEmailTestService = async (userId: string) => {
+    // Gọi hàm có sẵn trong EmailService với forceSend = true
+    await EmailService.sendDailyDigest(userId, true);
+    
+    return { success: true, message: "Đã gửi Email thành công" };
+};
