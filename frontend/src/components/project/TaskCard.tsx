@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MoreHorizontal, Clock, User } from 'lucide-react';
+import { Calendar, MoreHorizontal, Clock, User, MessageCircle } from 'lucide-react';
 import { Task, TaskPriority } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -117,6 +117,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-secondary/30 px-2 py-0.5 rounded-full">
               <Calendar className="w-3.5 h-3.5" />
               <span>{new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</span>
+            </div>
+          )}
+          {task.userCommentCount != null && task.userCommentCount > 0 && (
+            <div className="flex items-center gap-1 text-[10px] text-brand-primary/70 bg-brand-primary/5 px-2 py-0.5 rounded-full" title={`${task.userCommentCount} bình luận`}>
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="font-semibold">{task.userCommentCount}</span>
             </div>
           )}
         </div>

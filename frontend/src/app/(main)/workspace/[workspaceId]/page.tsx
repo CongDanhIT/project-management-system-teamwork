@@ -65,6 +65,10 @@ import { OverdueCommandCenter } from '@/components/workspace/OverdueCommandCente
 import WorkspaceAnalyticsChart from '@/components/workspace/WorkspaceAnalyticsChart';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import ProjectAnalyticsTab from '@/components/workspace/ProjectAnalyticsTab';
+import WorkspaceActivityTab from '@/components/workspace/WorkspaceActivityTab';
+import { ActivityHeatmap } from '@/components/workspace/ActivityHeatmap';
+
+
 
 
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
@@ -222,7 +226,7 @@ export default function WorkspaceDashboardPage() {
   const isLoading = isAnalyticsLoading || isProjectsLoading || isTasksLoading;
 
   const handleProjectClick = (projectId: string) => {
-    router.push(`/workspace/${workspaceId}/projects/${projectId}/board`);
+    router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
   };
 
   const handleSeeAllProjects = () => {
@@ -530,6 +534,12 @@ export default function WorkspaceDashboardPage() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
               <WorkspaceAnalyticsChart data={analyticsHistory || []} />
             </div>
+
+            {/* Hoạt động nhịp điệu (Heatmap) */}
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+              <ActivityHeatmap workspaceId={workspaceId} />
+            </div>
+
           </div>
 
           <div className="flex flex-col gap-20">
@@ -610,7 +620,7 @@ export default function WorkspaceDashboardPage() {
                             isHero ? "space-y-6 justify-center" : "space-y-2"
                           )}>
                             <div className="flex justify-between items-start">
-                              <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest text-brand-primary bg-brand-primary/10 border-none">
+                              <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest text-teal-600 bg-teal-500/10 border-none">
                                 {index % 4 === 0 ? "Chiến lược hàng đầu" :
                                   index % 4 === 1 ? "Kiến tạo mục tiêu" :
                                     index % 4 === 2 ? "Giải pháp sáng tạo" :
@@ -627,10 +637,7 @@ export default function WorkspaceDashboardPage() {
                               <h3 className={cn(
                                 "font-black text-slate-900 dark:text-foreground leading-tight tracking-tighter transition-all duration-500 uppercase",
                                 isHero ? "text-4xl lg:text-5xl" : "text-lg",
-                                index % 4 === 0 ? "group-hover:text-teal-600 dark:group-hover:text-teal-400" :
-                                  index % 4 === 1 ? "group-hover:text-[#035D5B] dark:group-hover:text-[#C7F964]" :
-                                    index % 4 === 2 ? "group-hover:text-amber-600 dark:group-hover:text-amber-400" :
-                                      "group-hover:text-cyan-600 dark:group-hover:text-cyan-400"
+                                "group-hover:text-teal-600 dark:group-hover:text-teal-400"
                               )}>
                                 {project.name}
                               </h3>
@@ -641,6 +648,8 @@ export default function WorkspaceDashboardPage() {
                                 {project.description || 'Hành trình kiến tạo đổi mới đầy khát vọng.'}
                               </p>
                             </div>
+
+
 
                             <div className="flex items-center justify-between mt-auto">
                               <div className="flex items-center gap-3">
@@ -675,7 +684,7 @@ export default function WorkspaceDashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="col-span-full py-20 bg-slate-50/20 dark:bg-card/10 rounded-[48px] border-2 border-dashed border-slate-200/60 dark:border-brand-secondary/20 flex flex-col items-center justify-center text-center w-full animate-in fade-in zoom-in duration-700 min-h-[300px]">
+                  <div className="col-span-full py-20 bg-slate-50/20 dark:bg-card/10 rounded-[48px] border-2 border-dashed border-slate-200/60 dark:border-brand-primary/20 flex flex-col items-center justify-center text-center w-full animate-in fade-in zoom-in duration-700 min-h-[300px]">
                     <div className="w-16 h-16 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6 shadow-depth-flat text-slate-300 dark:text-slate-600">
                       <Layout className="w-6 h-6" />
                     </div>
@@ -984,23 +993,10 @@ export default function WorkspaceDashboardPage() {
           />
         </TabsContent>
 
-        <TabsContent value="project" className="mt-0">
-          <div className="flex flex-col items-center justify-center py-32 bg-slate-50/10 dark:bg-white/5 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/10 animate-in fade-in zoom-in duration-700">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-[#C7F964] blur-[40px] opacity-20 animate-pulse" />
-              <Activity className="w-16 h-16 text-[#035D5B] dark:text-[#C7F964] relative z-10" />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Bản tin hoạt động</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm text-center mt-4 leading-relaxed font-medium">
-              Hệ thống đang tổng hợp các cập nhật thời gian thực, sự thay đổi trạng thái và đóng góp của đội ngũ từ toàn bộ dự án.
-            </p>
-            <div className="mt-10 flex gap-4">
-               <div className="w-2 h-2 rounded-full bg-[#035D5B] dark:bg-[#C7F964] animate-bounce" />
-               <div className="w-2 h-2 rounded-full bg-[#035D5B] dark:bg-[#C7F964] animate-bounce [animation-delay:0.2s]" />
-               <div className="w-2 h-2 rounded-full bg-[#035D5B] dark:bg-[#C7F964] animate-bounce [animation-delay:0.4s]" />
-            </div>
-          </div>
+        <TabsContent value="project" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <WorkspaceActivityTab workspaceId={workspaceId} />
         </TabsContent>
+
       </Tabs>
 
       <TaskDetailModal

@@ -9,6 +9,10 @@ import { SlackService } from "./slack.service";
 import { saveDailySnapshotsForAllWorkspaces, getWorkspaceAnalyticsService } from "./workspace.service";
 import { saveDailySnapshotsForAllProjects } from "./project.service";
 import { EmailService } from "./email.service";
+import AssetService from "./asset.service";
+import ProjectAssetModel from "../models/project-asset.model";
+import PhaseModel from "../models/phase.model";
+import AssetFolderModel from "../models/asset-folder.model";
 
 /**
  * Trích xuất public_id từ Cloudinary URL
@@ -62,8 +66,49 @@ export const cleanupExpiredTrash = async () => {
         if (deletedTasksResult.deletedCount > 0) {
             logger.info(`[CRON] Đã xóa vĩnh viễn ${deletedTasksResult.deletedCount} công việc riêng lẻ.`);
         }
+
+        // Tìm và xóa các Phase quá hạn
+        await PhaseModel.deleteMany({ deletedAt: { $ne: null, $lt: thirtyDaysAgo } });
+        // Tìm và xóa các Asset Folder quá hạn
+        await AssetFolderModel.deleteMany({ deletedAt: { $ne: null, $lt: thirtyDaysAgo } });
+
     } catch (error) {
         logger.error("[CRON-ERR] Lỗi dọn dẹp thùng rác:", { error });
+    }
+};
+
+/**
+ * 1.1. Dọn dẹp tệp tin vật lý trên R2 (Chạy hàng ngày cùng lúc với dọn dẹp thùng rác)
+ */
+export const cleanupExpiredAssets = async () => {
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        logger.info("[CRON] Bắt đầu dọn dẹp tệp tin vật lý trên R2...");
+
+        // Tìm các asset đã bị xóa mềm quá 30 ngày
+        const expiredAssets = await ProjectAssetModel.find({
+            deletedAt: { $ne: null, $lt: thirtyDaysAgo }
+        });
+
+        for (const asset of expiredAssets) {
+            try {
+                // Xóa vật lý trên R2
+                await AssetService.hardDeleteFromR2(asset.storageKey);
+                // Xóa vĩnh viễn khỏi DB
+                await ProjectAssetModel.deleteOne({ _id: asset._id });
+                logger.info(`[CRON] Đã xóa vĩnh viễn asset: ${asset.name} (${asset.storageKey})`);
+            } catch (err: any) {
+                logger.error(`[CRON-ERR] Lỗi khi xóa asset ${asset._id} từ R2`, { error: err.message });
+            }
+        }
+
+        if (expiredAssets.length > 0) {
+            logger.info(`[CRON] Đã hoàn thành dọn dẹp ${expiredAssets.length} tệp tin quá hạn trên R2.`);
+        }
+    } catch (error) {
+        logger.error("[CRON-ERR] Lỗi tiến trình dọn dẹp R2:", { error });
     }
 };
 
@@ -127,6 +172,53 @@ export const cleanupOrphanedCloudinaryFiles = async () => {
 };
 
 /**
+ * 2.1. Dọn dẹp tệp tin R2 mồ côi (Chạy hàng tháng)
+ * Quét toàn bộ tệp trên R2, nếu không có trong DB thì xóa.
+ */
+export const cleanupOrphanedR2Files = async () => {
+    try {
+        logger.info("[CRON] Bắt đầu quét file mồ côi trên R2...");
+
+        // Bước 1: Lấy tất cả storageKey đang dùng trong DB
+        const activeAssets = await ProjectAssetModel.find({ 
+            storageProvider: 'R2',
+            deletedAt: null 
+        }).select("storageKey");
+        
+        const usedStorageKeys = new Set(activeAssets.map(a => a.storageKey));
+
+        // Bước 2: Liệt kê tất cả tài nguyên trên R2
+        const r2Objects = await AssetService.listAllR2Objects();
+        const deletedKeys: string[] = [];
+
+        for (const obj of r2Objects) {
+            if (!obj.Key) continue;
+
+            // Kiểm tra xem key có trong DB không
+            if (!usedStorageKeys.has(obj.Key)) {
+                // Chỉ xóa file đã tồn tại trên 24h để tránh race condition
+                const lastModified = obj.LastModified ? new Date(obj.LastModified) : new Date();
+                const isOldEnough = (Date.now() - lastModified.getTime()) > 24 * 60 * 60 * 1000;
+
+                if (isOldEnough) {
+                    await AssetService.hardDeleteFromR2(obj.Key);
+                    deletedKeys.push(obj.Key);
+                }
+            }
+        }
+
+        if (deletedKeys.length > 0) {
+            logger.info(`[CRON] Đã dọn dẹp ${deletedKeys.length} file mồ côi trên R2.`, { keys: deletedKeys });
+        } else {
+            logger.info("[CRON] Không tìm thấy file mồ côi nào trên R2.");
+        }
+
+    } catch (error) {
+        logger.error("[CRON-ERR] Lỗi dọn dẹp R2 mồ côi:", { error });
+    }
+};
+
+/**
  * Khởi chạy các tiến trình định kỳ
  */
 export const startCronService = () => {
@@ -136,11 +228,16 @@ export const startCronService = () => {
     // 1. Dọn dẹp thùng rác: Chạy vào 00:00 hàng ngày
     cron.schedule("0 0 * * *", () => {
         cleanupExpiredTrash();
+        cleanupExpiredAssets(); // 🚀 Dọn dẹp file R2 song song
     });
 
-    // 2. Dọn dẹp Cloudinary: Chạy vào 01:00 ngày đầu tiên mỗi tháng
+    // 2. Dọn dẹp Cloudinary & R2: Chạy vào 01:00 và 02:00 ngày đầu tiên mỗi tháng
     cron.schedule("0 1 1 * *", () => {
         cleanupOrphanedCloudinaryFiles();
+    });
+
+    cron.schedule("0 2 1 * *", () => {
+        cleanupOrphanedR2Files();
     });
 
     // 3. Analytics Snapshot: Chạy vào 23:55 hàng ngày
@@ -177,15 +274,15 @@ export const startCronService = () => {
         for (const workspace of activeWorkspaces) {
             try {
                 const stats = await getWorkspaceAnalyticsService(workspace._id.toString());
+                const workspaceLink = `${process.env.FRONTEND_ORIGIN || "http://localhost:3000"}/workspace/${workspace._id}/board`;
+                
                 await SlackService.sendDailyDigest(
                     workspace.slackWebhookUrl!,
                     workspace.name,
-                    {
-                        totalTasks: stats.totalTasks,
-                        completedTasks: stats.completedTasks,
-                        overdueTasks: stats.overdueTasks,
-                        inProgressTasks: stats.inProgressTasks
-                    }
+                    stats,
+                    stats.trends,
+                    stats.nearDueDateTasks,
+                    workspaceLink
                 );
                 logger.info(`[CRON] Đã gửi Daily Digest Slack cho workspace: ${workspace.name}`);
             } catch (error: any) {

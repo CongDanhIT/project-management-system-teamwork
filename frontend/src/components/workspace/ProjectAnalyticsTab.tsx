@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Cell as BarCell
 } from 'recharts';
 import ProjectAnalyticsChart from '@/components/project/ProjectAnalyticsChart';
+import ProjectRadarChart from '@/components/project/ProjectRadarChart';
 import TeamPerformanceChart from './TeamPerformanceChart';
 import { workspaceService } from '@/services/workspace.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Loader from '@/components/ui/Loader';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
+import { Button } from '@/components/ui/button';
+import { FileText, Loader2, Download, Table } from 'lucide-react';
+import { toast } from 'sonner';
+import { taskService } from '@/services/task.service';
+import * as XLSX from 'xlsx';
 
 interface ProjectAnalyticsTabProps {
   workspaceId: string;
@@ -141,6 +149,8 @@ const PerformanceCard = ({ title, value, subtitle, icon: Icon, color }: { title:
 
 export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick }: ProjectAnalyticsTabProps) {
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [isExportingExcel, setIsExportingExcel] = React.useState(false);
 
   React.useEffect(() => {
     if (projects && projects.length > 0 && !selectedProjectId) {
@@ -180,6 +190,137 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     );
   }
 
+  const handleExportExcel = async () => {
+    const project = projects.find(p => p._id === selectedProjectId);
+    if (!project) return;
+    setIsExportingExcel(true);
+    try {
+      const response = await taskService.getProjectTasks(workspaceId, selectedProjectId, { pageSize: 1000 });
+      const tasks = response.tasks;
+      
+      const data = tasks.map((t: any) => ({
+        'Mã Task': t.taskCode,
+        'Tên công việc': t.title,
+        'Trạng thái': t.status,
+        'Mức ưu tiên': t.priority,
+        'Ngày bắt đầu': t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
+        'Hạn chót': t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
+        'Người thực hiện': t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+      XLSX.writeFile(wb, `Project_${project.name}_Tasks.xlsx`);
+      toast.success('Xuất file Excel thành công');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi xuất file Excel');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    const project = projects.find(p => p._id === selectedProjectId);
+    if (!project) return;
+    setIsExporting(true);
+    
+    const element = document.getElementById('project-analytics-tab-export');
+    if (!element) {
+      setIsExporting(false);
+      return;
+    }
+
+    const originalWidth = element.style.width;
+    const originalHeight = element.style.height;
+
+    // Expand scrollable areas for full capture
+    const originalStyles = new Map();
+    const scrollAreas = element.querySelectorAll('.overflow-y-auto, .overflow-hidden, .min-h-0');
+    scrollAreas.forEach((node) => {
+      const el = node as HTMLElement;
+      originalStyles.set(el, {
+        overflow: el.style.overflow,
+        overflowY: el.style.overflowY,
+        maxHeight: el.style.maxHeight,
+        height: el.style.height,
+        minHeight: el.style.minHeight
+      });
+      el.style.overflow = 'visible';
+      el.style.overflowY = 'visible';
+      el.style.maxHeight = 'none';
+      el.style.height = 'auto';
+      el.style.minHeight = 'auto';
+    });
+
+    // Bulletproof layout fix for html-to-image
+    element.style.width = '1200px';
+    element.style.height = 'auto'; // Let it expand naturally now that scrollbars are removed
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300)); // Allow DOM to fully re-render and expand
+
+      const imgData = await toPng(element, { 
+        cacheBust: true, 
+        pixelRatio: 2,
+        backgroundColor: '#ffffff', // Ensure white background
+        width: 1200,
+        style: {
+          margin: '0',
+          padding: '24px', // Add padding for the screenshot
+        }
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      // Trang đầu tiên
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      // Tạo thêm trang nếu nội dung còn dài hơn 1 trang A4
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Project_${project.name}_Dashboard.pdf`);
+      toast.success('Xuất báo cáo PDF thành công');
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      toast.error('Lỗi khi xuất báo cáo PDF');
+    } finally {
+      // Revert to original styles
+      element.style.width = originalWidth;
+      element.style.height = originalHeight;
+      
+      // Revert scroll areas
+      scrollAreas.forEach((node) => {
+        const el = node as HTMLElement;
+        const styles = originalStyles.get(el);
+        if (styles) {
+          el.style.overflow = styles.overflow;
+          el.style.overflowY = styles.overflowY;
+          el.style.maxHeight = styles.maxHeight;
+          el.style.height = styles.height;
+          el.style.minHeight = styles.minHeight;
+        }
+      });
+      
+      setIsExporting(false);
+    }
+  };
+
   const statusData = Array.isArray(analytics?.statusDistribution)
     ? analytics.statusDistribution.map((item: any) => ({
         name: STATUS_LABELS[item.status] || item.status,
@@ -196,7 +337,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     : [];
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div id="project-analytics-tab-export" className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 bg-transparent dark:bg-transparent">
       {/* Selector Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-xl p-8 rounded-[32px] border border-white dark:border-white/10 shadow-ambient">
         <div className="space-y-1">
@@ -204,7 +345,8 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chọn một dự án để xem hiệu suất chi tiết và rủi ro tiềm ẩn.</p>
         </div>
         
-        <Select value={selectedProjectId} onValueChange={(val) => setSelectedProjectId(val || '')}>
+        <div className="flex items-center gap-4">
+          <Select value={selectedProjectId} onValueChange={(val) => setSelectedProjectId(val || '')}>
           <SelectTrigger className="w-full md:w-[300px] h-12 rounded-2xl bg-white dark:bg-card border-slate-200 dark:border-white/10 font-bold text-[#035D5B] dark:text-[#E5F4EF]">
             <SelectValue placeholder="Chọn dự án">
               {projects.find(p => p._id === selectedProjectId) ? (
@@ -226,6 +368,27 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
             ))}
           </SelectContent>
         </Select>
+
+        <Button 
+          variant="outline" 
+          onClick={handleExportExcel}
+          disabled={isExportingExcel}
+          className="h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200/60 dark:border-emerald-500/20 shadow-sm whitespace-nowrap text-emerald-600 dark:text-emerald-400"
+        >
+          {isExportingExcel ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Table className="w-4 h-4 mr-2" />}
+          <span className="font-bold">Xuất Excel</span>
+        </Button>
+
+        <Button 
+          variant="outline" 
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          className="h-12 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border-slate-200/60 dark:border-white/10 shadow-sm whitespace-nowrap"
+        >
+          {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2 text-rose-500" />}
+          <span className="font-bold text-slate-700 dark:text-slate-200">Xuất PDF</span>
+        </Button>
+        </div>
       </div>
 
       {analyticsLoading ? (
@@ -302,73 +465,91 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
             <ProjectAnalyticsChart data={historyData || []} />
           </div>
 
-          {/* Row 2: Secondary Insights (8-4 Layout) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Left Column (8 cols) - Detailed Breakdowns */}
-            <div className="lg:col-span-8 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                {/* Status Distribution */}
-                <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Trạng thái công việc</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={statusData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          cornerRadius={8}
-                          dataKey="value"
-                        >
-                          {statusData.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip 
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                        />
-                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+          {/* Row 2: Secondary Insights (Distributed Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {/* 1. Status Distribution */}
+            <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Trạng thái công việc</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[280px] p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      cornerRadius={8}
+                      dataKey="value"
+                    >
+                      {statusData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '9px', fontWeight: 'bold' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-                {/* Priority Distribution */}
-                <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Mức độ ưu tiên</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={priorityData} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
-                        <XAxis type="number" hide />
-                        <YAxis 
-                          dataKey="name" 
-                          type="category" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fontSize: 10, fontWeight: 700, fill: 'currentColor' }} 
-                          width={70}
-                        />
-                        <RechartsTooltip
-                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                        />
-                        <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={20}>
-                          {priorityData.map((entry: any, index: number) => (
-                             <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* 2. Priority Distribution */}
+            <Card className="rounded-[32px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient overflow-hidden hover:border-brand-primary/20 transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Mức độ ưu tiên</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[280px] p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={priorityData} layout="vertical" margin={{ left: -20, right: 30, top: 0, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 9, fontWeight: 700, fill: 'currentColor' }} 
+                      width={70}
+                    />
+                    <RechartsTooltip
+                      cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                    />
+                    <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={16}>
+                      {priorityData.map((entry: any, index: number) => (
+                         <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* 3. Radar Chart for Tags */}
+            <ProjectRadarChart 
+              title="Phân loại công việc" 
+              data={analytics?.tagDistribution?.map((t: any) => ({ name: t.tag, count: t.count })) || []} 
+              color="#035D5B"
+              fill="#10B981"
+            />
+
+            {/* 4. Radar Chart for Member Workload */}
+            <ProjectRadarChart 
+              title="Tải công việc thành viên" 
+              data={analytics?.memberDistribution || []} 
+              color="#6366F1"
+              fill="#8B5CF6"
+            />
+          </div>
+
+          {/* Row 3: Detail Insights (8-4 Layout) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* Left Column (8 cols) - Team Heatmap */}
+            <div className="lg:col-span-8 space-y-10">
 
               {/* Team Performance Heatmap/Distribution */}
               <div className="lg:col-span-8">

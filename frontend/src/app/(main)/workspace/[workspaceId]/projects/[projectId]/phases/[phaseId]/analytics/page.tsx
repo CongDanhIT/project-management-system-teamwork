@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { projectService, Project } from '@/services/project.service';
-import { Loader2, LayoutGrid, BarChart3, Settings, TrendingUp, CheckCircle2, Clock, AlertCircle, Layout, BarChart2, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, LayoutGrid, BarChart3, Settings, TrendingUp, CheckCircle2, Clock, AlertCircle, Layout, BarChart2, Calendar as CalendarIcon, Layers } from 'lucide-react';
 import Loader from "@/components/ui/Loader";
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -18,22 +18,56 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useQueryClient } from '@tanstack/react-query';
+import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { taskService } from '@/services/task.service';
+import * as XLSX from 'xlsx';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
+import { toast } from 'sonner';
+import { useRole } from '@/hooks/useRole';
+import { PhaseService } from '@/services/phase.service';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { useWorkspaceStore } from '@/stores/workspace.store';
+
 
 export default function ProjectAnalyticsPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
+  const phaseId = params.phaseId as string;
   const [project, setProject] = useState<Project | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { currentWorkspaceId } = useWorkspaceStore();
+  const { isPrivileged } = useRole();
   const queryClient = useQueryClient();
+  
+  // Fetch Phase status to check for locking
+  const { data: phase } = useQuery({
+      queryKey: ['phase', phaseId],
+      queryFn: () => PhaseService.getPhases(projectId).then(res => res.data.find((p: any) => p._id === phaseId)),
+      enabled: !!projectId && !!phaseId,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+      if (phase?.isLocked && !isPrivileged && !loading) {
+          toast.error('Giai đoạn này đã bị khóa. Chỉ Quản trị viên mới có quyền truy cập.');
+          router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
+      }
+  }, [phase, isPrivileged, loading, workspaceId, projectId, router]);
+
+
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     const fetchProjectData = async () => {
       try {
         const [projectData, analyticsData] = await Promise.all([
           projectService.getProjectById(workspaceId, projectId),
-          projectService.getProjectAnalytics(workspaceId, projectId)
+          projectService.getProjectAnalytics(workspaceId, projectId, phaseId)
         ]);
         setProject(projectData);
         setAnalytics(analyticsData);
@@ -45,10 +79,119 @@ export default function ProjectAnalyticsPage() {
       }
     };
 
-    if (workspaceId && projectId) {
+    if (workspaceId && projectId && phaseId) {
       fetchProjectData();
     }
-  }, [workspaceId, projectId, queryClient]);
+  }, [workspaceId, projectId, phaseId, queryClient]);
+
+  const handleExportExcel = async () => {
+    if (!project) return;
+    setIsExporting(true);
+    try {
+      const response = await taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000, phaseId });
+      const tasks = response.tasks;
+      
+      const data = tasks.map(t => ({
+        'Mã Task': t.taskCode,
+        'Tên công việc': t.title,
+        'Trạng thái': t.status,
+        'Mức ưu tiên': t.priority,
+        'Ngày bắt đầu': t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
+        'Hạn chót': t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
+        'Người thực hiện': t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+      XLSX.writeFile(wb, `Project_${project.name}_Tasks.xlsx`);
+      toast.success('Xuất file Excel thành công');
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi xuất file Excel');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!project) return;
+    setIsExporting(true);
+    
+    const element = document.getElementById('analytics-dashboard');
+    const chartContainer = document.getElementById('pdf-chart');
+    const sidebarContainer = document.getElementById('pdf-sidebar');
+
+    if (!element || !chartContainer || !sidebarContainer) {
+      setIsExporting(false);
+      return;
+    }
+
+    // Save original styles
+    const originalDisplay = element.style.display;
+    const originalWidth = element.style.width;
+    const originalHeight = element.style.height;
+    
+    const originalChartWidth = chartContainer.style.width;
+    const originalSidebarWidth = sidebarContainer.style.width;
+    const originalSidebarMargin = sidebarContainer.style.marginLeft;
+
+    // --- BULLETPROOF LAYOUT FIX FOR HTML-TO-IMAGE ---
+    // CSS Grid can be extremely buggy in SVG foreignObject. We switch to Flexbox.
+    element.style.display = 'flex';
+    element.style.width = '1200px';
+    element.style.height = `${element.offsetHeight}px`; // Prevent height collapse
+    
+    // Explicitly size the children
+    chartContainer.style.width = '750px';
+    chartContainer.style.flexShrink = '0';
+    
+    sidebarContainer.style.width = '418px'; // 1200 - 750 - 32px gap
+    sidebarContainer.style.marginLeft = '32px';
+    sidebarContainer.style.flexShrink = '0';
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 150)); // Allow re-flow
+
+      const imgData = await toPng(element, { 
+        cacheBust: true, 
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        width: 1200,
+        height: element.offsetHeight,
+        style: {
+          margin: '0',
+        }
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Project_${project.name}_Analytics.pdf`);
+      toast.success('Xuất báo cáo PDF thành công');
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      toast.error('Lỗi khi xuất báo cáo PDF');
+    } finally {
+      // Revert to original styles
+      element.style.display = originalDisplay;
+      element.style.width = originalWidth;
+      element.style.height = originalHeight;
+      
+      chartContainer.style.width = originalChartWidth;
+      chartContainer.style.flexShrink = '';
+      
+      sidebarContainer.style.width = originalSidebarWidth;
+      sidebarContainer.style.marginLeft = originalSidebarMargin;
+      sidebarContainer.style.flexShrink = '';
+      
+      setIsExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -98,29 +241,58 @@ export default function ProjectAnalyticsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/40 p-1.5 rounded-[24px] border border-slate-200/60 dark:border-white/10 backdrop-blur-md shadow-glass">
-          <Link 
-            href={`/workspace/${workspaceId}/projects/${projectId}/board`}
-            className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
-          >
-            <LayoutGrid className="w-4 h-4 mr-2" /> Board
-          </Link>
-          <Link 
-            href={`/workspace/${workspaceId}/projects/${projectId}/table`}
-            className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
-          >
-            <Layout className="w-4 h-4 mr-2" /> Table
-          </Link>
-          <div className="px-6 py-2.5 bg-brand-primary text-white shadow-glow-combined transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl ring-1 ring-white/20">
-            <BarChart3 className="w-4 h-4 mr-2" /> Analytics
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-900/40 p-1.5 rounded-[24px] border border-slate-200/60 dark:border-white/10 backdrop-blur-md shadow-glass">
+            <Link 
+              href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/board`}
+              className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" /> Board
+            </Link>
+            <Link 
+              href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/table`}
+              className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
+            >
+              <Layout className="w-4 h-4 mr-2" /> Table
+            </Link>
+            <Link 
+              href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/calendar`}
+              className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
+            >
+              <CalendarIcon className="w-4 h-4 mr-2" /> Calendar
+            </Link>
+            <div className="px-6 py-2.5 bg-brand-primary text-white shadow-glow-combined transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl ring-1 ring-white/20">
+              <BarChart3 className="w-4 h-4 mr-2" /> Analytics
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="rounded-[20px] bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border-slate-200/60 dark:border-white/10 shadow-sm"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-500" />}
+              Excel
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="rounded-[20px] bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border-slate-200/60 dark:border-white/10 shadow-sm"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2 text-rose-500" />}
+              PDF
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Analytics Bento Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+      <div id="analytics-dashboard" className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 bg-transparent rounded-[48px]">
         {/* Main Area Chart - High Contrast & Depth */}
-        <div className="lg:col-span-2">
+        <div id="pdf-chart" className="lg:col-span-2">
           <div className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 rounded-[48px] p-10 shadow-depth-3 h-full flex flex-col relative overflow-hidden group">
              {/* Decorative Ambient Light */}
              <div className="absolute -top-24 -right-24 w-64 h-64 bg-brand-primary/10 rounded-full blur-[100px] pointer-events-none" />
@@ -188,7 +360,7 @@ export default function ProjectAnalyticsPage() {
         </div>
 
         {/* Sidebar Insights */}
-        <div className="space-y-8 h-full flex flex-col">
+        <div id="pdf-sidebar" className="space-y-8 h-full flex flex-col">
           {/* Main Insights Card */}
           <div className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 rounded-[48px] p-10 shadow-depth-3 space-y-10 flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-6">
@@ -211,9 +383,9 @@ export default function ProjectAnalyticsPage() {
                 <span>Total Delivery</span>
                 <span className="text-slate-900 dark:text-slate-200">{analytics.completedTasks}/{analytics.totalTasks} Tasks</span>
               </div>
-              <div className="h-6 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden p-1.5 border border-slate-200 dark:border-white/5 shadow-inner">
+              <div className="h-4 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden p-1 border border-slate-200 dark:border-white/5 shadow-inner">
                 <div 
-                  className="h-full bg-gradient-to-r from-brand-primary via-emerald-400 to-brand-primary bg-[length:200%_auto] animate-shimmer rounded-full shadow-lg shadow-brand-primary/40 transition-all duration-1500" 
+                  className="h-full bg-gradient-to-r from-brand-primary via-teal-500 to-brand-primary bg-[length:200%_auto] animate-shimmer rounded-full shadow-lg shadow-brand-primary/40 transition-all duration-1500" 
                   style={{ width: `${analytics.completionRate}%` }} 
                 />
               </div>

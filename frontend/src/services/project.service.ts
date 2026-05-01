@@ -15,6 +15,7 @@ export interface Project {
   updatedAt: string;
   startDate?: string | null;
   endDate?: string | null;
+  lastAccessedAt?: string;
   status?: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'FROZEN';
   deletedAt?: string | null;
   totalTasks?: number;
@@ -46,8 +47,10 @@ export const projectService = {
     return response.data.project as Project;
   },
 
-  getProjectAnalytics: async (workspaceId: string, projectId: string) => {
-    const response = await api.get(`/project/workspace/${workspaceId}/analytics/${projectId}`);
+  getProjectAnalytics: async (workspaceId: string, projectId: string, phaseId?: string) => {
+    const response = await api.get(`/project/workspace/${workspaceId}/analytics/${projectId}`, {
+      params: { phaseId }
+    });
     return response.data.analytics;
   },
 

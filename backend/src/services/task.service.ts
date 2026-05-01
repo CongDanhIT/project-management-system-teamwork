@@ -1,10 +1,16 @@
 import mongoose from "mongoose";
 import TaskModel from "../models/task.model";
+import TaskCommentModel from "../models/task-comment.model";
 import { TaskPriorityEnum, TaskStatusEnum, TaskPriorityEnumType, TaskStatusEnumType } from "../enums/task.enum";
 import MemberModel from "../models/member.model";
 import ProjectModel from "../models/project.model";
 import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 import { createSystemCommentService } from "./interaction.service";
+import { logActivityService } from "./activity.service";
+import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
+import PhaseModel from "../models/phase.model";
+import { RoleEnum } from "../enums/role.enum";
+import { getMemberRoleInWorkspace } from "./member.service";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -17,6 +23,16 @@ const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => 
     });
 };
 
+const validatePhaseLock = async (workspaceId: string, userId: string, phaseId?: string | mongoose.Types.ObjectId | null) => {
+    if (!phaseId) return;
+    const phase = await PhaseModel.findById(phaseId);
+    if (phase?.isLocked) {
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        if (role.name === RoleEnum.MEMBER) {
+            throw new Error("Giai đoạn này đã bị khóa. Chỉ Quản trị viên hoặc Chủ sở hữu mới có quyền chỉnh sửa.");
+        }
+    }
+};
 
 export const createTaskService = async (
     workspaceId: string,
@@ -34,11 +50,15 @@ export const createTaskService = async (
         loggedHours?: number;
         subtasks?: string[];
         tags?: string[]; // Mảng ID nhãn
+        phaseId?: string | null;
     },
     userId: string
 ) => {
-    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks, tags } = body;
+    const { title, description, priority, status, startDate, dueDate, assignedTo, parentId, estimatedHours, loggedHours, subtasks, tags, phaseId } = body;
     
+    // 0. Kiểm tra phase bị khóa (nếu có phaseId)
+    await validatePhaseLock(workspaceId, userId, phaseId);
+
     // 1. [MULTI-ASSIGNEE] Kiểm tra tất cả Workspace Members
     if (assignedTo && assignedTo.length > 0) {
         for (const userId of assignedTo) {
@@ -55,8 +75,8 @@ export const createTaskService = async (
     // 2. Kiểm tra Dự án để lấy Prefix
     const project = await ProjectModel.findById(projectId);
     if (!project) throw new Error("Dự án không tồn tại");
-    if (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD) {
-        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD || project.status === ProjectStatusEnum.COMPLETED)) {
+        throw new Error(`Dự án đang ở trạng thái ${project.status}. Bạn không thể thay đổi thông tin công việc.`);
     }
     
     // Tạo mác Prefix (ví dụ: My Project -> MP)
@@ -105,6 +125,7 @@ export const createTaskService = async (
         taskCode,
         workspaceId,
         projectId,
+        phaseId: phaseId ? new mongoose.Types.ObjectId(phaseId) : null,
         createdBy: userId,
         tags: (tags && tags.length > 0) ? tags.map(id => new mongoose.Types.ObjectId(id)) : [],
     });
@@ -118,7 +139,8 @@ export const createTaskService = async (
                 title: subtaskTitle,
                 parentId: (task._id as mongoose.Types.ObjectId).toString(),
                 status: (task.status as string),
-                priority: (task.priority as string)
+                priority: (task.priority as string),
+                phaseId: phaseId ? phaseId.toString() : undefined
             }, userId);
         }
     }
@@ -127,6 +149,19 @@ export const createTaskService = async (
     if (parentId) {
         await updateParentHours(parentId);
     }
+
+    // [ACTIVITY-LOG] Ghi nhật ký tạo Task
+    await logActivityService({
+        workspaceId,
+        projectId,
+        userId,
+        action: ActivityActionEnum.CREATE_TASK,
+        entityType: ActivityEntityTypeEnum.TASK,
+        entityId: (task._id as mongoose.Types.ObjectId).toString(),
+        details: {
+            summary: `đã tạo công việc **${task.title}**`
+        }
+    });
 
     return task.populate([
         { path: "assignedTo", select: "_id name email profilePicture" },
@@ -151,6 +186,7 @@ export const updateTaskService = async (
         estimatedHours?: number;
         loggedHours?: number;
         tags?: string[]; // Thêm tags vào đây
+        phaseId?: string | null;
     },
     userId: string,
     taskId: string
@@ -167,9 +203,17 @@ export const updateTaskService = async (
         throw new Error("Không tìm thấy công việc hoặc bạn không có quyền sửa");
     }
 
+    // 1.1 Kiểm tra phase hiện tại có bị khóa không
+    await validatePhaseLock(workspaceId, userId, task.phaseId);
+
+    // 1.2 Nếu đang thay đổi phase, kiểm tra phase mới có bị khóa không
+    if (body.phaseId !== undefined && body.phaseId !== task.phaseId?.toString()) {
+        await validatePhaseLock(workspaceId, userId, body.phaseId);
+    }
+
     const project = await ProjectModel.findById(projectId);
-    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD)) {
-        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD || project.status === ProjectStatusEnum.COMPLETED)) {
+        throw new Error(`Dự án đang ở trạng thái ${project.status}. Bạn không thể thay đổi thông tin công việc.`);
     }
 
     // 2. [MULTI-ASSIGNEE] Kiểm tra tất cả Assignees mới
@@ -181,6 +225,14 @@ export const updateTaskService = async (
             }
         }
     }
+
+    // 2.1 Capture old values for logging
+    const oldValues: any = {};
+    Object.keys(body).forEach((key) => {
+        if ((body as any)[key] !== undefined) {
+            oldValues[key] = (task as any)[key];
+        }
+    });
 
     // 3. Update các trường
     if (body.title !== undefined) task.title = body.title;
@@ -240,6 +292,9 @@ export const updateTaskService = async (
     if (body.tags !== undefined) {
         task.tags = body.tags.map(id => new mongoose.Types.ObjectId(id)) as any;
     }
+    if (body.phaseId !== undefined) {
+        task.phaseId = body.phaseId ? new mongoose.Types.ObjectId(body.phaseId) : null;
+    }
 
     await task.save();
 
@@ -247,6 +302,30 @@ export const updateTaskService = async (
     if (task.parentId) {
         await updateParentHours(task.parentId);
     }
+
+    // [ACTIVITY-LOG] Ghi nhật ký cập nhật Task
+    const changedFields = Object.keys(oldValues);
+    let detailedSummary = `đã cập nhật thông tin công việc **${task.title}**`;
+    
+    if (changedFields.includes('status')) {
+        detailedSummary = `đã chuyển trạng thái công việc **${task.title}** từ **${oldValues.status}** sang **${task.status}**`;
+    } else if (changedFields.includes('priority')) {
+        detailedSummary = `đã đổi mức ưu tiên công việc **${task.title}** từ **${oldValues.priority}** sang **${task.priority}**`;
+    }
+
+    await logActivityService({
+        workspaceId,
+        projectId,
+        userId,
+        action: ActivityActionEnum.UPDATE_TASK,
+        entityType: ActivityEntityTypeEnum.TASK,
+        entityId: task._id.toString(),
+        details: {
+            oldValue: oldValues,
+            newValue: body,
+            summary: detailedSummary
+        }
+    });
 
     return task.populate([
         { path: "assignedTo", select: "_id name email profilePicture" },
@@ -268,6 +347,7 @@ export const getAllTasksService = async (
         dueDate?: string;
         isOverdue?: string;
         tags?: string[];
+        phaseId?: string;
     },
     pagination: {
         page: number;
@@ -279,6 +359,10 @@ export const getAllTasksService = async (
 
     if (filters.projectId) {
         query.projectId = new mongoose.Types.ObjectId(filters.projectId);
+    }
+
+    if (filters.phaseId) {
+        query.phaseId = new mongoose.Types.ObjectId(filters.phaseId);
     }
 
     // Lọc theo parentId (Null = lấy task cha, String = lấy subtasks)
@@ -344,10 +428,29 @@ export const getAllTasksService = async (
         TaskModel.countDocuments(query)
     ]);
 
+    // Batch đếm số comment do USER chủ động gửi (không tính SYSTEM)
+    const taskIds = tasks.map(t => t._id);
+    const commentCounts = await TaskCommentModel.aggregate([
+        { $match: { taskId: { $in: taskIds }, type: "USER" } },
+        { $group: { _id: "$taskId", count: { $sum: 1 } } }
+    ]);
+
+    const commentCountMap = new Map<string, number>();
+    for (const item of commentCounts) {
+        commentCountMap.set(item._id.toString(), item.count);
+    }
+
+    // Gắn userCommentCount vào từng task
+    const tasksWithComments = tasks.map(t => {
+        const taskObj = t.toObject() as any;
+        taskObj.userCommentCount = commentCountMap.get(t._id.toString()) || 0;
+        return taskObj;
+    });
+
     const totalPages = Math.ceil(totalCount / pagination.pageSize);
 
     return {
-        tasks,
+        tasks: tasksWithComments,
         pagination: {
             totalCount,
             totalPages,
@@ -425,15 +528,19 @@ export const getSubtasksService = async (
 
 export const deleteTaskService = async (
     workspaceId: string,
-    taskId: string
+    taskId: string,
+    userId: string
 ) => {
     const existingTask = await TaskModel.findOne({ _id: taskId, workspaceId, deletedAt: null });
     if (!existingTask) throw new Error("Không tìm thấy công việc để xóa hoặc đã bị xóa trước đó");
     
     const project = await ProjectModel.findById(existingTask.projectId);
-    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD)) {
-        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+    if (project && (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD || project.status === ProjectStatusEnum.COMPLETED)) {
+        throw new Error(`Dự án đang ở trạng thái ${project.status}. Bạn không thể thay đổi thông tin công việc.`);
     }
+
+    // Kiểm tra phase bị khóa
+    await validatePhaseLock(workspaceId, userId, existingTask.phaseId);
 
     // Soft Delete: Chỉ đánh dấu deletedAt thay vì xóa vĩnh viễn
     const task = await TaskModel.findOneAndUpdate(
@@ -463,6 +570,19 @@ export const deleteTaskService = async (
         await updateParentHours(task.parentId);
     }
 
+    // [ACTIVITY-LOG] Ghi nhật ký xóa Task
+    await logActivityService({
+        workspaceId,
+        projectId: task.projectId.toString(),
+        userId,
+        action: ActivityActionEnum.DELETE_TASK,
+        entityType: ActivityEntityTypeEnum.TASK,
+        entityId: taskId,
+        details: {
+            summary: `đã xóa công việc **${task.title}**`
+        }
+    });
+
     return task;
 };
 
@@ -481,7 +601,8 @@ export const getDeletedTasksService = async (workspaceId: string) => {
 // [AI-ADDED] Khôi phục Task đã bị xóa mềm
 export const restoreTaskService = async (
     workspaceId: string,
-    taskId: string
+    taskId: string,
+    userId: string
 ) => {
     const task = await TaskModel.findOne({ _id: taskId, workspaceId, deletedAt: { $ne: null } });
 
@@ -494,9 +615,21 @@ export const restoreTaskService = async (
     if (!project || project.deletedAt !== null) {
         throw new Error("Khôi phục thất bại vì dự án của công việc này vẫn đang ở trong thùng rác. Vui lòng khôi phục dự án trước để tiếp tục.");
     }
-    if (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD) {
-        throw new Error("Dự án đang bị khóa hoặc tạm ngưng. Bạn không thể thay đổi thông tin công việc.");
+
+    // 1.1 Kiểm tra giai đoạn (phase) của task này có bị xóa không?
+    if (task.phaseId) {
+        const phase = await PhaseModel.findById(task.phaseId);
+        if (phase && phase.deletedAt !== null) {
+            throw new Error("Khôi phục thất bại vì giai đoạn của công việc này vẫn đang ở trong thùng rác. Vui lòng khôi phục giai đoạn trước để tiếp tục.");
+        }
     }
+
+    if (project.status === ProjectStatusEnum.FROZEN || project.status === ProjectStatusEnum.ON_HOLD || project.status === ProjectStatusEnum.COMPLETED) {
+        throw new Error(`Dự án đang ở trạng thái ${project.status}. Bạn không thể thay đổi thông tin công việc.`);
+    }
+
+    // Kiểm tra phase bị khóa
+    await validatePhaseLock(workspaceId, userId, task.phaseId);
 
     task.deletedAt = null;
     await task.save();
@@ -512,5 +645,63 @@ export const restoreTaskService = async (
         await updateParentHours(task.parentId);
     }
 
+    // [ACTIVITY-LOG] Ghi nhật ký khôi phục Task
+    await logActivityService({
+        workspaceId,
+        projectId: task.projectId.toString(),
+        userId,
+        action: ActivityActionEnum.RESTORE_TASK,
+        entityType: ActivityEntityTypeEnum.TASK,
+        entityId: taskId,
+        details: {
+            summary: `đã khôi phục công việc **${task.title}**`
+        }
+    });
+
     return task;
+};
+
+// [AI-ADDED] Xóa vĩnh viễn công việc (Hard Delete) và dữ liệu liên quan
+export const permanentDeleteTaskService = async (workspaceId: string, taskId: string, userId: string) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        // 1. Kiểm tra task có trong thùng rác không?
+        const task = await TaskModel.findOne({ 
+            _id: taskId, 
+            workspaceId, 
+            deletedAt: { $ne: null } 
+        }).session(session);
+
+        if (!task) {
+            throw new Error("Không tìm thấy công việc trong thùng rác để xóa vĩnh viễn");
+        }
+
+        // Kiểm tra phase bị khóa
+        await validatePhaseLock(workspaceId, userId, task.phaseId);
+
+        // 2. Cascade Hard Delete:
+        // - Xóa toàn bộ Subtasks
+        await TaskModel.deleteMany({ parentId: taskId }).session(session);
+
+        // - Xóa Task Comments
+        const TaskCommentModel = mongoose.model("TaskComment");
+        await TaskCommentModel.deleteMany({ taskId }).session(session);
+
+        // - Xóa Activity Logs
+        const ActivityLogModel = mongoose.model("ActivityLog");
+        await ActivityLogModel.deleteMany({ entityId: taskId, entityType: ActivityEntityTypeEnum.TASK }).session(session);
+
+        // 3. Xóa vĩnh viễn Task chính
+        await TaskModel.deleteOne({ _id: taskId }).session(session);
+
+        await session.commitTransaction();
+        return { success: true, message: "Công việc đã được xóa vĩnh viễn" };
+
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
 };

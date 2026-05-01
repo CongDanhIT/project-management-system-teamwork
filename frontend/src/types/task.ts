@@ -49,4 +49,5 @@ export interface Task {
   startDate?: string | null;
   deletedAt?: string | null;
   tags: Tag[]; // Danh sách nhãn thực tế
+  userCommentCount?: number; // Số bình luận do user chủ động gửi (không tính SYSTEM)
 }

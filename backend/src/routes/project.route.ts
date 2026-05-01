@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createProjectController, deleteProjectController, getAllProjectsInWorkspaceController, getProjectAnalyticsController, getProjectByIdController, updateProjectController, restoreProjectController, getDeletedProjectsController, toggleFavoriteProjectController, getFavoriteProjectsController, getProjectAnalyticsHistoryController } from "../controllers/project.controller";
+import { createProjectController, deleteProjectController, getAllProjectsInWorkspaceController, getProjectAnalyticsController, getProjectByIdController, updateProjectController, restoreProjectController, getDeletedProjectsController, toggleFavoriteProjectController, getFavoriteProjectsController, getProjectAnalyticsHistoryController, permanentDeleteProjectController } from "../controllers/project.controller";
 import { isAuthenticated } from "../middlewares/isAuthenticated.middleware";
 
 const projectRoutes = Router();
@@ -22,6 +22,7 @@ projectRoutes.put("/workspace/:workspaceId/update/:projectId", updateProjectCont
 projectRoutes.patch("/workspace/:workspaceId/restore/:projectId", restoreProjectController);
 
 projectRoutes.delete("/workspace/:workspaceId/delete/:projectId", deleteProjectController);
+projectRoutes.delete("/workspace/:workspaceId/hard-delete/:projectId", permanentDeleteProjectController);
 
 projectRoutes.get("/workspace/:workspaceId/favorites/all", getFavoriteProjectsController);
 

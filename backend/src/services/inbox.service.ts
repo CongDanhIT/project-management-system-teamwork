@@ -33,6 +33,7 @@ export const promoteDraftToTaskService = async (
     inboxId: string,
     workspaceId: string,
     projectId: string,
+    phaseId: string | undefined,
     status: string
 ) => {
     // 1. Tìm bản ghi draft
@@ -55,6 +56,7 @@ export const promoteDraftToTaskService = async (
             title: draft.title,
             description: draft.description,
             status: status, // Trạng thái dựa trên cột được thả vào
+            phaseId: phaseId, // Giai đoạn dựa trên board hiện tại
         },
         ownerId
     );
@@ -80,6 +82,33 @@ export const deleteDraftService = async (ownerId: string, inboxId: string) => {
 
     if (!draft) {
         throw new Error("Không tìm thấy bản ghi nháp để xóa.");
+    }
+
+    return draft;
+};
+
+/**
+ * Cập nhật một bản ghi nháp
+ */
+export const updateDraftService = async (
+    ownerId: string, 
+    inboxId: string, 
+    data: { title?: string; description?: string }
+) => {
+    const draft = await PersonalInboxModel.findOneAndUpdate(
+        {
+            _id: new mongoose.Types.ObjectId(inboxId),
+            ownerId: new mongoose.Types.ObjectId(ownerId),
+            status: InboxStatusEnum.DRAFT
+        },
+        {
+            $set: data
+        },
+        { new: true }
+    );
+
+    if (!draft) {
+        throw new Error("Không tìm thấy bản ghi nháp để cập nhật.");
     }
 
     return draft;

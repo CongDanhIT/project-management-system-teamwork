@@ -101,7 +101,7 @@ export class SlackService {
     }
 
     /**
-     * Tạo thông báo tổng kết hàng ngày (Daily Digest)
+     * Tạo thông báo tổng kết hàng ngày (Daily Digest) với xu hướng và nhiệm vụ khẩn cấp
      */
     static async sendDailyDigest(
         webhookUrl: string,
@@ -111,9 +111,19 @@ export class SlackService {
             completedTasks: number;
             overdueTasks: number;
             inProgressTasks: number;
-        }
+        },
+        trends: any,
+        urgentTasks: any[] = [],
+        link: string = ""
     ) {
-        const blocks = [
+        // Helper để tạo text xu hướng
+        const renderTrend = (trend: any) => {
+            if (!trend || trend.value === 0) return "";
+            const icon = trend.value > 0 ? "🔺" : "🔹";
+            return ` (${icon} ${Math.abs(Math.round(trend.percent))}%)`;
+        };
+
+        const blocks: any[] = [
             {
                 type: "header",
                 text: {
@@ -134,32 +144,77 @@ export class SlackService {
                 fields: [
                     {
                         type: "mrkdwn",
-                        text: `*Tổng công việc:*\n${stats.totalTasks}`
+                        text: `*Tổng công việc:*\n${stats.totalTasks}${renderTrend(trends.totalTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Đã hoàn thành:*\n${stats.completedTasks} ✅`
+                        text: `*Đã hoàn thành:*\n${stats.completedTasks} ✅${renderTrend(trends.completedTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Đang thực hiện:*\n${stats.inProgressTasks} 🚀`
+                        text: `*Đang thực hiện:*\n${stats.inProgressTasks} 🚀${renderTrend(trends.inProgressTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Quá hạn:*\n${stats.overdueTasks} ⚠️`
-                    }
-                ]
-            },
-            {
-                type: "context",
-                elements: [
-                    {
-                        type: "mrkdwn",
-                        text: "Hãy tập trung xử lý các task quá hạn trước nhé! Chúc team một ngày làm việc hiệu quả."
+                        text: `*Quá hạn:*\n${stats.overdueTasks} ⚠️${renderTrend(trends.overdueTasksTrend)}`
                     }
                 ]
             }
         ];
+
+        // Thêm phần nhiệm vụ khẩn cấp nếu có
+        if (urgentTasks && urgentTasks.length > 0) {
+            blocks.push({ type: "divider" });
+            blocks.push({
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: "🚩 *Nhiệm vụ sắp hết hạn (Urgent):*"
+                }
+            });
+
+            const taskList = urgentTasks.slice(0, 3).map(task => {
+                const priorityIcon = task.priority === "HIGH" ? "🔴" : "🟡";
+                return `${priorityIcon} *${task.title}* (Hạn: ${new Date(task.dueDate).toLocaleDateString("vi-VN")})`;
+            }).join("\n");
+
+            blocks.push({
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: taskList
+                }
+            });
+        }
+
+        // Thêm nút bấm hành động
+        if (link) {
+            blocks.push({
+                type: "actions",
+                elements: [
+                    {
+                        type: "button",
+                        text: {
+                            type: "plain_text",
+                            text: "Mở TeamFlow 🚀",
+                            emoji: true
+                        },
+                        url: link,
+                        style: "primary"
+                    }
+                ]
+            });
+        }
+
+        blocks.push({
+            type: "context",
+            elements: [
+                {
+                    type: "mrkdwn",
+                    text: "Hãy tập trung xử lý các task quan trọng trước nhé! Chúc team một ngày làm việc hiệu quả."
+                }
+            ]
+        });
 
         await this.sendMessage(webhookUrl, `Báo cáo hàng ngày cho ${workspaceName}`, blocks);
     }

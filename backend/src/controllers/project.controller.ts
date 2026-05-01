@@ -5,7 +5,7 @@ import { createProjectSchemaV2, updateProjectSchemaV2 } from "../validation/proj
 import { WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
 import HTTP_STATUS from "../config/http.config";
-import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService, toggleFavoriteProjectService, getFavoriteProjectsInWorkspaceService, getProjectAnalyticsHistoryService } from "../services/project.service";
+import { createProjectService, deleteProjectService, getProjectAnalyticsService, getProjectByIdService, getProjectsInWorkspaceService, updateProjectService, restoreProjectService, getDeletedProjectsInWorkspaceService, toggleFavoriteProjectService, getFavoriteProjectsInWorkspaceService, getProjectAnalyticsHistoryService, permanentDeleteProjectService } from "../services/project.service";
 import { projectIdSchema } from "../validation/project.validation";
 import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 
@@ -14,7 +14,8 @@ import { ProjectStatusEnum } from "../enums/projectStatus.enum";
 export const getDeletedProjectsController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
+
 
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.EDIT_PROJECT]);
@@ -32,7 +33,8 @@ export const createProjectController = asyncHandler(
     async (req, res, next) => {
         const body = createProjectSchemaV2.parse(req.body);
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
+
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.CREATE_PROJECT]);
         const project = await createProjectService(workspaceId, body, userId);
@@ -47,7 +49,8 @@ export const createProjectController = asyncHandler(
 export const getAllProjectsInWorkspaceController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
+
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
         const pageSize = parseInt(req.query.pageSize as string || "10");
@@ -78,10 +81,10 @@ export const getProjectByIdController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
-        const project = await getProjectByIdService(projectId, workspaceId);
+        const project = await getProjectByIdService(projectId, workspaceId, userId);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Lấy thông tin dự án thành công",
@@ -94,10 +97,12 @@ export const getProjectAnalyticsController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
+
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
-        const analytics = await getProjectAnalyticsService(projectId, workspaceId);
+        const phaseId = req.query.phaseId as string;
+        const analytics = await getProjectAnalyticsService(projectId, workspaceId, phaseId);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Lấy thông tin analytics dự án thành công",
@@ -110,8 +115,9 @@ export const getProjectAnalyticsHistoryController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
+
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
         const history = await getProjectAnalyticsHistoryService(projectId, workspaceId);
@@ -127,10 +133,10 @@ export const updateProjectController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
         const body = updateProjectSchemaV2.parse(req.body);
 
-        const projectData = await getProjectByIdService(projectId, workspaceId);
+        const projectData = await getProjectByIdService(projectId, workspaceId, userId);
 
         // Logic check khóa dự án (FROZEN)
         if (projectData.status === ProjectStatusEnum.FROZEN && body.status !== ProjectStatusEnum.ACTIVE) {
@@ -142,7 +148,8 @@ export const updateProjectController = asyncHandler(
 
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.EDIT_PROJECT]);
-        const project = await updateProjectService(projectId, workspaceId, body);
+        const project = await updateProjectService(projectId, workspaceId, body, userId);
+
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -156,9 +163,9 @@ export const deleteProjectController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
 
-        const projectData = await getProjectByIdService(projectId, workspaceId);
+        const projectData = await getProjectByIdService(projectId, workspaceId, userId);
         if (projectData.status === ProjectStatusEnum.FROZEN) {
             return res.status(HTTP_STATUS.FORBIDDEN).json({
                 success: false,
@@ -169,7 +176,7 @@ export const deleteProjectController = asyncHandler(
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.DELETE_PROJECT]);
 
-        const project = await deleteProjectService(projectId, workspaceId);
+        const project = await deleteProjectService(projectId, workspaceId, userId);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Đưa dự án vào thùng rác thành công",
@@ -182,12 +189,12 @@ export const restoreProjectController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
 
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.EDIT_PROJECT]);
 
-        const project = await restoreProjectService(projectId, workspaceId);
+        const project = await restoreProjectService(projectId, workspaceId, userId);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Khôi phục dự án thành công",
@@ -196,11 +203,27 @@ export const restoreProjectController = asyncHandler(
     }
 )
 
+export const permanentDeleteProjectController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const projectId = projectIdSchema.parse(req.params.projectId);
+        const userId = (req.user?._id as any).toString();
+
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.DELETE_PROJECT]);
+
+        const result = await permanentDeleteProjectService(projectId, workspaceId, userId);
+        return res.status(HTTP_STATUS.OK).json({
+            ...result
+        })
+    }
+)
+
 export const toggleFavoriteProjectController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
         const projectId = projectIdSchema.parse(req.params.projectId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
 
         const { project, isFavorited } = await toggleFavoriteProjectService(projectId, workspaceId, userId);
 
@@ -216,9 +239,10 @@ export const toggleFavoriteProjectController = asyncHandler(
 export const getFavoriteProjectsController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
-        const userId = req.user?._id;
+        const userId = (req.user?._id as any).toString();
 
         const projects = await getFavoriteProjectsInWorkspaceService(workspaceId, userId);
+
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,

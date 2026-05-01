@@ -3,7 +3,8 @@ import {
     createDraftController, 
     deleteDraftController, 
     getMyDraftsController, 
-    promoteToTaskController 
+    promoteToTaskController,
+    updateDraftController 
 } from "../controllers/inbox.controller";
 
 const inboxRoutes = Router();
@@ -11,6 +12,7 @@ const inboxRoutes = Router();
 inboxRoutes.get("/", getMyDraftsController);
 inboxRoutes.post("/", createDraftController);
 inboxRoutes.post("/:inboxId/promote", promoteToTaskController);
+inboxRoutes.patch("/:inboxId", updateDraftController);
 inboxRoutes.delete("/:inboxId", deleteDraftController);
 
 export default inboxRoutes;

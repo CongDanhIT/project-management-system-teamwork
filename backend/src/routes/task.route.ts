@@ -10,6 +10,7 @@ import {
     getSubtasksController,
     getDeletedTasksController,
     restoreTaskController,
+    permanentDeleteTaskController,
 } from "../controllers/task.controller";
 
 const taskRoutes = Router();
@@ -35,5 +36,6 @@ taskRoutes.get("/workspace/:workspaceId/task/:taskId", getTaskByIdController); /
 taskRoutes.get("/workspace/:workspaceId/deleted/all", getDeletedTasksController);
 taskRoutes.patch("/workspace/:workspaceId/restore/:taskId", restoreTaskController);
 taskRoutes.delete("/workspace/:workspaceId/delete/:taskId", deleteTaskController);
+taskRoutes.delete("/workspace/:workspaceId/hard-delete/:taskId", permanentDeleteTaskController);
 
 export default taskRoutes;

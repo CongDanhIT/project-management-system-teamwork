@@ -28,7 +28,8 @@ import {
   Download, 
   Expand, 
   MessageSquare,
-  User
+  User,
+  Layers
 } from 'lucide-react';
 import Loader from "@/components/ui/Loader";
 import { SearchInput } from '@/components/shared/SearchInput';
@@ -45,36 +46,21 @@ import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
+import { useRole } from '@/hooks/useRole';
+import { PhaseService } from '@/services/phase.service';
+
 
 export default function ProjectTablePage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
+  const phaseId = params.phaseId as string;
   const targetTaskId = searchParams.get('taskId');
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { isAdminOrOwner } = useWorkspaceRole();
-
-  // Tự động mở Task nếu có taskId trong URL
-  useEffect(() => {
-    if (targetTaskId && workspaceId && projectId) {
-      const fetchAndOpenTask = async () => {
-        try {
-          const task = await taskService.getTaskById(workspaceId, projectId, targetTaskId);
-          if (task) {
-            setSelectedTask(task);
-            setIsTaskModalOpen(true);
-          }
-        } catch (error) {
-          console.error("Failed to fetch target task:", error);
-        }
-      };
-      fetchAndOpenTask();
-    }
-  }, [targetTaskId, workspaceId, projectId]);
-
+  const { isPrivileged } = useRole();
+  
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -92,31 +78,32 @@ export default function ProjectTablePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
+  // Queries
   const { data: projectData, isLoading: isProjectLoading } = useQuery({
     queryKey: ['project', workspaceId, projectId],
     queryFn: () => projectService.getProjectById(workspaceId, projectId),
     enabled: !!workspaceId && !!projectId,
   });
 
-  // Fetch only Root Tasks for the current page
   const { data: rootTasksData, isLoading: isRootTasksLoading, isPlaceholderData } = useQuery({
-    queryKey: ['project-root-tasks', workspaceId, projectId, currentPage, searchQuery],
+    queryKey: ['project-root-tasks', workspaceId, projectId, phaseId, currentPage, searchQuery],
     queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
       pageNumber: currentPage, 
       pageSize, 
       parentId: 'null', // Fetch only top-level
-      keyword: searchQuery 
+      keyword: searchQuery,
+      phaseId
     }),
     placeholderData: keepPreviousData,
     enabled: !!workspaceId && !!projectId,
   });
 
-  // Fetch ALL subtasks of this project to build the tree (Subtasks don't affect root pagination)
   const { data: subtasksData, isLoading: isSubtasksLoading } = useQuery({
-    queryKey: ['project-all-subtasks', workspaceId, projectId],
+    queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId],
     queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
       pageSize: 1000, 
-      parentId: 'not-null' // Custom parameter handling or just fetch all and filter client side
+      parentId: 'not-null',
+      phaseId
     }),
     enabled: !!workspaceId && !!projectId,
   });
@@ -126,6 +113,41 @@ export default function ProjectTablePage() {
     queryFn: () => workspaceService.getMembers(workspaceId),
     enabled: !!workspaceId,
   });
+
+  // Fetch Phase status to check for locking
+  const { data: phase } = useQuery({
+      queryKey: ['phase', phaseId],
+      queryFn: () => PhaseService.getPhases(projectId).then(res => res.data.find((p: any) => p._id === phaseId)),
+      enabled: !!projectId && !!phaseId,
+  });
+
+  // Derived variables
+  const loading = isProjectLoading || isRootTasksLoading || isSubtasksLoading || isMembersLoading;
+
+  // Effects
+  useEffect(() => {
+      if (phase?.isLocked && !isPrivileged && !loading) {
+          toast.error('Giai đoạn này đã bị khóa. Chỉ Quản trị viên mới có quyền truy cập.');
+          router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
+      }
+  }, [phase, isPrivileged, loading, workspaceId, projectId, router]);
+
+  useEffect(() => {
+    if (targetTaskId && workspaceId && projectId) {
+      const fetchAndOpenTask = async () => {
+        try {
+          const task = await taskService.getTaskById(workspaceId, projectId, targetTaskId);
+          if (task) {
+            setSelectedTask(task);
+            setIsTaskModalOpen(true);
+          }
+        } catch (error) {
+          console.error("Failed to fetch target task:", error);
+        }
+      };
+      fetchAndOpenTask();
+    }
+  }, [targetTaskId, workspaceId, projectId]);
 
   useEffect(() => {
     if (projectData) {
@@ -153,14 +175,19 @@ export default function ProjectTablePage() {
     if (workspaceData) setMembers(workspaceData.members || []);
   }, [projectData, rootTasksData, subtasksData, workspaceData, queryClient, workspaceId]);
 
-  const loading = isProjectLoading || isRootTasksLoading || isSubtasksLoading || isMembersLoading;
 
   const refreshTasks = async () => {
     queryClient.invalidateQueries({ queryKey: ['project-root-tasks'] });
     queryClient.invalidateQueries({ queryKey: ['project-all-subtasks'] });
   };
 
+  const isProjectCompleted = project?.status === 'COMPLETED';
+
   const handleTaskClick = (task: Task) => {
+    if (isProjectCompleted) {
+      toast.info('Dự án đã hoàn thành. Bạn chỉ có thể xem thông tin ở chế độ đọc.');
+      return;
+    }
     setSelectedTask(task);
     setIsTaskModalOpen(true);
   };
@@ -191,9 +218,9 @@ export default function ProjectTablePage() {
       if (selectedTask?._id === taskId) {
         setSelectedTask({ ...selectedTask, ...updatedTask });
       }
-      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -211,9 +238,9 @@ export default function ProjectTablePage() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await taskService.deleteTask(workspaceId, projectId, taskId);
-      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -234,9 +261,9 @@ export default function ProjectTablePage() {
       const createdTask = await taskService.createTask(workspaceId, pId, taskData);
       const subtasksCount = taskData.subtasks?.length || 0;
 
-      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -337,7 +364,7 @@ export default function ProjectTablePage() {
 
         <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-inner overflow-hidden">
           <Link
-            href={`/workspace/${workspaceId}/projects/${projectId}/board`}
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/board`}
             className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
             <LayoutGrid className="w-3.5 h-3.5 mr-2" />
@@ -350,7 +377,14 @@ export default function ProjectTablePage() {
             Table
           </div>
           <Link
-            href={`/workspace/${workspaceId}/projects/${projectId}/analytics`}
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/calendar`}
+            className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
+          >
+            <Calendar className="w-3.5 h-3.5 mr-2" />
+            Calendar
+          </Link>
+          <Link
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/analytics`}
             className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
             <BarChart3 className="w-3.5 h-3.5 mr-2" />
@@ -374,13 +408,15 @@ export default function ProjectTablePage() {
             <Filter className="w-4 h-4 mr-2" />
             Lọc
           </Button>
-          <Button
-            className="h-10 bg-brand-primary hover:bg-brand-primary/90 rounded-xl shadow-brand-primary/10"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Thêm Task
-          </Button>
+          {!isProjectCompleted && (
+            <Button
+              className="h-10 bg-brand-primary hover:bg-brand-primary/90 rounded-xl shadow-brand-primary/10"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Thêm Task
+            </Button>
+          )}
         </div>
       </div>
 
@@ -647,7 +683,7 @@ export default function ProjectTablePage() {
         onSubtaskUpdate={refreshTasks}
         members={members}
         tasks={tasks}
-        isAdminOrOwner={isAdminOrOwner}
+        isAdminOrOwner={isPrivileged}
       />
 
       <CreateTaskModal
@@ -656,6 +692,7 @@ export default function ProjectTablePage() {
         projects={project ? [project] : []}
         onSubmit={handleCreateTask}
         workspaceId={workspaceId}
+        phaseId={phaseId}
       />
     </div>
   );

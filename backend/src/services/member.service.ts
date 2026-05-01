@@ -3,6 +3,8 @@ import WorkspaceModel from "../models/workspace.model";
 import { NotFoundException } from "../utils/appError";
 import RoleModel, { RoleDocument } from "../models/role-permission.model";
 import { RoleEnum } from "../enums/role.enum";
+import { logActivity } from "./activity.service";
+import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
 
 // lấy role của member trong workspace
 /**
@@ -48,5 +50,18 @@ export const joinWorkspaceService = async (inviteCode: string, userId: string) =
         role: role._id,
     });
     await newMember.save();
+
+    // Ghi nhật ký
+    await logActivity({
+        workspaceId: workspace._id.toString(),
+        userId: userId,
+        action: ActivityActionEnum.MEMBER_JOINED,
+        entityType: ActivityEntityTypeEnum.MEMBER,
+        entityId: userId,
+        details: {
+            summary: `đã tham gia không gian làm việc **${workspace.name}**`
+        }
+    });
+
     return { workspaceId: workspace._id, role: role.name };
 };

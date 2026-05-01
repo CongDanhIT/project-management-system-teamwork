@@ -35,6 +35,15 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function InboxSidebar() {
   const dragControls = useDragControls();
@@ -61,6 +70,60 @@ export default function InboxSidebar() {
     }
   });
 
+  const deleteDraftMutation = useMutation({
+    mutationFn: (id: string) => inboxService.deleteDraft(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['personal-inbox-drafts'] });
+      toast.success('Đã xóa ghi chú');
+    },
+    onError: () => {
+      toast.error('Lỗi khi xóa ghi chú');
+    }
+  });
+
+  const updateDraftMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { title?: string; description?: string } }) => 
+      inboxService.updateDraft(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['personal-inbox-drafts'] });
+      toast.success('Đã cập nhật ghi chú');
+      setIsEditDialogOpen(false);
+      setEditingDraft(null);
+    },
+    onError: () => {
+      toast.error('Lỗi khi cập nhật ghi chú');
+    }
+  });
+
+  const [editingDraft, setEditingDraft] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+
+  const handleEditClick = (draft: any) => {
+    setEditingDraft(draft);
+    setEditTitle(draft.title);
+    setEditDescription(draft.description || '');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (!editTitle.trim()) {
+      toast.error('Tiêu đề không được để trống');
+      return;
+    }
+    updateDraftMutation.mutate({
+      id: editingDraft._id,
+      data: { title: editTitle, description: editDescription }
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Bạn có chắc chắn muốn xóa ghi chú này không?')) {
+      deleteDraftMutation.mutate(id);
+    }
+  };
+
   const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
@@ -68,6 +131,7 @@ export default function InboxSidebar() {
   };
 
   return (
+    <>
     <AnimatePresence>
       {isInboxSidebarOpen && (
         <motion.aside
@@ -158,7 +222,12 @@ export default function InboxSidebar() {
                {/* Task List */}
                <div className="space-y-4">
                   {drafts.map((draft) => (
-                    <InboxDraggableCard key={draft._id} draft={draft} />
+                    <InboxDraggableCard 
+                       key={draft._id} 
+                       draft={draft} 
+                       onDelete={handleDelete}
+                       onEdit={handleEditClick}
+                     />
                   ))}
 
                   {(!isLoadingDrafts && drafts.length === 0) && (
@@ -189,5 +258,52 @@ export default function InboxSidebar() {
         </motion.aside>
       )}
     </AnimatePresence>
+    
+    {/* Edit Dialog */}
+    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-900 border-none rounded-[2rem] shadow-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold font-sans">Chỉnh sửa ghi chú</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-6 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="title" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tiêu đề</Label>
+            <Input
+              id="title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="bg-slate-50 dark:bg-white/5 border-none rounded-2xl h-12"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="description" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Nội dung</Label>
+            <Textarea
+              id="description"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="bg-slate-50 dark:bg-white/5 border-none rounded-2xl min-h-[120px] resize-none p-4"
+              placeholder="Thêm chi tiết cho ghi chú này..."
+            />
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button 
+            variant="ghost" 
+            onClick={() => setIsEditDialogOpen(false)}
+            className="rounded-full h-12 px-6"
+          >
+            Hủy
+          </Button>
+          <Button 
+            onClick={handleUpdate}
+            disabled={updateDraftMutation.isPending}
+            className="bg-brand-primary hover:bg-brand-primary/90 text-white rounded-full h-12 px-8"
+          >
+            {updateDraftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cập nhật'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

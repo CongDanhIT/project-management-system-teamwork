@@ -5,6 +5,9 @@ import { TaskStatusEnum } from "../enums/task.enum";
 import { ProjectStatusEnum, ProjectStatusEnumType } from "../enums/projectStatus.enum";
 import ProjectAnalyticsSnapshotModel from "../models/project-analytics-snapshot.model";
 import logger from "../utils/logger";
+import { logActivity } from "./activity.service";
+import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
+
 
 
 export const createProjectService = async (workspaceId: string, body: {
@@ -24,7 +27,21 @@ export const createProjectService = async (workspaceId: string, body: {
     })
     await project.save();
 
+    // Ghi nhật ký
+    await logActivity({
+        workspaceId,
+        projectId: (project._id as any).toString(),
+        userId,
+        action: ActivityActionEnum.CREATE_PROJECT,
+        entityType: ActivityEntityTypeEnum.PROJECT,
+        entityId: (project._id as any).toString(),
+        details: {
+            summary: `đã tạo dự án mới: ${project.name}`
+        }
+    });
+
     // Trả về kèm các trường placeholder cho UI cache
+
     return {
         ...project.toObject(),
         totalTasks: 0,
@@ -123,7 +140,7 @@ export const getProjectsInWorkspaceService = async (workspaceId: string, pageSiz
     return { projects, totalCount, totalPages, skip };
 };
 
-export const getProjectByIdService = async (projectId: string, workspaceId: string) => {
+export const getProjectByIdService = async (projectId: string, workspaceId: string, userId?: string) => {
     const project = await ProjectModel.findOneAndUpdate(
         { _id: projectId, workspaceId, deletedAt: null },
         {
@@ -134,12 +151,28 @@ export const getProjectByIdService = async (projectId: string, workspaceId: stri
     ).populate("createdBy", "_id name profilePicture");
 
     if (!project) {
-        throw new Error("Không tìm thấy dự án hoặc dự án đã bị xóa");
+        throw new Error("Không tìm thấy dự án hoặc dự án đã bị đóng băng/xóa");
     }
+
+    // Ghi nhật ký
+    if (userId) {
+        await logActivity({
+            workspaceId,
+            projectId: (project._id as any).toString(),
+            userId,
+            action: ActivityActionEnum.UPDATE_PROJECT,
+            entityType: ActivityEntityTypeEnum.PROJECT,
+            entityId: (project._id as any).toString(),
+            details: {
+                summary: `đã cập nhật thông tin dự án: ${project.name}`
+            }
+        });
+    }
+
     return project;
 };
 
-export const getProjectAnalyticsService = async (projectId: string, workspaceId: string) => {
+export const getProjectAnalyticsService = async (projectId: string, workspaceId: string, phaseId?: string) => {
     const project = await ProjectModel.findOne({ _id: projectId, workspaceId, deletedAt: null });
     if (!project) {
         throw new Error("Không tìm thấy dự án");
@@ -157,7 +190,8 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
         {
             $match: {
                 projectId: new mongoose.Types.ObjectId(projectId),
-                deletedAt: null
+                deletedAt: null,
+                ...(phaseId ? { phaseId: new mongoose.Types.ObjectId(phaseId) } : {})
             },
         },
         {
@@ -258,6 +292,56 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
                         }
                     }
                 ],
+                tagDistribution: [
+                    { $unwind: { path: "$tags", preserveNullAndEmptyArrays: true } },
+                    {
+                        $lookup: {
+                            from: "tags",
+                            localField: "tags",
+                            foreignField: "_id",
+                            as: "tagDetails"
+                        }
+                    },
+                    { $unwind: { path: "$tagDetails", preserveNullAndEmptyArrays: true } },
+                    {
+                        $group: {
+                            _id: { $ifNull: ["$tagDetails.name", "Chưa phân loại"] },
+                            count: { $sum: 1 }
+                        }
+                    },
+                    {
+                        $project: {
+                            tag: "$_id",
+                            count: 1,
+                            _id: 0
+                        }
+                    }
+                ],
+                memberDistribution: [
+                    { $unwind: { path: "$assignedTo", preserveNullAndEmptyArrays: true } },
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "assignedTo",
+                            foreignField: "_id",
+                            as: "userDetails"
+                        }
+                    },
+                    { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+                    {
+                        $group: {
+                            _id: { $ifNull: ["$userDetails.name", "Chưa phân công"] },
+                            count: { $sum: 1 }
+                        }
+                    },
+                    {
+                        $project: {
+                            name: "$_id",
+                            count: 1,
+                            _id: 0
+                        }
+                    }
+                ],
                 priorityDistribution: [
                     {
                         $group: {
@@ -339,6 +423,8 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
     const upcomingTasksList = result.upcomingTasksList || [];
     const statusDistribution = result.statusDistribution || [];
     const priorityDistribution = result.priorityDistribution || [];
+    const tagDistribution = result.tagDistribution || [];
+    const memberDistribution = result.memberDistribution || [];
 
     // Hiệu năng thời hạn (Deadline Performance)
     const perf = result.deadlinePerformance?.[0] || { 
@@ -399,6 +485,8 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
         upcomingTasksList,
         statusDistribution,
         priorityDistribution,
+        tagDistribution,
+        memberDistribution,
         completionRate,
         tasksDoneToday,
         todayPerformance: performanceIndex,
@@ -486,32 +574,65 @@ export const getProjectAnalyticsHistoryService = async (projectId: string, works
         }
     }
 
-    // 4. Tính toán Performance Index (Rolling 7-day) cho từng mốc
+    // 4. Tính toán Burndown Data
+    // Lấy thông tin dự án để có ngày bắt đầu/kết thúc lý tưởng
+    const project = await ProjectModel.findById(projectId).select("startDate endDate createdAt").lean();
+    if (!project) return timeline; // Không tìm thấy dự án thì trả về timeline thô
+
+    // Đường lý tưởng (Ideal Burn): Giảm dần từ totalTasks về 0 theo thời gian dự án
+    const projectStart = project.startDate || project.createdAt;
+    const projectEnd = project.endDate;
+    const totalTasksAtStart = timeline.length > 0 ? timeline[0].totalTasks : currentData.totalTasks;
+
+
+    // 5. Trả về timeline kèm dữ liệu bổ sung
     return timeline.map((entry, index) => {
-        // Nếu là ngày hôm nay, dùng chính xác con số todayPerformance đã tính ở trên
-        if (index === timeline.length - 1) {
-            return { ...entry, performanceIndex: currentData.todayPerformance };
-        }
-
-        const dailyDone = entry.dailyCompletedTasks || 0;
-        const previousEntries = timeline.slice(Math.max(0, index - 7), index);
+        const entryDate = new Date(entry.date);
         
-        let performanceIndex = 100;
-        if (previousEntries.length > 0) {
-            const sumPast = previousEntries.reduce((sum, e) => sum + (e.dailyCompletedTasks || 0), 0);
-            const avgPast = sumPast / previousEntries.length;
+        // Tính toán Ideal Burndown (nếu có đủ thông tin ngày tháng)
+        let idealTasksRemaining = null;
+        if (projectStart && projectEnd && projectEnd > projectStart) {
+            const totalDuration = projectEnd.getTime() - projectStart.getTime();
+            const timeElapsed = entryDate.getTime() - projectStart.getTime();
             
-            if (avgPast !== 0) {
-                performanceIndex = ((dailyDone / avgPast) - 1) * 100;
+            if (timeElapsed < 0) {
+                idealTasksRemaining = totalTasksAtStart;
+            } else if (timeElapsed > totalDuration) {
+                idealTasksRemaining = 0;
             } else {
-                performanceIndex = dailyDone > 0 ? 100 : (dailyDone < 0 ? -100 : 0);
+                const completionRatio = timeElapsed / totalDuration;
+                idealTasksRemaining = Math.max(0, totalTasksAtStart * (1 - completionRatio));
             }
-        } else {
-            performanceIndex = dailyDone > 0 ? 100 : 0;
         }
 
-        // Chỉ làm tròn, không giới hạn biên độ
-        return { ...entry, performanceIndex: Math.round(performanceIndex) };
+        // Tính toán Performance Index (Rolling 7-day)
+        let performanceIndex = 100;
+        if (index === timeline.length - 1) {
+            performanceIndex = currentData.todayPerformance;
+        } else {
+            const dailyDone = entry.dailyCompletedTasks || 0;
+            const previousEntries = timeline.slice(Math.max(0, index - 7), index);
+            
+            if (previousEntries.length > 0) {
+                const sumPast = previousEntries.reduce((sum, e) => sum + (e.dailyCompletedTasks || 0), 0);
+                const avgPast = sumPast / previousEntries.length;
+                
+                if (avgPast !== 0) {
+                    performanceIndex = ((dailyDone / avgPast) - 1) * 100;
+                } else {
+                    performanceIndex = dailyDone > 0 ? 100 : (dailyDone < 0 ? -100 : 0);
+                }
+            } else {
+                performanceIndex = dailyDone > 0 ? 100 : 0;
+            }
+        }
+
+        return {
+            ...entry,
+            remainingTasks: entry.totalTasks - entry.completedTasks,
+            idealTasksRemaining: idealTasksRemaining !== null ? Math.round(idealTasksRemaining) : null,
+            performanceIndex: Math.round(performanceIndex)
+        };
     });
 };
 
@@ -525,19 +646,58 @@ export const updateProjectService = async (projectId: string, workspaceId: strin
         endDate?: Date | null,
         coverUrl?: string | null;
         coverPosition?: number;
-    }) => {
+    }, userId?: string) => {
+
+    // 1. Capture old value
+    const oldProject = await ProjectModel.findOne({ _id: projectId, workspaceId, deletedAt: null });
+
     const project = await ProjectModel.findOneAndUpdate(
         { _id: projectId, workspaceId, deletedAt: null },
         body,
         { new: true, runValidators: true }
     );
-    if (!project) {
+    if (!project || !oldProject) {
         throw new Error("Không tìm thấy dự án hoặc dự án đã bị đóng băng/xóa");
     }
+
+    // Ghi nhật ký
+    if (userId) {
+        const changedFields = Object.keys(body);
+        const oldValues: any = {};
+        changedFields.forEach(key => {
+            oldValues[key] = (oldProject as any)[key];
+        });
+
+        let detailedSummary = `đã cập nhật thông tin dự án: **${project.name}**`;
+        if (changedFields.includes('name') && oldProject.name !== project.name) {
+            detailedSummary = `đã đổi tên dự án từ **${oldProject.name}** thành **${project.name}**`;
+        } else if (changedFields.includes('status') && oldProject.status !== project.status) {
+            detailedSummary = `đã chuyển trạng thái dự án **${project.name}** sang **${project.status}**`;
+        }
+
+        await logActivity({
+            workspaceId,
+            projectId: (project._id as any).toString(),
+            userId,
+            action: ActivityActionEnum.UPDATE_PROJECT,
+            entityType: ActivityEntityTypeEnum.PROJECT,
+            entityId: (project._id as any).toString(),
+            details: {
+                oldValue: oldValues,
+                newValue: body,
+                summary: detailedSummary
+            }
+        });
+    }
+
     return project;
 };
 
-export const deleteProjectService = async (projectId: string, workspaceId: string) => {
+
+
+export const deleteProjectService = async (projectId: string, workspaceId: string, userId: string) => {
+
+
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -559,8 +719,22 @@ export const deleteProjectService = async (projectId: string, workspaceId: strin
             { session }
         );
 
+        // Ghi nhật ký
+        await logActivity({
+            workspaceId,
+            projectId: (project._id as any).toString(),
+            userId,
+            action: ActivityActionEnum.DELETE_PROJECT,
+            entityType: ActivityEntityTypeEnum.PROJECT,
+            entityId: (project._id as any).toString(),
+            details: {
+                summary: `đã xóa dự án: ${project.name}`
+            }
+        });
+
         await session.commitTransaction();
         return project;
+
     } catch (error) {
         await session.abortTransaction();
         throw error;
@@ -570,7 +744,7 @@ export const deleteProjectService = async (projectId: string, workspaceId: strin
 };
 
 // [AI-ADDED] Khôi phục dự án từ thùng rác
-export const restoreProjectService = async (projectId: string, workspaceId: string) => {
+export const restoreProjectService = async (projectId: string, workspaceId: string, userId: string) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -592,8 +766,64 @@ export const restoreProjectService = async (projectId: string, workspaceId: stri
             { session }
         );
 
+        // Ghi nhật ký
+        await logActivity({
+            workspaceId,
+            projectId: (project._id as any).toString(),
+            userId,
+            action: ActivityActionEnum.RESTORE_PROJECT,
+            entityType: ActivityEntityTypeEnum.PROJECT,
+            entityId: (project._id as any).toString(),
+            details: {
+                summary: `đã khôi phục dự án: ${project.name}`
+            }
+        });
+
         await session.commitTransaction();
         return project;
+
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
+};
+
+// [AI-ADDED] Xóa vĩnh viễn dự án (Hard Delete) và toàn bộ dữ liệu liên quan
+export const permanentDeleteProjectService = async (projectId: string, workspaceId: string, userId: string) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        // 1. Kiểm tra dự án có tồn tại trong thùng rác không?
+        const project = await ProjectModel.findOne({ 
+            _id: projectId, 
+            workspaceId, 
+            deletedAt: { $ne: null } 
+        }).session(session);
+
+        if (!project) {
+            throw new Error("Không tìm thấy dự án trong thùng rác để xóa vĩnh viễn");
+        }
+
+        // 2. Cascade Hard Delete:
+        // - Xóa toàn bộ Task và Subtasks
+        await TaskModel.deleteMany({ projectId, workspaceId }).session(session);
+        
+        // - Xóa Project Analytics Snapshots
+        const ProjectAnalyticsSnapshotModel = mongoose.model("ProjectAnalyticsSnapshot");
+        await ProjectAnalyticsSnapshotModel.deleteMany({ projectId }).session(session);
+
+        // - Xóa Activity Logs liên quan đến dự án này
+        const ActivityLogModel = mongoose.model("ActivityLog");
+        await ActivityLogModel.deleteMany({ projectId }).session(session);
+
+        // 3. Xóa vĩnh viễn dự án
+        await ProjectModel.deleteOne({ _id: projectId }).session(session);
+
+        await session.commitTransaction();
+        return { success: true, message: "Dự án đã được xóa vĩnh viễn" };
+
     } catch (error) {
         await session.abortTransaction();
         throw error;

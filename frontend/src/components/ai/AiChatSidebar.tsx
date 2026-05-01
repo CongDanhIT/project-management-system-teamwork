@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { X, Send, Loader2, Sparkles } from 'lucide-react';
 import { sendAiChatMessage, ChatMessage, ProjectAiContext } from '@/services/ai.service';
 
 interface AiChatSidebarProps {
@@ -94,7 +94,7 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
       {/* Floating Widget Container */}
       <div
         className={`fixed bottom-[100px] right-6 w-[420px] h-[calc(100vh-160px)] max-h-[700px] z-50 flex flex-col
-          bg-white/90 backdrop-blur-2xl border border-white/40 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] 
+          bg-white/90 dark:bg-modal-bg/95 backdrop-blur-2xl border border-white/40 dark:border-modal-border shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] 
           rounded-[2.5rem] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
           ${isOpen 
             ? 'opacity-100 translate-y-0 scale-100' 
@@ -102,16 +102,16 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 bg-gradient-to-br from-brand-primary to-brand-primary/90">
+        <div className="flex items-center justify-between p-6 bg-gradient-to-br from-brand-primary to-brand-primary/90 dark:from-slate-900 dark:to-brand-primary/20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30">
-              <Bot className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-white/20 dark:bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 dark:border-white/10">
+              <Sparkles className="w-6 h-6 text-white fill-white/20" />
             </div>
             <div>
               <h3 className="text-white font-bold text-sm tracking-tight">AI Assistant</h3>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-brand-secondary rounded-full animate-pulse" />
-                <p className="text-white/60 text-[10px] uppercase tracking-[0.05em] font-semibold">Ready to help</p>
+                <p className="text-white/60 dark:text-white/40 text-[10px] uppercase tracking-[0.05em] font-semibold">Ready to help</p>
               </div>
             </div>
           </div>
@@ -125,34 +125,34 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
 
         {/* Context Badge */}
         {context.projectName && (
-          <div className="px-4 py-2 bg-brand-primary/10 border-b border-brand-primary/10">
-            <p className="text-xs text-brand-primary font-medium flex items-center gap-1">
+          <div className="px-4 py-2 bg-brand-primary/10 dark:bg-brand-primary/5 border-b border-brand-primary/10 dark:border-brand-primary/5">
+            <p className="text-xs text-brand-primary dark:text-brand-tertiary font-medium flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
               Đang xem: <span className="font-bold">{context.projectName}</span>
               {context.totalTasks !== undefined && (
-                <span className="ml-1 text-brand-secondary/80">({context.totalTasks} tasks)</span>
+                <span className="ml-1 text-brand-secondary/80 dark:text-brand-secondary">({context.totalTasks} tasks)</span>
               )}
             </p>
           </div>
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 dark:bg-modal-bg/30">
           {messages.map((msg, idx) => (
             <div
               key={idx}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="w-7 h-7 bg-brand-primary rounded-full flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
-                  <Bot className="w-4 h-4 text-white" />
+                <div className="w-7 h-7 bg-brand-primary dark:bg-brand-primary/80 rounded-full flex items-center justify-center mr-2 mt-1 flex-shrink-0 shadow-sm">
+                  <Sparkles className="w-4 h-4 text-white fill-white/20" />
                 </div>
               )}
               <div
                 className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-brand-primary text-white rounded-tr-sm shadow-md shadow-brand-primary/10'
-                    : 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                    : 'bg-slate-100 dark:bg-modal-section text-slate-800 dark:text-foreground rounded-tl-sm border border-transparent dark:border-modal-border'
                 }`}
               >
                 {renderMessage(msg.content)}
@@ -162,11 +162,11 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="w-7 h-7 bg-brand-primary rounded-full flex items-center justify-center mr-2 flex-shrink-0 shadow-sm">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-7 h-7 bg-brand-primary dark:bg-brand-primary/80 rounded-full flex items-center justify-center mr-2 flex-shrink-0 shadow-sm">
+                <Sparkles className="w-4 h-4 text-white fill-white/20" />
               </div>
-              <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-tl-sm">
-                <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+              <div className="bg-slate-100 dark:bg-modal-section px-4 py-3 rounded-2xl rounded-tl-sm border border-transparent dark:border-modal-border">
+                <Loader2 className="w-4 h-4 text-slate-400 dark:text-brand-tertiary/60 animate-spin" />
               </div>
             </div>
           )}
@@ -175,15 +175,15 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
         </div>
 
         {/* Model Selector */}
-        <div className="px-6 py-2 flex gap-2 border-t border-slate-50 bg-slate-50/30">
+        <div className="px-6 py-2 flex gap-2 border-t border-slate-50 dark:border-modal-border bg-slate-50/30 dark:bg-modal-aside/50">
           {MODELS.map((m) => (
             <button
               key={m.id}
               onClick={() => setSelectedModel(m.id)}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border ${
                 selectedModel === m.id
-                  ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-brand-primary/30'
+                  ? 'bg-brand-primary dark:bg-brand-secondary dark:text-brand-primary text-white border-brand-primary dark:border-brand-secondary shadow-sm'
+                  : 'bg-white dark:bg-modal-bg text-slate-500 dark:text-text-dim border-slate-200 dark:border-modal-border hover:border-brand-primary/30'
               }`}
             >
               {m.name} <span className="opacity-60 font-normal ml-0.5">({m.provider})</span>
@@ -192,8 +192,8 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
         </div>
 
         {/* Input area */}
-        <div className="p-6 bg-white/50 backdrop-blur-md border-t border-slate-100/50">
-          <div className="flex items-center gap-2 bg-slate-100/80 rounded-[1.5rem] border border-slate-200/50 px-5 py-3 focus-within:bg-white focus-within:border-brand-primary/30 focus-within:ring-4 focus-within:ring-brand-primary/5 transition-all shadow-inner">
+        <div className="p-6 bg-white/50 dark:bg-modal-bg border-t border-slate-100/50 dark:border-modal-border">
+          <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-input-bg/50 rounded-[1.5rem] border border-slate-200/50 dark:border-modal-border px-5 py-3 focus-within:bg-white dark:focus-within:bg-modal-aside focus-within:border-brand-primary/30 dark:focus-within:border-brand-secondary/30 focus-within:ring-4 focus-within:ring-brand-primary/5 transition-all shadow-inner">
             <input
               ref={inputRef}
               type="text"
@@ -202,17 +202,17 @@ export const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ isOpen, onClose, c
               onKeyDown={handleKeyDown}
               placeholder="Ask AI anything..."
               disabled={isLoading}
-              className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none font-medium"
+              className="flex-1 bg-transparent text-sm text-slate-800 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-text-dim outline-none font-medium"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="w-10 h-10 bg-brand-primary disabled:bg-slate-300 rounded-[1rem] flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-primary/20"
+              className="w-10 h-10 bg-brand-primary dark:bg-brand-secondary disabled:bg-slate-300 dark:disabled:bg-slate-800 rounded-[1rem] flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-primary/20"
             >
-              <Send className="w-4 h-4 text-white" />
+              <Send className="w-4 h-4 text-white dark:text-brand-primary" />
             </button>
           </div>
-          <p className="text-center text-[10px] text-slate-400 mt-3 font-medium uppercase tracking-wider opacity-60">
+          <p className="text-center text-[10px] text-slate-400 dark:text-text-dim mt-3 font-medium uppercase tracking-wider opacity-60">
             Press Enter to send • AI can make mistakes
           </p>
         </div>

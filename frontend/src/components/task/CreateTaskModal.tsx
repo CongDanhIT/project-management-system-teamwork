@@ -45,6 +45,7 @@ interface CreateTaskModalProps {
   parentId?: string;
   initialStatus?: TaskStatus;
   workspaceId?: string; // Dùng để fetch tasks và members
+  phaseId?: string; // [FIX] Liên kết task với Phase hiện tại
 }
 
 const getInitials = (name: string) => {
@@ -77,6 +78,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   parentId,
   initialStatus = TaskStatus.TODO,
   workspaceId,
+  phaseId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -203,6 +205,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         subtasks: selectedSubtasks, // Truyền danh sách subtask đã chọn
         tags: selectedTagIds,
         assignedTo: selectedAssigneeIds,
+        phaseId: phaseId, // [FIX] Gửi phaseId lên backend
       });
       setTitle('');
       setDescription('');

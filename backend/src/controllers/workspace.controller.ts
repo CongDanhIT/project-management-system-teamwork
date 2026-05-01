@@ -141,7 +141,7 @@ export const changeWorkSpaceMemberRoleController = asyncHandler(
         // Kiểm tra quyền
         roleGuard(getRole.name, [Permissions.CHANGE_MEMBER_ROLE]);
 
-        const member = await changeMemberRoleService(workspaceId, memberId, roleId);
+        const member = await changeMemberRoleService(workspaceId, memberId, roleId, userId);
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -163,7 +163,7 @@ export const updateWorkspaceByIdController = asyncHandler(
         // Kiểm tra quyền
         roleGuard(getRole.name, [Permissions.EDIT_WORKSPACE]);
 
-        const workspace = await updateWorkspaceByIdService(workspaceId, name, description, slackWebhookUrl, dailyDigestEnabled);
+        const workspace = await updateWorkspaceByIdService(workspaceId, userId, name, description, slackWebhookUrl, dailyDigestEnabled);
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,

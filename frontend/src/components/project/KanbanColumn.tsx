@@ -16,6 +16,8 @@ interface KanbanColumnProps {
   onTaskClick?: (task: Task) => void;
   onAddTaskClick?: (status: TaskStatus) => void;
   isAdminOrOwner?: boolean;
+  isProjectCompleted?: boolean;
+  phaseId?: string;
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
@@ -38,12 +40,13 @@ const statusBgMap: Record<TaskStatus, string> = {
   [TaskStatus.CANCELLED]: 'bg-rose-50/40 dark:bg-rose-900/10',
 };
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, allTasks, onTaskClick, onAddTaskClick, isAdminOrOwner }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, allTasks, onTaskClick, onAddTaskClick, isAdminOrOwner, isProjectCompleted, phaseId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: {
       type: 'Column',
       columnId: id,
+      phaseId: phaseId,
     },
   });
 
@@ -62,7 +65,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, al
             {tasks.length}
           </span>
         </div>
-        {isAdminOrOwner && (
+        {isAdminOrOwner && !isProjectCompleted && (
           <button 
             className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all text-slate-400 hover:text-brand-primary shadow-sm opacity-0 group-hover:opacity-100 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
             onClick={() => onAddTaskClick?.(id)}

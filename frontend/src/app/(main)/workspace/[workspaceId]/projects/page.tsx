@@ -23,8 +23,10 @@ import {
   MoreHorizontal,
   Loader2,
   ArrowLeft,
-  LayoutGrid
+  LayoutGrid,
+  Layers
 } from 'lucide-react';
+import { PhaseService } from '@/services/phase.service';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,10 +102,10 @@ function ProjectCard({
   const themeIndex = (project._id || project.name).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 4;
 
   const themes = [
-    { label: "Chiến lược hàng đầu", text: "text-brand-primary bg-brand-primary/10", hover: "group-hover:text-brand-primary", accent: "bg-brand-primary" },
-    { label: "Kiến tạo mục tiêu", text: "text-brand-secondary bg-brand-secondary/10", hover: "group-hover:text-brand-secondary", accent: "bg-brand-secondary" },
-    { label: "Giải pháp sáng tạo", text: "text-brand-primary bg-brand-primary/15", hover: "group-hover:text-brand-primary", accent: "bg-brand-primary" },
-    { label: "Đổi mới không ngừng", text: "text-brand-primary bg-brand-primary/20", hover: "group-hover:text-brand-primary", accent: "bg-brand-primary" }
+    { label: "Chiến lược hàng đầu", text: "text-teal-600 bg-teal-500/10", hover: "group-hover:text-teal-600", accent: "bg-teal-500" },
+    { label: "Kiến tạo mục tiêu", text: "text-teal-600 bg-teal-500/10", hover: "group-hover:text-teal-600", accent: "bg-teal-500" },
+    { label: "Giải pháp sáng tạo", text: "text-teal-600 bg-teal-500/10", hover: "group-hover:text-teal-600", accent: "bg-teal-500" },
+    { label: "Đổi mới không ngừng", text: "text-teal-600 bg-teal-500/10", hover: "group-hover:text-teal-600", accent: "bg-teal-500" }
   ];
   const currentTheme = themes[themeIndex];
 
@@ -172,7 +174,7 @@ function ProjectCard({
     <Card
       onClick={() => {
         if (isTrash) return;
-        router.push(`/workspace/${workspaceId}/projects/${project._id}/board`);
+        router.push(`/workspace/${workspaceId}/projects/${project._id}/phases`);
       }}
       className={cn(
         "group relative p-0 rounded-[32px] bg-white dark:bg-slate-900/40 backdrop-blur-md shadow-glow-combined hover:z-30 overflow-hidden flex flex-col h-[360px] border border-slate-200 dark:border-white/5 cursor-pointer",
@@ -215,7 +217,7 @@ function ProjectCard({
           <div className="flex items-center gap-2">
             {!isTrash && (
               <div className="px-2.5 py-1 rounded-full glass text-[9px] font-black tracking-widest text-slate-900 dark:text-white uppercase flex items-center gap-2 border border-white/20">
-                <div className={cn("w-1.5 h-1.5 rounded-full", config.label === 'ĐANG HOẠT ĐỘNG' ? "bg-brand-secondary" : "bg-brand-primary")} />
+                <div className={cn("w-1.5 h-1.5 rounded-full", config.label === 'ĐANG HOẠT ĐỘNG' ? "bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.5)]" : "bg-slate-400")} />
                 {config.label}
               </div>
             )}
@@ -291,9 +293,9 @@ function ProjectCard({
               <span>Độ phủ nhiệm vụ</span>
               <span className="text-slate-900 dark:text-white text-xs">{actualProgress}%</span>
             </div>
-            <div className="h-[3px] w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-[10px] w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden p-[1.5px] border border-slate-200/50 dark:border-white/5 shadow-inner">
               <div
-                className="h-full bg-brand-primary transition-all duration-1000 ease-out"
+                className="h-full bg-gradient-to-r from-brand-primary via-teal-500 to-brand-primary bg-[length:200%_auto] animate-shimmer rounded-full shadow-sm shadow-brand-primary/20 transition-all duration-1000 ease-out"
                 style={{ width: `${actualProgress}%` }}
               />
             </div>
@@ -358,16 +360,16 @@ function CreateProjectPlaceholder({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group relative h-[360px] w-full rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-brand-secondary/40 hover:bg-brand-secondary/[0.02] transition-all duration-400 transform hover:!-translate-y-2 hover:z-30 hover:shadow-[0_30px_60px_-15px_rgba(199,249,100,0.2)] flex flex-col items-center justify-center gap-5 cursor-pointer overflow-hidden"
+      className="group relative h-[360px] w-full rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-brand-primary/40 hover:bg-brand-primary/[0.02] transition-all duration-400 transform hover:!-translate-y-2 hover:z-30 hover:shadow-[0_30px_60px_-15px_rgba(3,93,91,0.2)] flex flex-col items-center justify-center gap-5 cursor-pointer overflow-hidden"
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-brand-secondary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-brand-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      <div className="relative w-16 h-16 rounded-3xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-800 group-hover:scale-110 group-hover:bg-brand-secondary group-hover:border-brand-secondary shadow-sm transition-all duration-500">
-        <Plus className="w-8 h-8 text-slate-400 dark:text-slate-600 group-hover:text-brand-primary transition-colors" />
+      <div className="relative w-16 h-16 rounded-3xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center border border-slate-100 dark:border-slate-800 group-hover:scale-110 group-hover:bg-brand-primary group-hover:border-brand-primary shadow-sm transition-all duration-500">
+        <Plus className="w-8 h-8 text-slate-400 dark:text-slate-600 group-hover:text-white transition-colors" />
       </div>
 
       <div className="relative text-center space-y-2">
-        <span className="block text-sm font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wider group-hover:text-brand-secondary transition-colors">Tạo dự án mới</span>
+        <span className="block text-sm font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wider group-hover:text-brand-primary transition-colors">Tạo dự án mới</span>
         <span className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-wide uppercase">Thiết lập mục tiêu & nhiệm vụ</span>
       </div>
     </button>
@@ -387,12 +389,13 @@ export default function ProjectsPage() {
 
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
-  const [trashType, setTrashType] = useState<'PROJECT' | 'TASK'>('PROJECT');
+  const [trashType, setTrashType] = useState<'PROJECT' | 'TASK' | 'PHASE'>('PROJECT');
   const [formOpen, setFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [hardDeletingProject, setHardDeletingProject] = useState<Project | null>(null);
   const [deletingTask, setDeletingTask] = useState<any | null>(null);
+  const [deletingPhase, setDeletingPhase] = useState<any | null>(null);
 
   const { data, isLoading, refetch: refetchActive } = useQuery({
     queryKey: ['workspace-projects', workspaceId],
@@ -412,28 +415,44 @@ export default function ProjectsPage() {
     enabled: !!workspaceId && activeTab === 'trash',
   });
 
+  const { data: deletedPhasesData, isLoading: isDeletedPhasesLoading, refetch: refetchDeletedPhases } = useQuery({
+    queryKey: ['workspace-deleted-phases', workspaceId],
+    queryFn: () => PhaseService.getDeletedPhases(workspaceId),
+    enabled: !!workspaceId && activeTab === 'trash',
+  });
+
   // Tự động làm mới khi chuyển Tab
   React.useEffect(() => {
     if (activeTab === 'trash') {
       refetchDeletedProjects();
       refetchDeletedTasks();
+      refetchDeletedPhases();
     } else {
       refetchActive();
     }
-  }, [activeTab, trashType, refetchDeletedProjects, refetchDeletedTasks, refetchActive]);
+  }, [activeTab, trashType, refetchDeletedProjects, refetchDeletedTasks, refetchDeletedPhases, refetchActive]);
 
   const isCurrentLoading = activeTab === 'active'
     ? isLoading
-    : (trashType === 'PROJECT' ? isDeletedLoading : isDeletedTasksLoading);
+    : (trashType === 'PROJECT' ? isDeletedLoading : (trashType === 'TASK' ? isDeletedTasksLoading : isDeletedPhasesLoading));
 
   const currentItems = activeTab === 'active'
     ? (data?.projects ?? [])
-    : (trashType === 'PROJECT' ? (deletedData ?? []) : (deletedTasksData ?? []));
+    : (trashType === 'PROJECT' ? (deletedData ?? []) : (trashType === 'TASK' ? (deletedTasksData ?? []) : (deletedPhasesData ?? [])));
 
-  const filtered = currentItems.filter((item: any) => {
-    const name = item.name || item.title || '';
-    return name.toLowerCase().includes(search.toLowerCase());
-  });
+  const filtered = React.useMemo(() => {
+    const items = [...currentItems].filter((item: any) => {
+      const name = item.name || item.title || '';
+      return name.toLowerCase().includes(search.toLowerCase());
+    });
+
+    // Sắp xếp theo thời gian truy cập gần nhất (lastAccessedAt) - Truy cập mới nhất lên đầu
+    return items.sort((a, b) => {
+      const dateA = new Date(a.lastAccessedAt || a.createdAt).getTime();
+      const dateB = new Date(b.lastAccessedAt || b.createdAt).getTime();
+      return dateB - dateA;
+    });
+  }, [currentItems, search]);
 
   const deleteMutation = useMutation({
     mutationFn: () => projectService.deleteProject(workspaceId, deletingProject!._id),
@@ -507,6 +526,25 @@ export default function ProjectsPage() {
     },
   });
 
+  const restorePhaseMutation = useMutation({
+    mutationFn: (phase: any) => PhaseService.restorePhase(phase._id),
+    onSuccess: (_, phase: any) => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-deleted-phases', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-projects', workspaceId] });
+      
+      // Khôi phục đồng bộ cho Project Phases Hub
+      if (phase.projectId?._id || phase.projectId) {
+        const pId = phase.projectId?._id || phase.projectId;
+        queryClient.invalidateQueries({ queryKey: ['project-phases', pId] });
+      }
+      
+      toast.success('Đã khôi phục giai đoạn và toàn bộ công việc thành công!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Không thể khôi phục giai đoạn');
+    }
+  });
+
 
   const hardDeleteMutation = useMutation({
     mutationFn: () => projectService.permanentDeleteProject(workspaceId, hardDeletingProject!._id),
@@ -539,6 +577,14 @@ export default function ProjectsPage() {
         throw new Error(`Dự án "${task.projectId?.name || 'liên quan'}" đang nằm trong thùng rác. Vui lòng khôi phục dự án trước.`);
       }
 
+      // Kiểm tra nếu phase cha đang bị xoá (nếu công việc có thuộc phase)
+      if (task.phaseId) {
+        const isPhaseDeleted = deletedPhasesData?.some((ph: any) => ph._id === task.phaseId);
+        if (isPhaseDeleted) {
+          throw new Error(`Giai đoạn của công việc này đang nằm trong thùng rác. Vui lòng khôi phục giai đoạn trước.`);
+        }
+      }
+
       return taskService.restoreTask(workspaceId, task._id);
     },
     onSuccess: () => {
@@ -560,6 +606,18 @@ export default function ProjectsPage() {
     },
   });
 
+  const hardDeletePhaseMutation = useMutation({
+    mutationFn: () => PhaseService.permanentDeletePhase(deletingPhase!._id), 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-deleted-phases', workspaceId] });
+      toast.success('Giai đoạn đã được xóa vĩnh viễn khỏi hệ thống!');
+      setDeletingPhase(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Không thể xóa vĩnh viễn giai đoạn');
+    }
+  });
+
   function handleEdit(p: Project) {
     setEditingProject(p);
     setFormOpen(true);
@@ -575,7 +633,7 @@ export default function ProjectsPage() {
           </h1>
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-80">
             {activeTab === 'trash'
-              ? `${(deletedData?.length || 0) + (deletedTasksData?.length || 0)} mục đã xoá đang chờ xử lý`
+              ? `${(deletedData?.length || 0) + (deletedTasksData?.length || 0) + (deletedPhasesData?.length || 0)} mục đã xoá đang chờ xử lý`
               : `${data?.projects?.length || 0} dự án đang được quản lý`}
           </p>
         </div>
@@ -608,9 +666,9 @@ export default function ProjectsPage() {
             )}
           >
             Thùng rác
-            {((deletedData?.length || 0) + (deletedTasksData?.length || 0)) > 0 && (
+            {((deletedData?.length || 0) + (deletedTasksData?.length || 0) + (deletedPhasesData?.length || 0)) > 0 && (
               <span className="ml-3 px-2 py-0.5 bg-white/20 text-[9px] text-white rounded-full font-black tracking-normal">
-                {(deletedData?.length || 0) + (deletedTasksData?.length || 0)}
+                {(deletedData?.length || 0) + (deletedTasksData?.length || 0) + (deletedPhasesData?.length || 0)}
               </span>
             )}
           </button>
@@ -636,6 +694,15 @@ export default function ProjectsPage() {
                 )}
               >
                 Công việc
+              </button>
+              <button
+                onClick={() => setTrashType('PHASE')}
+                className={cn(
+                  "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-full transition-all flex items-center gap-2",
+                  trashType === 'PHASE' ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Giai đoạn
               </button>
             </div>
           )}
@@ -678,7 +745,7 @@ export default function ProjectsPage() {
               <Trash2 className="w-16 h-16 text-slate-200 dark:text-slate-800 mb-6" />
               <p className="text-xl font-black text-slate-900 dark:text-white">Thùng rác trống</p>
               <p className="text-slate-500 mt-2 max-w-sm">
-                Không tìm thấy {trashType === 'PROJECT' ? 'dự án' : 'công việc'} nào đã xoá.
+                Không tìm thấy {trashType === 'PROJECT' ? 'dự án' : (trashType === 'TASK' ? 'công việc' : 'giai đoạn')} nào đã xoá.
                 Dữ liệu xoá sẽ được lưu giữ trong 30 ngày.
               </p>
               <Button
@@ -714,7 +781,7 @@ export default function ProjectsPage() {
                 activeTab={activeTab}
               />
             ))
-          ) : (
+          ) : trashType === 'TASK' ? (
             (filtered as any[]).map((task: any) => (
               <Card key={task._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
                 <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
@@ -744,6 +811,45 @@ export default function ProjectsPage() {
                   <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{task.title}</h4>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                     Dự án: <span className="text-brand-primary">{task.projectId?.name || 'Không xác định'}</span>
+                  </p>
+                </div>
+                <div className="pt-6 mt-auto">
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold py-1.5 px-3.5 rounded-full border-none bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 shadow-sm">
+                    Đã xoá tạm thời
+                  </Badge>
+                </div>
+              </Card>
+            ))
+          ) : (
+            (filtered as any[]).map((phase: any) => (
+              <Card key={phase._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
+                <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
+                      }
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
+                      <DropdownMenuItem onClick={() => restorePhaseMutation.mutate(phase)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                        Khôi phục giai đoạn
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                      <DropdownMenuItem onClick={() => setDeletingPhase(phase)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                        Xoá vĩnh viễn
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{phase.name}</h4>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                    Dự án: <span className="text-brand-primary">{phase.projectId?.name || 'Không xác định'}</span>
                   </p>
                 </div>
                 <div className="pt-6 mt-auto">
@@ -804,8 +910,8 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Permanent Delete Dialog (Shared for Project & Task) */}
-      <Dialog open={!!hardDeletingProject || !!deletingTask} onOpenChange={(v) => !v && (setHardDeletingProject(null), setDeletingTask(null))}>
+      {/* Permanent Delete Dialog (Shared for Project, Task & Phase) */}
+      <Dialog open={!!hardDeletingProject || !!deletingTask || !!deletingPhase} onOpenChange={(v) => !v && (setHardDeletingProject(null), setDeletingTask(null), setDeletingPhase(null))}>
         <DialogContent className="rounded-[32px] p-10 max-w-lg border-none shadow-depth-3 bg-white dark:bg-slate-900">
           <DialogHeader className="text-center space-y-4">
             <div className="w-20 h-20 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
@@ -815,7 +921,7 @@ export default function ProjectsPage() {
           </DialogHeader>
           <div className="text-center">
             <p className="text-slate-500 dark:text-slate-400 font-medium">
-              CẢNH BÁO: <span className="text-slate-900 dark:text-white font-bold">"{hardDeletingProject?.name || deletingTask?.title}"</span> sẽ bị xoá vĩnh viễn.
+              CẢNH BÁO: <span className="text-slate-900 dark:text-white font-bold">"{hardDeletingProject?.name || deletingTask?.title || deletingPhase?.name}"</span> sẽ bị xoá vĩnh viễn.
               Hành động này <span className="underline font-bold text-red-600 dark:text-red-500">KHÔNG THỂ</span> hoàn tác.
             </p>
           </div>
@@ -823,17 +929,21 @@ export default function ProjectsPage() {
             <Button
               variant="ghost"
               className="rounded-full h-12 font-bold flex-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-none"
-              onClick={() => (setHardDeletingProject(null), setDeletingTask(null))}
+              onClick={() => (setHardDeletingProject(null), setDeletingTask(null), setDeletingPhase(null))}
             >
               Quay lại
             </Button>
             <Button
               variant="destructive"
               className="bg-red-600 hover:bg-red-700 text-white rounded-full h-12 font-bold flex-1 shadow-lg shadow-red-200/10 dark:shadow-none transition-all border-none"
-              onClick={() => hardDeletingProject ? hardDeleteMutation.mutate() : hardDeleteTaskMutation.mutate()}
-              disabled={hardDeleteMutation.isPending || hardDeleteTaskMutation.isPending}
+              onClick={() => {
+                if (hardDeletingProject) hardDeleteMutation.mutate();
+                else if (deletingTask) hardDeleteTaskMutation.mutate();
+                else if (deletingPhase) hardDeletePhaseMutation.mutate();
+              }}
+              disabled={hardDeleteMutation.isPending || hardDeleteTaskMutation.isPending || hardDeletePhaseMutation.isPending}
             >
-              {(hardDeleteMutation.isPending || hardDeleteTaskMutation.isPending) ? 'Đang xử lý...' : 'Xác nhận xoá bỏ'}
+              {(hardDeleteMutation.isPending || hardDeleteTaskMutation.isPending || hardDeletePhaseMutation.isPending) ? 'Đang xử lý...' : 'Xác nhận xoá bỏ'}
             </Button>
           </DialogFooter>
         </DialogContent>

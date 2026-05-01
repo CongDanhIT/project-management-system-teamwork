@@ -50,6 +50,8 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
   const [description, setDescription] = useState(project?.description ?? '');
   const [emoji, setEmoji] = useState(project?.emoji ?? '📁');
   const [status, setStatus] = useState<Project['status']>(project?.status ?? 'PLANNING');
+  const [startDate, setStartDate] = useState(project?.startDate ? project.startDate.split('T')[0] : '');
+  const [endDate, setEndDate] = useState(project?.endDate ? project.endDate.split('T')[0] : '');
   const [coverUrl, setCoverUrl] = useState(project?.coverUrl ?? '');
   const [coverPositionX, setCoverPositionX] = useState(project?.coverPositionX ?? 50);
   const [coverPositionY, setCoverPositionY] = useState(project?.coverPositionY ?? 50);
@@ -62,6 +64,8 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
     setDescription(project?.description ?? '');
     setEmoji(project?.emoji ?? '📁');
     setStatus(project?.status ?? 'PLANNING');
+    setStartDate(project?.startDate ? project.startDate.split('T')[0] : '');
+    setEndDate(project?.endDate ? project.endDate.split('T')[0] : '');
     setCoverUrl(project?.coverUrl ?? '');
     setCoverPositionX(project?.coverPositionX ?? 50);
     setCoverPositionY(project?.coverPositionY ?? 50);
@@ -71,7 +75,11 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const data = { name, description, emoji, status, coverUrl, coverPositionX, coverPositionY };
+      const data: any = { 
+        name, description, emoji, status, coverUrl, coverPositionX, coverPositionY,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined
+      };
       if (isEdit) {
         return projectService.updateProject(workspaceId, project!._id, data);
       }
@@ -199,6 +207,29 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="proj-start" className="text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1">Ngày bắt đầu</Label>
+                  <Input
+                    id="proj-start"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="rounded-2xl border-none bg-slate-100/50 dark:bg-slate-900/50 h-14 font-bold text-sm shadow-sm focus:bg-white dark:focus:bg-slate-900"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="proj-end" className="text-[10px] font-black text-slate-400 tracking-widest uppercase ml-1">Hạn chót (Deadline)</Label>
+                  <Input
+                    id="proj-end"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="rounded-2xl border-none bg-slate-100/50 dark:bg-slate-900/50 h-14 font-bold text-sm shadow-sm focus:bg-white dark:focus:bg-slate-900"
+                  />
+                </div>
               </div>
             </div>
 

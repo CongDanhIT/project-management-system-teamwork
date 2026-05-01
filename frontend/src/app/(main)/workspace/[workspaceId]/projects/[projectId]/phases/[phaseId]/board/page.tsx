@@ -7,7 +7,7 @@ import { projectService, Project } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { workspaceService } from '@/services/workspace.service';
 import { useWorkspaceStore } from '@/stores/workspace.store';
-import { Loader2, LayoutGrid, BarChart3, Settings, Layout } from 'lucide-react';
+import { Loader2, LayoutGrid, BarChart3, Settings, Layout, Calendar as CalendarIcon, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
@@ -18,25 +18,46 @@ import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 
-import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
+import { useRole } from '@/hooks/useRole';
+import { PhaseService } from '@/services/phase.service';
+import { useRouter } from 'next/navigation';
+
 
 export default function ProjectBoardPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const workspaceId = params.workspaceId as string;
   const projectId = params.projectId as string;
+  const phaseId = params.phaseId as string;
   const { currentWorkspaceId } = useWorkspaceStore();
-  const { isAdminOrOwner } = useWorkspaceRole();
+  const { isPrivileged } = useRole();
   const queryClient = useQueryClient();
   const [project, setProject] = useState<Project | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Fetch Phase status to check for locking
+  const { data: phase } = useQuery({
+      queryKey: ['phase', phaseId],
+      queryFn: () => PhaseService.getPhases(projectId).then(res => res.data.find((p: any) => p._id === phaseId)),
+      enabled: !!projectId && !!phaseId,
+  });
+
+  useEffect(() => {
+      if (phase?.isLocked && !isPrivileged && !loading) {
+          toast.error('Giai đoạn này đã bị khóa. Chỉ Quản trị viên mới có quyền truy cập.');
+          router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
+      }
+  }, [phase, isPrivileged, loading, workspaceId, projectId, router]);
+
+  
   const { data: projectTasks = [] } = useQuery({
-    queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000 }),
+    queryKey: ['project-tasks', workspaceId, projectId, phaseId],
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000, phaseId }),
     select: (data) => data.tasks,
-    enabled: !!workspaceId && !!projectId,
+    enabled: !!workspaceId && !!projectId && !!phaseId,
   });
   
   // Modal state
@@ -87,7 +108,13 @@ export default function ProjectBoardPage() {
     }
   }, [workspaceId, projectId]);
 
+  const isProjectCompleted = project?.status === 'COMPLETED';
+
   const handleTaskClick = (task: Task) => {
+    if (isProjectCompleted) {
+      toast.info('Dự án đã hoàn thành. Bạn chỉ có thể xem thông tin ở chế độ đọc.');
+      return;
+    }
     setSelectedTask(task);
     setIsModalOpen(true);
   };
@@ -98,7 +125,7 @@ export default function ProjectBoardPage() {
       if (selectedTask?._id === taskId) {
         setSelectedTask({ ...selectedTask, ...updatedTask });
       }
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
@@ -119,7 +146,7 @@ export default function ProjectBoardPage() {
     try {
       await taskService.deleteTask(workspaceId, projectId, taskId);
       setIsModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
@@ -141,7 +168,7 @@ export default function ProjectBoardPage() {
       const createdTask = await taskService.createTask(workspaceId, pId, taskData);
       const subtasksCount = taskData.subtasks?.length || 0;
 
-      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -207,14 +234,21 @@ export default function ProjectBoardPage() {
             Board
           </div>
           <Link 
-            href={`/workspace/${workspaceId}/projects/${projectId}/table`}
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/table`}
             className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
             <Layout className="w-3.5 h-3.5 mr-2" />
             Table
           </Link>
           <Link 
-            href={`/workspace/${workspaceId}/projects/${projectId}/analytics`}
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/calendar`}
+            className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
+          >
+            <CalendarIcon className="w-3.5 h-3.5 mr-2" />
+            Calendar
+          </Link>
+          <Link 
+            href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/analytics`}
             className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
             <BarChart3 className="w-3.5 h-3.5 mr-2" />
@@ -233,12 +267,15 @@ export default function ProjectBoardPage() {
           key={refreshKey}
           workspaceId={workspaceId} 
           projectId={projectId} 
+          phaseId={phaseId}
           onTaskClick={handleTaskClick}
           onAddTaskClick={(status) => {
+            if (isProjectCompleted) return;
             setCreateModalStatus(status);
             setIsCreateModalOpen(true);
           }}
-          isAdminOrOwner={isAdminOrOwner}
+          isAdminOrOwner={isPrivileged}
+          isProjectCompleted={isProjectCompleted}
         />
       </div>
 
@@ -251,7 +288,7 @@ export default function ProjectBoardPage() {
         onSubtaskUpdate={() => setRefreshKey(prev => prev + 1)}
         members={members}
         tasks={projectTasks}
-        isAdminOrOwner={isAdminOrOwner}
+        isAdminOrOwner={isPrivileged}
       />
 
       <CreateTaskModal 
@@ -261,6 +298,7 @@ export default function ProjectBoardPage() {
         onSubmit={handleCreateTask}
         initialStatus={createModalStatus}
         workspaceId={workspaceId}
+        phaseId={phaseId}
       />
     </div>
   );

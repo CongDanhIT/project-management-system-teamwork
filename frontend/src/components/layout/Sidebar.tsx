@@ -155,7 +155,7 @@ export default function Sidebar() {
             {isFavoritesOpen && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
                 {favoriteProjects.map((project) => {
-                  const projectHref = `/workspace/${workspaceId}/projects/${project._id}/board`;
+                  const projectHref = `/workspace/${workspaceId}/projects/${project._id}/phases`;
                   const isActive = pathname.startsWith(projectHref);
                   return (
                     <Link

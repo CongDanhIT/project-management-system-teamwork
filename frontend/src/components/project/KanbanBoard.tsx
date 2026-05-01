@@ -28,9 +28,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface KanbanBoardProps {
   workspaceId: string;
   projectId: string;
+  phaseId?: string;
   onTaskClick?: (task: Task) => void;
   onAddTaskClick?: (status: TaskStatus) => void;
   isAdminOrOwner?: boolean;
+  isProjectCompleted?: boolean;
 }
 
 const defaultColumns: { id: TaskStatus; title: string }[] = [
@@ -40,11 +42,19 @@ const defaultColumns: { id: TaskStatus; title: string }[] = [
   { id: TaskStatus.DONE, title: 'Hoàn thành' },
 ];
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId, onTaskClick, onAddTaskClick, isAdminOrOwner }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
+  workspaceId, 
+  projectId, 
+  phaseId,
+  onTaskClick, 
+  onAddTaskClick, 
+  isAdminOrOwner, 
+  isProjectCompleted 
+}) => {
   const queryClient = useQueryClient();
   const { data: fetchedTasks, isLoading: loading } = useQuery({
-    queryKey: ['project-tasks', workspaceId, projectId],
-    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000 }),
+    queryKey: ['project-tasks', workspaceId, projectId, phaseId],
+    queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000, phaseId }),
     enabled: !!workspaceId && !!projectId,
   });
 
@@ -53,6 +63,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
 
   useDndMonitor({
     onDragStart: (event: DragStartEvent) => {
+      if (isProjectCompleted) return;
       if (event.active.data.current?.type === 'Task') {
         setActiveTask(event.active.data.current.task);
       }
@@ -221,6 +232,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ workspaceId, projectId
               onTaskClick={onTaskClick}
               onAddTaskClick={onAddTaskClick}
               isAdminOrOwner={isAdminOrOwner}
+              isProjectCompleted={isProjectCompleted}
+              phaseId={phaseId}
             />
           ))}
         </div>

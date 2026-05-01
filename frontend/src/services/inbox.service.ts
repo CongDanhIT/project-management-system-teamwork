@@ -24,14 +24,21 @@ const promoteToTask = async (
     inboxId: string,
     workspaceId: string,
     projectId: string,
-    status: string
+    status: string,
+    phaseId?: string
 ) => {
     const response = await api.post(`/inbox/${inboxId}/promote`, {
         workspaceId,
         projectId,
-        status
+        status,
+        phaseId
     });
     return response.data;
+};
+
+const updateDraft = async (inboxId: string, data: { title?: string; description?: string }) => {
+    const response = await api.patch(`/inbox/${inboxId}`, data);
+    return response.data.draft;
 };
 
 const deleteDraft = async (inboxId: string) => {
@@ -43,5 +50,6 @@ export const inboxService = {
     getMyDrafts,
     createDraft,
     promoteToTask,
+    updateDraft,
     deleteDraft
 };

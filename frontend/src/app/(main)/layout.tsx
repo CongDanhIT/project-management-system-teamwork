@@ -59,14 +59,23 @@ export default function MainLayout({
       const isOverColumn = over.data.current?.type === 'Column';
 
       if (isOverColumn && workspaceId && projectId) {
+        const targetPhaseId = over.data.current?.phaseId;
         try {
           toast.promise(
-            inboxService.promoteToTask(draftId, workspaceId, projectId, targetColumnId),
+            inboxService.promoteToTask(draftId, workspaceId, projectId, targetColumnId, targetPhaseId),
             {
               loading: 'Đang chuyển đổi thành công việc...',
               success: () => {
                 queryClient.invalidateQueries({ queryKey: ['personal-inbox-drafts'] });
-                queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'project', workspaceId, projectId] });
+                queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] });
+                queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
+                queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
+                queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
+                queryClient.invalidateQueries({ queryKey: ['workspace-tasks-list', workspaceId] });
+                queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
+                if (targetPhaseId) {
+                  queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, targetPhaseId] });
+                }
                 return 'Đã thêm vào dự án thành công!';
               },
               error: 'Không thể chuyển đổi công việc. Vui lòng thử lại.',

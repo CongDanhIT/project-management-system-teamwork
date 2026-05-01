@@ -13,6 +13,8 @@ import ProjectModel from "../models/project.model";
 import WorkspaceAnalyticsSnapshotModel from "../models/workspace-analytics-snapshot.model";
 import { EmailService } from "./email.service";
 import { SlackService } from "./slack.service";
+import { logActivity } from "./activity.service";
+import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
 // tạo workspace
 export const createWorkspaceService = async (userId: string, body: {
     name: string;
@@ -332,11 +334,11 @@ export const saveDailySnapshotsForAllWorkspaces = async () => {
     }
 };
 // thay đổi vai trò của thành viên trong workspace
-export const changeMemberRoleService = async (workspaceId: string, memberId: string, roleId: string) => {
+export const changeMemberRoleService = async (workspaceId: string, memberId: string, roleId: string, requesterId: string) => {
     // Chạy song song việc tìm Role và Member,workspace để tối ưu tốc độ
     const [role, member, workspace] = await Promise.all([
         RoleModel.findById(roleId),
-        MemberModel.findOne({ workspaceId, userId: memberId }),
+        MemberModel.findOne({ workspaceId, userId: memberId }).populate("role"),
         WorkspaceModel.findById(workspaceId)
     ]);
 
@@ -350,15 +352,34 @@ export const changeMemberRoleService = async (workspaceId: string, memberId: str
         throw new NotFoundException("Workspace not found");
     }
 
+    const oldRoleName = (member.role as any)?.name || "N/A";
     member.role = roleId as any;
     await member.save();
+
+    // Log activity
+    const userToUpdate = await UserModel.findById(memberId).select("name");
+    await logActivity({
+        workspaceId,
+        projectId: undefined,
+        userId: requesterId,
+        action: ActivityActionEnum.MEMBER_JOINED, // Hoặc định nghĩa thêm UPDATE_MEMBER_ROLE
+        entityType: ActivityEntityTypeEnum.MEMBER,
+        entityId: memberId,
+        details: {
+            oldValue: { role: oldRoleName },
+            newValue: { role: role.name },
+            summary: `đã thay đổi vai trò của **${userToUpdate?.name || memberId}** từ **${oldRoleName}** thành **${role.name}**`
+        }
+    });
 
     // Trả về member kèm thông tin role mới đã được populate
     return member.populate("role");
 };
+
 //cập nhật workspace
 export const updateWorkspaceByIdService = async (
     workspaceId: string, 
+    userId: string,
     name?: string, 
     description?: string | null,
     slackWebhookUrl?: string | null,
@@ -368,23 +389,57 @@ export const updateWorkspaceByIdService = async (
     if (!workspace) {
         throw new NotFoundException("không tìm thấy workspace");
     }
-    if (name !== undefined) {
+
+    const oldValues: any = {};
+    const newValues: any = {};
+
+    if (name !== undefined && workspace.name !== name) {
+        oldValues.name = workspace.name;
         workspace.name = name;
+        newValues.name = name;
     }
 
-    if (description !== undefined) {
+    if (description !== undefined && workspace.description !== description) {
+        oldValues.description = workspace.description;
         workspace.description = description;
+        newValues.description = description;
     }
 
-    if (slackWebhookUrl !== undefined) {
+    if (slackWebhookUrl !== undefined && workspace.slackWebhookUrl !== slackWebhookUrl) {
+        oldValues.slackWebhookUrl = workspace.slackWebhookUrl;
         workspace.slackWebhookUrl = slackWebhookUrl;
+        newValues.slackWebhookUrl = slackWebhookUrl;
     }
     
-    if (dailyDigestEnabled !== undefined) {
+    if (dailyDigestEnabled !== undefined && workspace.dailyDigestEnabled !== dailyDigestEnabled) {
+        oldValues.dailyDigestEnabled = workspace.dailyDigestEnabled;
         workspace.dailyDigestEnabled = dailyDigestEnabled;
+        newValues.dailyDigestEnabled = dailyDigestEnabled;
     }
 
     await workspace.save();
+
+    if (Object.keys(newValues).length > 0) {
+        let summary = `đã cập nhật cài đặt không gian làm việc **${workspace.name}**`;
+        if (newValues.name && oldValues.name) {
+            summary = `đã đổi tên không gian làm việc từ **${oldValues.name}** thành **${workspace.name}**`;
+        }
+
+        await logActivity({
+            workspaceId,
+            projectId: undefined,
+            userId,
+            action: ActivityActionEnum.UPDATE_PROJECT, // Reuse hoặc định nghĩa UPDATE_WORKSPACE
+            entityType: ActivityEntityTypeEnum.WORKSPACE,
+            entityId: workspaceId,
+            details: {
+                oldValue: oldValues,
+                newValue: newValues,
+                summary
+            }
+        });
+    }
+
     return workspace;
 };
 // xóa workspace
@@ -548,11 +603,18 @@ export const triggerSlackTestService = async (workspaceId: string) => {
         throw new BadRequestException("Workspace chưa cấu hình Slack Webhook");
     }
 
-    // Lấy analytics thực tế
+    // Lấy dữ liệu analytics thực tế
     const analytics = await getWorkspaceAnalyticsService(workspaceId);
+    const workspaceLink = `${process.env.FRONTEND_ORIGIN || "http://localhost:3000"}/workspace/${workspaceId}/board`;
     
-    // Gửi Slack
-    await SlackService.sendDailyDigest(workspace.slackWebhookUrl, workspace.name, analytics);
+    await SlackService.sendDailyDigest(
+        workspace.slackWebhookUrl, 
+        workspace.name, 
+        analytics,
+        analytics.trends,
+        analytics.nearDueDateTasks,
+        workspaceLink
+    );
     
     return { success: true, message: "Đã gửi Slack thành công" };
 };

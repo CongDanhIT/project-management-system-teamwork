@@ -5,12 +5,15 @@ import { useDraggable } from '@dnd-kit/core';
 import { IInboxDraft } from '@/services/inbox.service';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { Trash2, Edit3 } from 'lucide-react';
 
 interface InboxDraggableCardProps {
   draft: IInboxDraft;
+  onDelete?: (id: string) => void;
+  onEdit?: (draft: IInboxDraft) => void;
 }
 
-export const InboxDraggableCard: React.FC<InboxDraggableCardProps> = ({ draft }) => {
+export const InboxDraggableCard: React.FC<InboxDraggableCardProps> = ({ draft, onDelete, onEdit }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: draft._id,
     data: {
@@ -57,6 +60,28 @@ export const InboxDraggableCard: React.FC<InboxDraggableCardProps> = ({ draft })
             {draft.description}
           </p>
         )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="absolute top-4 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit?.(draft);
+          }}
+          className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full text-slate-400 hover:text-brand-primary transition-colors"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(draft._id);
+          }}
+          className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full text-slate-400 hover:text-rose-500 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Subtle Hover Glow */}

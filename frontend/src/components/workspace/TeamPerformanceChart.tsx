@@ -5,7 +5,7 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip as RechartsTooltip, 
   ResponsiveContainer, 
   Legend,
   Cell,
@@ -14,11 +14,24 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Activity, CheckCircle2, Clock, AlertCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TeamPerformanceChartProps {
   members: any[];
   className?: string;
 }
+
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  'completedOnTime': 'Công việc đã hoàn thành đúng hoặc trước thời hạn cam kết.',
+  'completedLate': 'Công việc đã hoàn thành nhưng trễ hơn so với thời hạn dự kiến.',
+  'inProgress': 'Công việc đang được thực hiện và chưa tới hạn chót.',
+  'overdue': 'Công việc chưa hoàn thành và đã vượt quá thời hạn cho phép.'
+};
 
 const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps) => {
   // Transform data for the chart
@@ -26,9 +39,12 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
     .filter(m => (m.taskStats?.totalTasks || 0) > 0)
     .map(member => {
       const total = member.taskStats?.totalTasks || 0;
+      // Backend: completedTasks là xong đúng hạn, completedLateTasks là xong trễ
       const completedOnTime = member.taskStats?.completedTasks || 0;
       const completedLate = member.taskStats?.completedLateTasks || 0;
       const overdue = member.taskStats?.overdueTasks || 0;
+      
+      // Logic inProgress: Tổng - (Đã xong đúng hạn + Đã xong trễ) - (Đã quá hạn nhưng chưa xong)
       const inProgress = Math.max(0, total - (completedOnTime + completedLate) - overdue);
       
       return {
@@ -39,7 +55,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
         inProgress,
         total,
         completionRate: total > 0 ? Math.round(((completedOnTime + completedLate) / total) * 100) : 0,
-        phantomBar: 0.01 // Ghế ảo để giữ LabelList luôn hiển thị ở cuối stack
+        phantomBar: 0.01 
       };
     })
     .sort((a, b) => b.total - a.total)
@@ -49,26 +65,42 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
     if (active && payload && payload.length) {
       const total = payload[0].payload.total;
       return (
-        <div className="bg-[#191C1E]/95 dark:bg-[#172925]/95 p-4 rounded-2xl shadow-depth-3 border-none backdrop-blur-md">
-          <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
-            <p className="text-[12px] font-black text-[#C7F964] uppercase tracking-tight">{label}</p>
-            <span className="text-[10px] font-bold text-white/40">TỔNG: {total}</span>
+        <div className="bg-[#191C1E]/95 dark:bg-[#172925]/95 p-5 rounded-[24px] shadow-2xl border border-white/5 backdrop-blur-xl min-w-[300px] animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+            <p className="text-[12px] font-black text-[#C7F964] uppercase tracking-widest">{label}</p>
+            <span className="text-[9px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full uppercase">Hiệu suất chi tiết</span>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-4">
             {payload
               .filter((entry: any) => entry.dataKey !== 'phantomBar')
-              .map((entry: any, index: number) => (
-              <div key={index} className="flex items-center justify-between gap-8 text-[10px] font-bold uppercase tracking-wider">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-white/60">{entry.name}:</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white">{entry.value}</span>
-                  <span className="text-white/30 lowercase font-medium">({total > 0 ? Math.round((entry.value / total) * 100) : 0}%)</span>
-                </div>
-              </div>
-            ))}
+              .map((entry: any, index: number) => {
+                const desc = STATUS_DESCRIPTIONS[entry.dataKey];
+                return (
+                  <div key={index} className="space-y-1 group">
+                    <div className="flex items-center justify-between gap-8 text-[11px] font-black uppercase tracking-tight">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                        <span className="text-white/80">{entry.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px]" style={{ color: entry.color }}>{entry.value}</span>
+                        <span className="text-white/20 lowercase font-medium">({total > 0 ? Math.round((entry.value / total) * 100) : 0}%)</span>
+                      </div>
+                    </div>
+                    {desc && (
+                      <p className="text-[9px] leading-relaxed text-white/30 font-medium italic pl-4 border-l border-white/5 group-hover:text-white/50 transition-colors">
+                        {desc}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-between text-[10px] font-bold">
+              <span className="text-white/40 uppercase">Tổng cộng</span>
+              <span className="text-[#C7F964]">{total} Công việc</span>
+            </div>
           </div>
         </div>
       );
@@ -98,25 +130,58 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
           </div>
         </div>
 
-        {/* Improved Legend directly in Header for faster comprehension */}
-        <div className="flex flex-wrap gap-5 bg-slate-500/5 dark:bg-white/5 p-3 px-5 rounded-3xl backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Đúng hạn</span>
+        {/* Improved Legend directly in Header with Tooltips */}
+        <TooltipProvider delayDuration={0}>
+          <div className="flex flex-wrap gap-5 bg-slate-500/5 dark:bg-white/5 p-3 px-5 rounded-3xl backdrop-blur-sm">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help group">
+                  <div className="w-2 h-2 rounded-full bg-[#10B981] group-hover:scale-125 transition-transform" />
+                  <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em] group-hover:text-slate-800 dark:group-hover:text-white transition-colors">Đúng hạn</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-900 text-white border-none rounded-xl p-2 shadow-2xl">
+                <p className="text-[10px] font-medium">{STATUS_DESCRIPTIONS.completedOnTime}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help group">
+                  <div className="w-2 h-2 rounded-full bg-[#6366F1] group-hover:scale-125 transition-transform" />
+                  <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em] group-hover:text-slate-800 dark:group-hover:text-white transition-colors">Xong trễ</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-900 text-white border-none rounded-xl p-2 shadow-2xl">
+                <p className="text-[10px] font-medium">{STATUS_DESCRIPTIONS.completedLate}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help group">
+                  <div className="w-2 h-2 rounded-full bg-[#FBBC05] group-hover:scale-125 transition-transform" />
+                  <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em] group-hover:text-slate-800 dark:group-hover:text-white transition-colors">Đang chạy</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-900 text-white border-none rounded-xl p-2 shadow-2xl">
+                <p className="text-[10px] font-medium">{STATUS_DESCRIPTIONS.inProgress}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-help group">
+                  <div className="w-2 h-2 rounded-full bg-[#EF4444] group-hover:scale-125 transition-transform" />
+                  <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em] group-hover:text-slate-800 dark:group-hover:text-white transition-colors">Quá hạn</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-900 text-white border-none rounded-xl p-2 shadow-2xl">
+                <p className="text-[10px] font-medium">{STATUS_DESCRIPTIONS.overdue}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#6366F1]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Xong trễ</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Đang chạy</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#EF4444]" />
-            <span className="text-[8px] font-black uppercase text-slate-500 dark:text-brand-primary/80 tracking-[0.2em]">Quá hạn</span>
-          </div>
-        </div>
+        </TooltipProvider>
       </CardHeader>
 
       <CardContent className="px-8 pb-10">
@@ -176,7 +241,7 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   )}
                 />
                 
-                <Tooltip 
+                <RechartsTooltip 
                   cursor={{ fill: 'rgba(0,0,0,0.02)', radius: 8 }} 
                   content={<CustomTooltip />} 
                 />

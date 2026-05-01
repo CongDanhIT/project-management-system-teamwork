@@ -1,10 +1,11 @@
 import { asyncHandler } from "../middlewares/asyncHandle";
-import { createDraftSchema, inboxIdSchema, promoteDraftSchema } from "../validation/inbox.validation";
+import { createDraftSchema, inboxIdSchema, promoteDraftSchema, updateDraftSchema } from "../validation/inbox.validation";
 import { 
     createDraftService, 
     deleteDraftService, 
     getMyDraftsService, 
-    promoteDraftToTaskService 
+    promoteDraftToTaskService,
+    updateDraftService 
 } from "../services/inbox.service";
 import HTTP_STATUS from "../config/http.config";
 
@@ -40,13 +41,14 @@ export const promoteToTaskController = asyncHandler(
     async (req, res) => {
         const userId = req.user?._id;
         const inboxId = inboxIdSchema.parse(req.params.inboxId);
-        const { workspaceId, projectId, status } = promoteDraftSchema.parse(req.body);
+        const { workspaceId, projectId, phaseId, status } = promoteDraftSchema.parse(req.body);
 
         const result = await promoteDraftToTaskService(
             userId,
             inboxId,
             workspaceId,
             projectId,
+            phaseId,
             status
         );
 
@@ -68,6 +70,22 @@ export const deleteDraftController = asyncHandler(
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Xóa bản ghi nháp thành công"
+        });
+    }
+);
+
+export const updateDraftController = asyncHandler(
+    async (req, res) => {
+        const userId = req.user?._id;
+        const inboxId = inboxIdSchema.parse(req.params.inboxId);
+        const body = updateDraftSchema.parse(req.body);
+
+        const draft = await updateDraftService(userId, inboxId, body);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Cập nhật bản ghi nháp thành công",
+            draft
         });
     }
 );
