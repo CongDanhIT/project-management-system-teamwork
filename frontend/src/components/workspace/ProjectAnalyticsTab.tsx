@@ -165,9 +165,9 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
   });
 
   const { data: membersData } = useQuery({
-    queryKey: ['workspace-members', workspaceId],
-    queryFn: () => workspaceService.getMembers(workspaceId),
-    enabled: !!workspaceId,
+    queryKey: ['workspace-members', workspaceId, selectedProjectId],
+    queryFn: () => workspaceService.getMembers(workspaceId, selectedProjectId),
+    enabled: !!workspaceId && !!selectedProjectId,
   });
 
   const { data: historyData } = useQuery({

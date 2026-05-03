@@ -6,6 +6,7 @@ import {
     changePasswordController,
     switchWorkspaceController,
     updateUserPreferencesController,
+    resetInboxTokenController,
 } from "../controllers/user.controller";
 import upload from "../middlewares/upload.middleware";
 
@@ -32,5 +33,8 @@ userRoutes.patch("/workspace/switch/:workspaceId", switchWorkspaceController);
 
 // [AI-ADDED] Cập nhật cấu hình người dùng (ví dụ: tắt/mở email báo cáo)
 userRoutes.patch("/preferences", updateUserPreferencesController);
+
+// [AI-ADDED] Reset mã hòm thư cá nhân
+userRoutes.post("/inbox-token/reset", resetInboxTokenController);
 
 export default userRoutes;

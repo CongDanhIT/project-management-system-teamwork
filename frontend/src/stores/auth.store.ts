@@ -10,6 +10,8 @@ interface User {
   preferences?: {
     receiveDailyDigest: boolean;
   };
+  inboxToken?: string;
+  slackUserId?: string;
 }
 
 interface AuthState {
@@ -40,6 +42,8 @@ export const useAuthStore = create<AuthState>()(
             ? (typeof user.currentWorkspace === 'object' ? user.currentWorkspace._id : user.currentWorkspace)
             : undefined,
           preferences: user.preferences,
+          inboxToken: user.inboxToken,
+          slackUserId: user.slackUserId,
         }, 
         token: token || null, 
         isAuthenticated: true,

@@ -37,8 +37,9 @@ const envSchema = z.object({
     SENDGRID_API_KEY: z.string().optional(),
     SENDGRID_FROM_EMAIL: z.string().optional().default("no-reply@teamflow.com"),
     
-    // Slack Webhook (Global fallback)
+    // Slack Integration
     SLACK_WEBHOOK_URL: z.string().optional(),
+    SLACK_SIGNING_SECRET: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);

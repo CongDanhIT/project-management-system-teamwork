@@ -44,5 +44,10 @@ export const userService = {
   updatePreferences: async (preferences: { receiveDailyDigest: boolean }) => {
     const response = await api.patch('/user/preferences', preferences);
     return response.data;
+  },
+
+  resetInboxToken: async () => {
+    const response = await api.post('/user/inbox-token/reset');
+    return response.data;
   }
 };

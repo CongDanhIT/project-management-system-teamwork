@@ -5,7 +5,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { IInboxDraft } from '@/services/inbox.service';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Trash2, Edit3 } from 'lucide-react';
+import { Trash2, Edit3, Mail, MessageSquare, Plus } from 'lucide-react';
 
 interface InboxDraggableCardProps {
   draft: IInboxDraft;
@@ -46,12 +46,29 @@ export const InboxDraggableCard: React.FC<InboxDraggableCardProps> = ({ draft, o
       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4/5 h-1 bg-black/5 blur-md rounded-full group-hover:opacity-100 opacity-0 transition-opacity dark:hidden" />
       
       {/* Accent Point */}
-      <div className="absolute top-5 right-5 w-1.5 h-1.5 rounded-full bg-brand-secondary shadow-[0_0_8px_rgba(199,249,100,0.8)]" />
+      <div className={cn(
+        "absolute top-5 right-5 w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(199,249,100,0.8)]",
+        draft.sourceType === 'EMAIL' ? "bg-blue-400" :
+        draft.sourceType === 'SLACK' ? "bg-purple-400" :
+        "bg-brand-secondary"
+      )} />
 
       <div className="flex flex-col gap-1">
-        <span className="text-[8px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-[0.2em] font-sans">
-          {new Date(draft.createdAt).toLocaleDateString()}
-        </span>
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className={cn(
+            "flex items-center justify-center w-4 h-4 rounded-md",
+            draft.sourceType === 'EMAIL' ? "bg-blue-50 text-blue-500 dark:bg-blue-500/10" :
+            draft.sourceType === 'SLACK' ? "bg-purple-50 text-purple-500 dark:bg-purple-500/10" :
+            "bg-slate-50 text-slate-400 dark:bg-white/5"
+          )}>
+            {draft.sourceType === 'EMAIL' ? <Mail className="w-2.5 h-2.5" /> : 
+             draft.sourceType === 'SLACK' ? <MessageSquare className="w-2.5 h-2.5" /> : 
+             <Plus className="w-2.5 h-2.5" />}
+          </div>
+          <span className="text-[8px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-[0.2em] font-sans">
+            {new Date(draft.createdAt).toLocaleDateString()}
+          </span>
+        </div>
         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 font-sans line-clamp-1 group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
           {draft.title}
         </h3>

@@ -95,6 +95,7 @@ export default function MembersPage() {
   // Check if current user is Owner or Admin
   const currentUserMember = members.find((m: any) => m.userId?._id === currentUser?.id);
   const isPrivileged = currentUserMember?.role?.name === 'OWNER' || currentUserMember?.role?.name === 'ADMIN';
+  const isOwner = currentUserMember?.role?.name === 'OWNER';
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -178,7 +179,7 @@ export default function MembersPage() {
                       <RoleBadge roleName={member.role?.name} />
                     </div>
                     
-                    {isPrivileged && member.userId?._id !== currentUser?.id && member.role?.name !== 'OWNER' ? (
+                    {isOwner && member.userId?._id !== currentUser?.id && member.role?.name !== 'OWNER' ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           className={cn(

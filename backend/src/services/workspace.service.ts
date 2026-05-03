@@ -105,7 +105,7 @@ export const getWorkspaceByIdService = async (workspaceId: string, userId: strin
     return WorkspaceWithMember;
 };
 // lấy tất cả member trong workspace kèm thống kê công việc
-export const getWorkspaceMemberService = async (workspaceId: string) => {
+export const getWorkspaceMemberService = async (workspaceId: string, projectId?: string) => {
     // 1. Lấy danh sách thành viên và populate thông tin User + Role
     const members = await MemberModel.find({ workspaceId: workspaceId })
         .populate("userId", "name email profilePicture") // Chỉ lấy các trường cần thiết của User
@@ -114,12 +114,18 @@ export const getWorkspaceMemberService = async (workspaceId: string) => {
 
     // 2. Thống kê công việc cho từng user trong Workspace (Aggregation)
     const currentDate = new Date();
+    const matchQuery: any = { 
+        workspaceId: new mongoose.Types.ObjectId(workspaceId), 
+        deletedAt: null 
+    };
+    
+    if (projectId) {
+        matchQuery.projectId = new mongoose.Types.ObjectId(projectId);
+    }
+
     const taskStats = await TaskModel.aggregate([
         { 
-            $match: { 
-                workspaceId: new mongoose.Types.ObjectId(workspaceId), 
-                deletedAt: null 
-            } 
+            $match: matchQuery 
         },
         { $unwind: "$assignedTo" },
         {
@@ -127,6 +133,15 @@ export const getWorkspaceMemberService = async (workspaceId: string) => {
                 _id: { $toString: "$assignedTo" },
                 totalTasks: { $sum: 1 },
                 completedTasks: {
+                    $sum: {
+                        $cond: [
+                            { $in: ["$status", [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED]] }, 
+                            1, 
+                            0
+                        ]
+                    }
+                },
+                completedOnTimeTasks: {
                     $sum: {
                         $cond: [
                             { 
@@ -188,6 +203,7 @@ export const getWorkspaceMemberService = async (workspaceId: string) => {
         statsMap.set(String(stat._id), {
             totalTasks: stat.totalTasks,
             completedTasks: stat.completedTasks,
+            completedOnTimeTasks: stat.completedOnTimeTasks,
             completedLateTasks: stat.completedLateTasks,
             overdueTasks: stat.overdueTasks
         });
@@ -199,7 +215,7 @@ export const getWorkspaceMemberService = async (workspaceId: string) => {
         const userObj = member.userId;
         const userId = String(userObj?._id || userObj || "");
         
-        const stats = statsMap.get(userId) || { totalTasks: 0, completedTasks: 0, overdueTasks: 0 };
+        const stats = statsMap.get(userId) || { totalTasks: 0, completedTasks: 0, completedOnTimeTasks: 0, completedLateTasks: 0, overdueTasks: 0 };
         return {
             ...member,
             taskStats: stats

@@ -15,6 +15,8 @@ export const RolePermissions: Record<RoleEnumType, PermissionEnumType[]> = {
         Permissions.EDIT_PROJECT,
         Permissions.DELETE_PROJECT,
 
+        Permissions.AI_PLANNING,
+
         Permissions.CREATE_TASK,
         Permissions.EDIT_TASK,
         Permissions.DELETE_TASK,
@@ -34,6 +36,7 @@ export const RolePermissions: Record<RoleEnumType, PermissionEnumType[]> = {
         Permissions.DELETE_TASK,
 
         Permissions.MANAGE_WORKSPACE_SETTINGS,
+        Permissions.AI_PLANNING,
         Permissions.VIEW_ONLY,
     ],
     [RoleEnum.MEMBER]: [

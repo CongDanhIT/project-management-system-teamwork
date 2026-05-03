@@ -30,9 +30,11 @@ import {
     Unlock,
     Trash2,
     Edit2,
-    ArrowLeft
+    ArrowLeft,
+    Sparkles
 } from 'lucide-react';
 import { PhaseModal } from '@/components/project/PhaseModal';
+import { AIPlannerModal } from '@/components/project/AIPlannerModal';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
@@ -81,6 +83,7 @@ export default function ProjectPhasesHub() {
     const [modalPhase, setModalPhase] = useState<Phase | null>(null);
     const [phaseToDelete, setPhaseToDelete] = useState<Phase | null>(null);
     const [selectedFile, setSelectedFile] = useState<ProjectAsset | null>(null);
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const { isPrivileged } = useRole();
 
 
@@ -266,16 +269,25 @@ export default function ProjectPhasesHub() {
                     
                     {activeTab === 'phases' ? (
                         isPrivileged && (
-                            <Button 
-                                onClick={() => {
-                                    setModalPhase(null);
-                                    setIsModalOpen(true);
-                                }}
-                                className="rounded-2xl h-12 px-6 bg-brand-primary hover:bg-brand-primary/90 text-white shadow-xl shadow-brand-primary/20 border-none font-bold"
-                            >
-                                <Plus className="w-5 h-5 mr-2" />
-                                Giai đoạn mới
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    onClick={() => setIsAIModalOpen(true)}
+                                    className="rounded-2xl h-12 px-6 bg-gradient-to-r from-brand-primary to-purple-600 hover:from-brand-primary/90 hover:to-purple-600/90 text-white shadow-xl shadow-brand-primary/20 border-none font-bold"
+                                >
+                                    <Sparkles className="w-5 h-5 mr-2" />
+                                    AI Plan
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        setModalPhase(null);
+                                        setIsModalOpen(true);
+                                    }}
+                                    className="rounded-2xl h-12 px-6 bg-brand-primary hover:bg-brand-primary/90 text-white shadow-xl shadow-brand-primary/20 border-none font-bold"
+                                >
+                                    <Plus className="w-5 h-5 mr-2" />
+                                    Giai đoạn mới
+                                </Button>
+                            </div>
                         )
                     ) : (
                         <div className="flex items-center gap-2">
@@ -706,6 +718,14 @@ export default function ProjectPhasesHub() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <AIPlannerModal 
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+                projectId={projectId}
+                workspaceId={workspaceId}
+                projectName={project?.name || 'Dự án'}
+            />
 
             <PhaseModal 
                 isOpen={isModalOpen}

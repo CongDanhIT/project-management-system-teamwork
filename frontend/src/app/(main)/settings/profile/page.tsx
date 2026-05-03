@@ -11,7 +11,10 @@ import {
   Save, 
   Loader2,
   Sparkles,
-  Bell
+  Bell,
+  Copy,
+  RefreshCcw,
+  Info
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,18 +28,23 @@ import { useAuthStore } from '@/stores/auth.store';
 interface ProfileForm {
   name: string;
   profilePicture: string;
+  slackUserId: string;
 }
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
   const { user, updateUser } = useAuthStore();
+  const [isCopied, setIsCopied] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const emailAddress = `task+${user?.inboxToken || 'undefined'}@inbox.thitranboduong.id.vn`;
 
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty } } = useForm<ProfileForm>({
     defaultValues: {
       name: user?.name || '',
       profilePicture: user?.avatar || '',
+      slackUserId: user?.slackUserId || '',
     }
   });
 
@@ -47,6 +55,7 @@ export default function ProfilePage() {
       reset({
         name: user.name || '',
         profilePicture: user.avatar || '',
+        slackUserId: user.slackUserId || '',
       });
     }
   }, [user, reset]);
@@ -66,6 +75,22 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['current-user'] });
     },
     onError: () => toast.error("Không thể cập nhật cài đặt thông báo")
+  });
+
+  // Logic Reset Inbox Token
+  const resetTokenMutation = useMutation({
+    mutationFn: () => userService.resetInboxToken(),
+    onSuccess: (response) => {
+      const updatedUser = response.user;
+      if (updatedUser) {
+        updateUser({
+           inboxToken: updatedUser.inboxToken
+        });
+      }
+      toast.success("Đã làm mới mã hòm thư cá nhân");
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    },
+    onError: () => toast.error("Không thể làm mới mã hòm thư")
   });
 
   const updateMutation = useMutation({
@@ -206,6 +231,15 @@ export default function ProfilePage() {
                     />
                     <p className="text-[10px] text-slate-400 italic ml-1">* Bạn có thể dán link trực tiếp hoặc chọn ảnh từ máy ở trên.</p>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Slack User ID</label>
+                    <Input 
+                      {...register('slackUserId')}
+                      placeholder="Ví dụ: U0123456789"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-brand-primary/80 focus:border-brand-primary/80 font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400 italic ml-1">* Lấy ID này trong mục Profile trên Slack của bạn để đồng bộ công việc.</p>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="bg-slate-50/30 border-t border-slate-100 p-6 flex justify-end">
@@ -255,6 +289,68 @@ export default function ProfilePage() {
                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
                     Hệ thống sẽ gửi email báo cáo công việc vào lúc 8:00 sáng hàng ngày (GMT+7) để bạn nắm bắt kế hoạch trong ngày.
                   </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Universal Inbox Settings */}
+          <Card className="border-slate-200/60 shadow-xl shadow-slate-200/10 rounded-3xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <Mail className="w-5 h-5 text-brand-primary" />
+                Hòm thư cá nhân (Inbox-to-Task)
+              </CardTitle>
+              <CardDescription className="font-medium">
+                Gửi email đến địa chỉ này để tự động tạo công việc nháp trong Inbox của bạn.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="bg-brand-primary/5 border border-brand-primary/10 rounded-2xl p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-brand-primary uppercase tracking-widest ml-1">ĐỊA CHỈ EMAIL CÁ NHÂN</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 bg-white border border-brand-primary/20 rounded-xl px-4 py-3 font-mono text-sm font-bold text-slate-700 truncate">
+                       task+{user?.inboxToken || '********'}@inbox.thitranboduong.id.vn
+                    </div>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="icon"
+                      className="rounded-xl border-brand-primary/20 text-brand-primary hover:bg-brand-primary/10 h-[46px] w-[46px]"
+                      onClick={() => {
+                        const email = `task+${user?.inboxToken}@inbox.thitranboduong.id.vn`;
+                        navigator.clipboard.writeText(email);
+                        toast.success("Đã sao chép địa chỉ email");
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 text-xs text-slate-500 font-medium bg-white/50 p-3 rounded-xl border border-slate-100">
+                  <Info className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                  <p>Tiêu đề email sẽ là tên Task, nội dung email sẽ là phần mô tả. Task sẽ được lưu ở trạng thái Bản nháp trong Inbox.</p>
+                </div>
+
+                <div className="pt-2 flex justify-between items-center">
+                  <p className="text-[10px] text-slate-400 font-bold italic">* Bạn nên giữ bí mật mã định danh này.</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={resetTokenMutation.isPending}
+                    onClick={() => {
+                      if (confirm("Bạn có chắc chắn muốn làm mới mã hòm thư? Địa chỉ cũ sẽ không còn hoạt động.")) {
+                        resetTokenMutation.mutate();
+                      }
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 text-[10px] font-black h-8"
+                  >
+                    {resetTokenMutation.isPending ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <RefreshCcw className="w-3 h-3 mr-2" />}
+                    LÀM MỚI MÃ
+                  </Button>
                 </div>
               </div>
             </CardContent>

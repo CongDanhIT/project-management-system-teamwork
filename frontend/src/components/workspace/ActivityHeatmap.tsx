@@ -23,6 +23,11 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
 
   useEffect(() => {
     const fetchStats = async () => {
+      // Chỉ fetch nếu workspaceId hợp lệ (định dạng MongoDB ObjectId 24 ký tự)
+      if (!workspaceId || !/^[0-9a-fA-F]{24}$/.test(workspaceId)) {
+        return;
+      }
+
       try {
         setIsLoading(true);
         const response = await activityService.getWorkspaceActivityStatistics(workspaceId);

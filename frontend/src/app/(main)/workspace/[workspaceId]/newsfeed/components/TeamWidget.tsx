@@ -41,8 +41,11 @@ export function TeamWidget() {
             ))
           ) : membersData?.members ? (
             membersData.members.slice(0, 8).map((member: any, idx: number) => {
-              const incompleteTasks = (member.taskStats?.totalTasks || 0) - (member.taskStats?.completedTasks || 0);
+              const completedTasks = member.taskStats?.completedTasks || 0;
               const overdueTasks = member.taskStats?.overdueTasks || 0;
+              const totalTasks = member.taskStats?.totalTasks || 0;
+              // Đang làm = Tổng - Đã xong - Trễ hạn
+              const doingTasks = Math.max(0, totalTasks - completedTasks - overdueTasks);
 
               return (
                 <div key={member._id?.toString() || member.userId?._id?.toString() || `member-${idx}`} className="group relative flex flex-col items-center hover:z-[100]">
@@ -58,16 +61,18 @@ export function TeamWidget() {
                     />
                     
                     {/* Task Stats Badges */}
-                    {incompleteTasks > 0 && (
+                    {doingTasks + overdueTasks > 0 && (
                       <div className="absolute -top-1 -right-1 flex flex-col gap-0.5 items-end pointer-events-none">
                         {overdueTasks > 0 && (
                           <div className="px-1 py-0.5 rounded-full bg-red-500 text-[7px] font-black text-white shadow-lg border border-white dark:border-slate-900 animate-pulse">
                             {overdueTasks}
                           </div>
                         )}
-                        <div className="px-1 py-0.5 rounded-full bg-[#C7F964] text-[7px] font-black text-[#04100E] shadow-lg border border-white dark:border-slate-900">
-                          {incompleteTasks}
-                        </div>
+                        {doingTasks > 0 && (
+                          <div className="px-1 py-0.5 rounded-full bg-[#C7F964] text-[7px] font-black text-[#04100E] shadow-lg border border-white dark:border-slate-900">
+                            {doingTasks}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -81,7 +86,7 @@ export function TeamWidget() {
                       </span>
                       <span className="flex items-center gap-1">
                         <div className="w-1 h-1 rounded-full bg-[#C7F964]" />
-                        {incompleteTasks} Đang làm
+                        {doingTasks} Đang làm
                       </span>
                       {overdueTasks > 0 && (
                         <span className="flex items-center gap-1 text-red-400">

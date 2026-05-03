@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import UserModel from "../models/user.model";
+import crypto from "crypto";
 import MemberModel from "../models/member.model";
 import WorkspaceModel from "../models/workspace.model";
 import { BadRequestException, NotFoundException } from "../utils/appError";
@@ -24,7 +25,7 @@ export const getCurrentUserService = async (userId: string) => {
  */
 export const updateUserProfileService = async (
     userId: string,
-    data: { name?: string; profilePicture?: string | null }
+    data: { name?: string; profilePicture?: string | null; slackUserId?: string }
 ) => {
     const user = await UserModel.findById(userId).select("-password");
     if (!user) {
@@ -33,6 +34,7 @@ export const updateUserProfileService = async (
 
     if (data.name !== undefined) user.name = data.name;
     if (data.profilePicture !== undefined) user.profilePicture = data.profilePicture;
+    if (data.slackUserId !== undefined) user.slackUserId = data.slackUserId;
 
     await user.save();
     return { user };
@@ -129,5 +131,20 @@ export const updateUserPreferencesService = async (
     }
 
     await user.save();
+    return { user };
+};
+
+/**
+ * Reset mã hòm thư cá nhân (Inbox Token)
+ */
+export const resetInboxTokenService = async (userId: string) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new NotFoundException("Không tìm thấy user");
+    }
+
+    user.inboxToken = crypto.randomBytes(8).toString("hex");
+    await user.save();
+
     return { user };
 };

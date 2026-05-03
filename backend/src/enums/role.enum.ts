@@ -21,6 +21,8 @@ export const Permissions = {
     EDIT_TASK: "EDIT_TASK",
     DELETE_TASK: "DELETE_TASK",
 
+    AI_PLANNING: "AI_PLANNING",
+
     VIEW_ONLY: "VIEW_ONLY",
 } as const;
 export type RoleEnumType = typeof RoleEnum[keyof typeof RoleEnum];

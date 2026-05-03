@@ -11,6 +11,7 @@ export const updateProfileSchema = z.object({
         (val) => (val === "" ? null : val),
         z.string().url("URL ảnh đại diện không hợp lệ").nullable().optional()
     ),
+    slackUserId: z.string().max(50, "Slack ID không hợp lệ").optional(),
 });
 
 // Schema đổi mật khẩu

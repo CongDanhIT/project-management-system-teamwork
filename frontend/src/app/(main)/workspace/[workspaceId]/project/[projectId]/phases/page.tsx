@@ -21,7 +21,8 @@ import {
     CheckCircle2,
     Lock,
     Files,
-    Layers
+    Layers,
+    Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -32,6 +33,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Phase, AssetFolder, ProjectAsset } from '@/types/phase';
 import { PhaseModal } from '@/components/project/PhaseModal';
 import { AssetFolderModal } from '@/components/project/AssetFolderModal';
+import { AIPlannerModal } from '@/components/project/AIPlannerModal';
 import { 
     DropdownMenu,
     DropdownMenuContent,
@@ -39,6 +41,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { useAuthStore } from '@/stores/auth.store';
 import { 
     Pencil, 
     Trash2, 
@@ -58,6 +61,9 @@ export default function ProjectPhasesPage() {
     const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
     const [folderPath, setFolderPath] = useState<{id: string, name: string}[]>([]);
+    
+    const { user: currentUser } = useAuthStore();
+    const [userRole, setUserRole] = useState<string | null>(null);
 
     // Modal states
     const [isPhaseModalOpen, setIsPhaseModalOpen] = useState(false);
@@ -65,6 +71,8 @@ export default function ProjectPhasesPage() {
 
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFolder, setSelectedFolder] = useState<AssetFolder | null>(null);
+
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
     const [isUploading, setIsUploading] = useState(false);
 
@@ -74,6 +82,14 @@ export default function ProjectPhasesPage() {
             try {
                 const data = await projectService.getProjectById(workspaceId, projectId);
                 setProject(data);
+                
+                // Determine current user's role in the project
+                if (data.members && currentUser) {
+                    const member = data.members.find(m => m.userId?._id === currentUser.id);
+                    if (member) {
+                        setUserRole(member.role);
+                    }
+                }
             } catch (error) {
                 console.error('Fetch project error:', error);
                 toast.error('Không thể tải thông tin dự án');
@@ -283,13 +299,24 @@ export default function ProjectPhasesPage() {
                                 <Clock className="w-4 h-4 text-brand-primary" />
                                 Giai đoạn Dự án
                             </h3>
-                            <Button 
-                                onClick={handleAddPhase}
-                                size="sm" variant="outline" className="rounded-full h-8 px-3 border-brand-primary/20 hover:bg-brand-primary/5 text-brand-primary"
-                            >
-                                <Plus className="w-3.5 h-3.5 mr-1" />
-                                Thêm
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                                {(userRole === 'OWNER' || userRole === 'ADMIN') && (
+                                    <Button 
+                                        onClick={() => setIsAIModalOpen(true)}
+                                        size="sm" className="rounded-full h-8 px-3 bg-gradient-to-r from-brand-primary to-purple-600 border-none shadow-lg shadow-brand-primary/20 text-white font-bold"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5 mr-1" />
+                                        AI Plan
+                                    </Button>
+                                )}
+                                <Button 
+                                    onClick={handleAddPhase}
+                                    size="sm" variant="outline" className="rounded-full h-8 px-3 border-brand-primary/20 hover:bg-brand-primary/5 text-brand-primary"
+                                >
+                                    <Plus className="w-3.5 h-3.5 mr-1" />
+                                    Thêm
+                                </Button>
+                            </div>
                         </div>
                         
                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -548,6 +575,14 @@ export default function ProjectPhasesPage() {
                 workspaceId={workspaceId}
                 phaseId={selectedPhaseId}
                 parentFolderId={currentFolderId}
+            />
+
+            <AIPlannerModal 
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+                projectId={projectId}
+                workspaceId={workspaceId}
+                projectName={project.name}
             />
         </div>
     );

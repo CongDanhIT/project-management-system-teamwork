@@ -92,8 +92,10 @@ export const workspaceService = {
     return response.data;
   },
 
-  getMembers: async (workspaceId: string) => {
-    const response = await api.get(`/workspace/member/${workspaceId}`);
+  getMembers: async (workspaceId: string, projectId?: string) => {
+    const response = await api.get(`/workspace/member/${workspaceId}`, {
+      params: { projectId }
+    });
     return response.data as { members: any[]; roles: any[] };
   },
 

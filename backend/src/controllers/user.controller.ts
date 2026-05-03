@@ -9,6 +9,7 @@ import {
     changePasswordService,
     switchWorkspaceService,
     updateUserPreferencesService,
+    resetInboxTokenService,
 } from "../services/user.service";
 import {
     updateProfileSchema,
@@ -128,6 +129,21 @@ export const updateUserPreferencesController = asyncHandler(async (req, res) => 
     return res.status(HTTP_STATUS.OK).json({
         success: true,
         message: "Cập nhật cài đặt thành công",
+        user,
+    });
+});
+
+/**
+ * Reset mã hòm thư cá nhân
+ * POST /api/v1/user/inbox-token/reset
+ */
+export const resetInboxTokenController = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { user } = await resetInboxTokenService(userId);
+
+    return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Đã cấp mã hòm thư mới thành công",
         user,
     });
 });

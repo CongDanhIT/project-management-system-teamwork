@@ -861,8 +861,11 @@ export default function WorkspaceDashboardPage() {
                     <div className="grid grid-cols-4 gap-x-6 gap-y-10">
                       {membersData?.members ? (
                         membersData.members.slice(0, 8).map((member: any, idx: number) => {
-                          const incompleteTasks = (member.taskStats?.totalTasks || 0) - (member.taskStats?.completedTasks || 0);
+                          const completedTasks = member.taskStats?.completedTasks || 0;
                           const overdueTasks = member.taskStats?.overdueTasks || 0;
+                          const totalTasks = member.taskStats?.totalTasks || 0;
+                          // Đang làm = Tổng - Đã xong - Trễ hạn
+                          const doingTasks = Math.max(0, totalTasks - completedTasks - overdueTasks);
 
                           return (
                             <div key={member._id?.toString() || member.userId?._id?.toString() || `member-${idx}`} className="group relative flex flex-col items-center pb-4 hover:z-[100]">
@@ -878,16 +881,18 @@ export default function WorkspaceDashboardPage() {
                                 />
                                 
                                 {/* Task Stats Badges */}
-                                {incompleteTasks > 0 && (
+                                {doingTasks + overdueTasks > 0 && (
                                   <div className="absolute -top-1 -right-1 flex flex-col gap-1 items-end pointer-events-none">
                                     {overdueTasks > 0 && (
                                       <div className="px-1.5 py-0.5 rounded-full bg-red-500 text-[8px] font-black text-white shadow-lg border border-white dark:border-slate-900 animate-pulse">
                                         {overdueTasks}
                                       </div>
                                     )}
-                                    <div className="px-1.5 py-0.5 rounded-full bg-[#C7F964] text-[8px] font-black text-[#04100E] shadow-lg border border-white dark:border-slate-900">
-                                      {incompleteTasks}
-                                    </div>
+                                    {doingTasks > 0 && (
+                                      <div className="px-1.5 py-0.5 rounded-full bg-[#C7F964] text-[8px] font-black text-[#04100E] shadow-lg border border-white dark:border-slate-900">
+                                        {doingTasks}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -901,7 +906,7 @@ export default function WorkspaceDashboardPage() {
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <div className="w-1 h-1 rounded-full bg-[#C7F964]" />
-                                    {incompleteTasks} Đang làm
+                                    {doingTasks} Đang làm
                                   </span>
                                   {overdueTasks > 0 && (
                                     <span className="flex items-center gap-1 text-red-400">
@@ -956,7 +961,7 @@ export default function WorkspaceDashboardPage() {
                             {projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length || 0}
                           </span>
                           <span className="text-xs font-bold text-white/30 mb-1.5 uppercase tracking-widest">
-                            / {projectsData?.projects?.length || 0} TỔNG THỂ
+                            / {projectsData?.pagination?.totalCount || projectsData?.projects?.length || 0} TỔNG THỂ
                           </span>
                         </div>
                       </div>
@@ -965,7 +970,7 @@ export default function WorkspaceDashboardPage() {
                         <div className="h-2 w-full bg-black/20 dark:bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/5">
                           <div
                             className="h-full bg-gradient-to-r from-teal-400 via-[#C7F964] to-emerald-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(199,249,100,0.5)]"
-                            style={{ width: `${(projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.projects?.length || 1)) * 100}%` }}
+                            style={{ width: `${(projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.pagination?.totalCount || projectsData?.projects?.length || 1)) * 100}%` }}
                           />
                         </div>
                         <div className="flex justify-between items-center">
@@ -973,7 +978,7 @@ export default function WorkspaceDashboardPage() {
                             Nhịp độ vận hành tối ưu
                           </p>
                           <span className="text-[10px] font-black text-[#C7F964] drop-shadow-md">
-                            {Math.round((projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.projects?.length || 1)) * 100)}%
+                            {Math.round((projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.pagination?.totalCount || projectsData?.projects?.length || 1)) * 100)}%
                           </span>
                         </div>
                       </div>

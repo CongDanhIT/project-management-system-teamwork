@@ -1,10 +1,9 @@
 import { asyncHandler } from "../middlewares/asyncHandle";
 import { Request, Response } from "express";
-import {
-    generateTaskDescriptionService,
-    suggestSubtasksService,
-    chatWithContextService,
-} from "../services/ai.service";
+import { applyAIProjectPlanService, chatWithContextService, generateProjectStructureService, generateTaskDescriptionService, suggestSubtasksService } from "../services/ai.service";
+import { getMemberRoleInWorkspace } from "../services/member.service";
+import { roleGuard } from "../utils/roleGuard";
+import { Permissions } from "../enums/role.enum";
 import HTTP_STATUS from "../config/http.config";
 import logger from "../utils/logger";
 
@@ -77,6 +76,84 @@ export const chatController = asyncHandler(
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             reply,
+        });
+    }
+);
+
+/**
+ * POST /api/ai/generate-plan
+ * Body: { prompt: string }
+ */
+export const generateProjectStructureController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const { prompt, workspaceId, projectId } = req.body;
+        const userId = (req as any).user?._id;
+
+        logger.info("[AI-Debug] Khởi tạo yêu cầu AI Plan", { userId, workspaceId, projectId });
+        
+        if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Vui lòng cung cấp nội dung yêu cầu (prompt) hợp lệ.",
+            });
+        }
+
+        if (!workspaceId || !projectId) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Thiếu thông tin workspaceId hoặc projectId.",
+            });
+        }
+
+        // RBAC Check
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.AI_PLANNING]);
+
+        logger.info("[AI-Controller] Đang phân rã dự án", { prompt: prompt.substring(0, 50), projectId });
+        
+        const structure = await generateProjectStructureService(prompt.trim());
+        
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            structure,
+        });
+    }
+);
+
+/**
+ * POST /api/ai/apply-plan
+ * Body: { workspaceId: string, projectId: string, structure: any }
+ * Yêu cầu: Đã đăng nhập
+ */
+export const applyAIProjectPlanController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const { workspaceId, projectId, structure } = req.body;
+        const userId = (req as any).user?._id; 
+
+        if (!workspaceId || !projectId || !structure) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Thiếu thông tin workspaceId, projectId hoặc cấu trúc kế hoạch.",
+            });
+        }
+
+        // RBAC Check
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.AI_PLANNING]);
+
+        logger.info("[AI-Controller] Đang áp dụng kế hoạch AI vào dự án", { projectId, workspaceId });
+
+        const result = await applyAIProjectPlanService(
+            workspaceId,
+            projectId,
+            userId as string,
+            structure
+        );
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Đã áp dụng kế hoạch AI thành công.",
+            data: result,
         });
     }
 );

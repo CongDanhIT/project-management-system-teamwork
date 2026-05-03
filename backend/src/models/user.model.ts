@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { compareValue, hashValue } from "../utils/bcrypt";
+import crypto from "crypto";
 
 /**
  * Interface định nghĩa cấu trúc dữ liệu của User trong database.
@@ -18,6 +19,8 @@ export interface UserDocument extends mongoose.Document {
     preferences: {
         receiveDailyDigest: boolean;
     };
+    inboxToken: string;
+    slackUserId: string | null;
 
     /** So sánh mật khẩu thuần túy với mật khẩu đã hash của User */
     comparePassword(value: string): Promise<boolean>;
@@ -45,6 +48,13 @@ const userSchema = new Schema<UserDocument>(
         preferences: {
             receiveDailyDigest: { type: Boolean, default: true },
         },
+        inboxToken: { 
+            type: String, 
+            unique: true, 
+            index: true,
+            default: () => crypto.randomBytes(8).toString("hex") 
+        },
+        slackUserId: { type: String, default: null },
     },
     {
         timestamps: true, // Tự động tạo createdAt và updatedAt

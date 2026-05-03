@@ -39,8 +39,8 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
     .filter(m => (m.taskStats?.totalTasks || 0) > 0)
     .map(member => {
       const total = member.taskStats?.totalTasks || 0;
-      // Backend: completedTasks là xong đúng hạn, completedLateTasks là xong trễ
-      const completedOnTime = member.taskStats?.completedTasks || 0;
+      // Backend: completedOnTimeTasks là xong đúng hạn, completedLateTasks là xong trễ
+      const completedOnTime = member.taskStats?.completedOnTimeTasks || 0;
       const completedLate = member.taskStats?.completedLateTasks || 0;
       const overdue = member.taskStats?.overdueTasks || 0;
       

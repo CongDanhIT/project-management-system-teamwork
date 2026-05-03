@@ -15,6 +15,24 @@ export interface ProjectAiContext {
   memberCount?: number;
 }
 
+export interface AiTask {
+  title: string;
+  description: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  estimatedHours: number;
+}
+
+export interface AiPhase {
+  name: string;
+  description: string;
+  color: string;
+  tasks: AiTask[];
+}
+
+export interface AiProjectStructure {
+  phases: AiPhase[];
+}
+
 /**
  * [AI Feature 1] Gợi ý mô tả task từ tiêu đề
  */
@@ -42,4 +60,28 @@ export const sendAiChatMessage = async (
 ): Promise<string> => {
   const response = await api.post("/ai/chat", { message, history, context, modelId });
   return response.data.reply as string;
+};
+
+/**
+ * [AI Feature - Sprint 6] Phân rã dự án thông minh
+ */
+export const generateAiProjectPlan = async (
+  workspaceId: string, 
+  projectId: string, 
+  prompt: string
+): Promise<AiProjectStructure> => {
+  const response = await api.post("/ai/generate-plan", { workspaceId, projectId, prompt });
+  return response.data.structure;
+};
+
+/**
+ * [AI Feature - Sprint 6] Áp dụng kế hoạch AI vào database
+ */
+export const applyAiProjectPlan = async (
+  workspaceId: string, 
+  projectId: string, 
+  structure: AiProjectStructure
+) => {
+  const response = await api.post("/ai/apply-plan", { workspaceId, projectId, structure });
+  return response.data;
 };

@@ -77,7 +77,8 @@ export const getWorkspaceMemberController = asyncHandler(
 
         // Chạy Guard kiểm tra quyền
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
-        const { members, roles } = await getWorkspaceMemberService(workspaceId);
+        const projectId = req.query.projectId as string;
+        const { members, roles } = await getWorkspaceMemberService(workspaceId, projectId);
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,

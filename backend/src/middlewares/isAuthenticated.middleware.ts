@@ -8,7 +8,7 @@ export const isAuthenticated = asyncHandler(async (req: Request, res: Response, 
     const isPassportAuth = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
     
     // Debug Auth cho AI và các route khác
-    logger.info(`[Auth-Check] User: ${!!req.user}, Passport: ${isPassportAuth}, URL: ${req.url}`);
+    logger.info(`[Auth-Check] User: ${!!req.user}, Passport: ${isPassportAuth}, URL: ${req.originalUrl}`);
 
     if (!req.user && !isPassportAuth) {
         logger.warn("Xác thực thất bại", { 

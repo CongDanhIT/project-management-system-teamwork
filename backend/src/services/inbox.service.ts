@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import PersonalInboxModel from "../models/inbox.model";
-import { InboxStatusEnum } from "../enums/inbox.enum";
+import { InboxStatusEnum, InboxSourceTypeEnum } from "../enums/inbox.enum";
 import { createTaskService } from "./task.service";
 
 /**
@@ -16,11 +16,21 @@ export const getMyDraftsService = async (ownerId: string) => {
 /**
  * Tạo một bản ghi nháp mới
  */
-export const createDraftService = async (ownerId: string, data: { title: string; description?: string }) => {
+export const createDraftService = async (
+    ownerId: string, 
+    data: { 
+        title: string; 
+        description?: string; 
+        sourceType?: string; 
+        sourceMetadata?: any 
+    }
+) => {
     const draft = new PersonalInboxModel({
         ownerId: new mongoose.Types.ObjectId(ownerId),
         title: data.title,
         description: data.description || "",
+        sourceType: data.sourceType || InboxSourceTypeEnum.MANUAL,
+        sourceMetadata: data.sourceMetadata || {},
     });
     return await draft.save();
 };

@@ -29,6 +29,7 @@ import activityRoutes from './routes/activity.route';
 import phaseRoutes from './routes/phase.route';
 import assetRoutes from './routes/asset.route';
 import { startCronService } from './services/cron.service';
+import webhookRoutes from './routes/webhook.route';
 import { createServer } from 'http';
 import { initSocket } from './config/socket';
 import { initExternalListeners } from './listeners/external.listener';
@@ -52,7 +53,7 @@ const startServer = async () => {
         console.log(">>> SERVER INDEX IS LOADING ROUTES <<<");
         // 1. Logger (Debug mọi request)
         app.use((req: Request, res: Response, next: NextFunction) => {
-            logger.info(`🔍 Request: [${req.method}] ${req.url}`);
+            logger.info(`🔍 Request: [${req.method}] ${req.originalUrl}`);
             next();
         });
 
@@ -64,8 +65,6 @@ const startServer = async () => {
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
 
-        // 3. AI Route (Đã thông suốt CORS)
-        app.use("/api/ai", aiRoutes);
 
         // Quay lại dùng cookie-session (Kiến trúc cũ)
         app.use(session({
@@ -105,14 +104,15 @@ const startServer = async () => {
             })
         }));
 
-        // TODO: app.use("/api/auth", authRoutes);
         app.use(`${BASE_PATH}/auth`, authRoutes);
+        app.use(`${BASE_PATH}/webhooks`, webhookRoutes);
         app.use(`${BASE_PATH}/upload`, uploadRoutes); // 🚀 Di chuyển lên đầu để tránh bị intercept
         app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
 
         app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
         app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
         app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes); // 🔒 BẢO MẬT: bắt buộc auth
+        app.use(`${BASE_PATH}/ai`, isAuthenticated, aiRoutes);           // 🚀 AI Planner & Chatbot (Đã bọc Auth)
         app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);       // 🔒 BẢO MẬT: bắt buộc auth
         app.use(`${BASE_PATH}/inbox`, isAuthenticated, inboxRoutes);     // 🚀 MỚI: Inbox cá nhân
         app.use(`${BASE_PATH}/workspace/:workspaceId/announcements`, isAuthenticated, announcementRoutes); // 🚀 Bản tin dự án
