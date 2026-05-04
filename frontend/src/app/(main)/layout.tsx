@@ -5,6 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import InboxSidebar from "@/components/layout/InboxSidebar";
 import { AiChatButton } from '@/components/ai/AiChatButton';
+import { AiChatButtonV2 } from '@/components/ai/AiChatButtonV2';
 import { useUiStore } from '@/stores/ui.store';
 import { cn } from '@/lib/utils';
 import { DndRootProvider } from '@/providers/DndRootProvider';
@@ -107,6 +108,7 @@ export default function MainLayout({
         <InboxSidebar />
         {/* AI Chat Floating Button - hiển thị trên tất cả các trang */}
         <AiChatButton />
+        <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId } as any} />
       </div>
 
       {typeof document !== 'undefined' && createPortal(

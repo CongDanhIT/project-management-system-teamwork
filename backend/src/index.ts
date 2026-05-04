@@ -20,6 +20,7 @@ import memberRoutes from './routes/member.route';
 import projectRoutes from './routes/project.route';
 import taskRoutes from './routes/task.route';
 import aiRoutes from './routes/ai.route';
+import aiV2Routes from './routes/ai-v2.route';
 import uploadRoutes from './routes/upload.route';
 import inboxRoutes from './routes/inbox.route';
 import announcementRoutes from './routes/announcement.route';
@@ -112,7 +113,8 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
         app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
         app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes); // 🔒 BẢO MẬT: bắt buộc auth
-        app.use(`${BASE_PATH}/ai`, isAuthenticated, aiRoutes);           // 🚀 AI Planner & Chatbot (Đã bọc Auth)
+        app.use(`${BASE_PATH}/ai`, isAuthenticated, aiRoutes);           // 🚀 AI Planner & Chatbot (V1)
+        app.use(`${BASE_PATH}/ai/v2`, isAuthenticated, aiV2Routes);      // 🤖 AI Agent Chatbot (V2)
         app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);       // 🔒 BẢO MẬT: bắt buộc auth
         app.use(`${BASE_PATH}/inbox`, isAuthenticated, inboxRoutes);     // 🚀 MỚI: Inbox cá nhân
         app.use(`${BASE_PATH}/workspace/:workspaceId/announcements`, isAuthenticated, announcementRoutes); // 🚀 Bản tin dự án

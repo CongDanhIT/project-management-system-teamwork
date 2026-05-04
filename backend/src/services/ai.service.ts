@@ -1,19 +1,24 @@
 import { createGroq } from "@ai-sdk/groq";
-import { generateObject, streamObject, generateText } from "ai";
+import { streamText, generateText, tool } from "ai";
 import { z } from "zod";
+import mongoose from "mongoose";
 import Groq from "groq-sdk";
 import OpenAI from "openai";
 import { env } from "../config/env";
 import logger from "../utils/logger";
-import mongoose from "mongoose";
+
+// Default Imports cho các Model
 import PhaseModel from "../models/phase.model";
 import TaskModel from "../models/task.model";
 import ProjectModel from "../models/project.model";
-import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
-import { logActivityService } from "./activity.service";
-import { TaskPriorityEnum, TaskStatusEnum } from "../enums/task.enum";
+import WorkspaceModel from "../models/workspace.model";
+import MemberModel from "../models/member.model";
 
-// Các Model IDs định nghĩa sẵn
+import { logActivityService } from "./activity.service";
+import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
+import { TaskStatusEnum, TaskPriorityEnum } from "../enums/task.enum";
+
+// Hằng số AI Models
 export const AI_MODELS = {
     GROQ_LLAMA_3_3_70B: "llama-3.3-70b-versatile",
     NVIDIA_DEEPSEEK_V4: "deepseek-ai/deepseek-v4-pro",
@@ -327,8 +332,8 @@ export const applyAIProjectPlanService = async (
         const project = await ProjectModel.findById(projectId).session(session);
         if (!project) throw new Error("Dự án không tồn tại");
 
-        let prefix = project.name.split(' ').filter(word => word.length > 0)
-            .map(word => word[0].toUpperCase())
+        let prefix = project.name.split(' ').filter((word: string) => word.length > 0)
+            .map((word: string) => word[0].toUpperCase())
             .join('').substring(0, 3);
         if (!prefix || !/^[A-Z]+$/.test(prefix)) prefix = 'TSK';
 
@@ -413,3 +418,197 @@ export const applyAIProjectPlanService = async (
         session.endSession();
     }
 };
+
+/**
+ * [AI V2] Service chính cho Agentic Chat Bot (TeamFlow AI Agent)
+ * Hỗ trợ Streaming, Multi-steps (Tool Calling) và context-aware logic.
+ */
+export const streamAgentChatService = async ({
+    messages,
+    userId,
+    workspaceId,
+    projectId,
+    modelId = AI_MODELS.GROQ_LLAMA_3_3_70B
+}: {
+    messages: any[];
+    userId: string;
+    workspaceId?: string;
+    projectId?: string;
+    modelId?: string;
+}) => {
+    logger.info("[AI-Agent] Khởi chạy streamAgentChatService", { userId, workspaceId, projectId, modelId });
+    logger.debug("[AI-Agent] Kiểm tra messages", { count: messages?.length, lastMessage: messages?.[messages.length - 1] });
+
+    // 1. Khởi tạo System Prompt cực kỳ chi tiết để AI hiểu vai trò và các Tool hiện có
+    const systemPrompt = `BẠN LÀ MỘT AI PROJECT MANAGEMENT AGENT (HỆ THỐNG TEAMFLOW).
+Nhiệm vụ: Hỗ trợ người dùng quản lý công việc, dự án, thành viên và các giai đoạn dự án.
+
+BỐI CẢNH HIỆN TẠI:
+- User ID: ${userId}
+- Workspace ID: ${workspaceId || "Chưa xác định"}
+- Project ID: ${projectId || "Chưa chọn dự án cụ thể"}
+
+QUY TẮC VẬN HÀNH QUAN TRỌNG:
+1. Bạn có quyền truy cập vào các công cụ (tools) để đọc và ghi dữ liệu vào database.
+2. LUÔN LUÔN gọi tool "getProjectPhases" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể hoặc nếu bạn muốn biết cấu trúc dự án.
+3. Nếu người dùng hỏi về danh sách dự án, hãy dùng "getWorkspaceProjects".
+4. Khi tạo task ("createTask"), bạn BẮT BUỘC phải cung cấp "phaseId". Nếu chưa biết "phaseId", hãy hỏi người dùng hoặc gọi "getProjectPhases" để tìm ID phù hợp.
+5. Trả lời bằng tiếng Việt, văn phong chuyên nghiệp, ngắn gọn nhưng đầy đủ thông tin.
+6. Nếu một hành động yêu cầu ID dự án mà hiện tại chưa có, hãy yêu cầu người dùng chọn một dự án trước.
+
+DANH SÁCH CÔNG CỤ CỦA BẠN:
+- getWorkspaceProjects: Lấy danh sách dự án trong Workspace.
+- getProjectPhases: Lấy danh sách các giai đoạn (ID, tên) của dự án hiện tại.
+- getWorkspaceMembers: Lấy danh sách thành viên (ID, tên, email).
+- getTasksList: Lấy danh sách công việc (có thể lọc theo phase hoặc status).
+- createTask: Tạo công việc mới (yêu cầu phaseId).
+- updateTask: Cập nhật thông tin công việc.
+`;
+
+    // 2. Định nghĩa bộ Tool (Sử dụng raw object để tương thích tốt nhất với SDK)
+    const tools: any = {
+        getWorkspaceProjects: {
+            description: "Lấy danh sách các dự án trong Workspace hiện tại bao gồm ID, tên và mô tả.",
+            parameters: z.object({}).nullable().optional(),
+            execute: async () => {
+                logger.info("[AI-Tool] getWorkspaceProjects invoked", { workspaceId });
+                if (!workspaceId) return { error: "Không tìm thấy Workspace ID trong bối cảnh." };
+                const projects = await ProjectModel.find({ workspaceId, deletedAt: null }).select("name description _id").lean();
+                logger.info("[AI-Tool] getWorkspaceProjects result", { count: projects?.length });
+                return projects;
+            }
+        },
+        getProjectPhases: {
+            description: "Lấy danh sách các giai đoạn (phase) của dự án hiện tại. Bạn CẦN gọi tool này để lấy phaseId trước khi tạo task.",
+            parameters: z.object({}).nullable().optional(),
+            execute: async () => {
+                logger.info("[AI-Tool] getProjectPhases invoked", { projectId });
+                if (!projectId) return { error: "Bạn cần phải chọn một dự án cụ thể trước khi xem các giai đoạn." };
+                const phases = await PhaseModel.find({ projectId, deletedAt: null }).select("name _id color").lean();
+                logger.info("[AI-Tool] getProjectPhases result", { count: phases?.length, projectId });
+                return phases;
+            }
+        },
+        getWorkspaceMembers: {
+            description: "Lấy danh sách thành viên trong Workspace để gán task (assignee).",
+            parameters: z.object({}).nullable().optional(),
+            execute: async () => {
+                logger.info("[AI-Tool] getWorkspaceMembers invoked", { workspaceId });
+                if (!workspaceId) return { error: "Không tìm thấy Workspace ID." };
+                const members = await MemberModel.find({ workspaceId }).populate("userId", "name email").lean();
+                const result = members.map((m: any) => ({ 
+                    memberId: m._id, 
+                    userId: m.userId?._id, 
+                    name: m.userId?.name, 
+                    email: m.userId?.email 
+                }));
+                logger.info("[AI-Tool] getWorkspaceMembers result", { count: result.length });
+                return result;
+            }
+        },
+        getTasksList: {
+            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId hoặc status.",
+            parameters: z.object({ 
+                phaseId: z.string().optional().describe("ID giai đoạn để lọc."),
+                status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...).")
+            }).nullable().optional(),
+            execute: async ({ phaseId, status }: any) => {
+                logger.info("[AI-Tool] getTasksList invoked", { projectId, phaseId, status });
+                if (!projectId) return { error: "Cần có Project ID để xem danh sách task." };
+                const query: any = { projectId, deletedAt: null };
+                if (phaseId) query.phaseId = phaseId;
+                if (status) query.status = status;
+                const tasks = await TaskModel.find(query).select("title status priority dueDate taskCode").limit(30).lean();
+                logger.info("[AI-Tool] getTasksList result", { count: tasks?.length });
+                return tasks;
+            }
+        },
+        createTask: {
+            description: "Tạo một công việc mới. BẮT BUỘC phải có tiêu đề và phaseId.",
+            parameters: z.object({
+                title: z.string().describe("Tiêu đề công việc."),
+                description: z.string().optional().describe("Mô tả chi tiết."),
+                phaseId: z.string().describe("ID của giai đoạn (lấy từ getProjectPhases)."),
+                assignedTo: z.string().optional().describe("ID của người được gán (userId)."),
+                priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional().default("MEDIUM"),
+                dueDate: z.string().optional().describe("Hạn chót (ISO date).")
+            }),
+            execute: async (params: any) => {
+                logger.info("[AI-Tool] createTask invoked", { projectId, title: params.title });
+                if (!projectId || !workspaceId) return { error: "Thiếu bối cảnh Project/Workspace để tạo task." };
+                
+                const project = await ProjectModel.findById(projectId);
+                if (!project) return { error: "Dự án không tồn tại." };
+                
+                // Logic sinh taskCode
+                const prefix = project.name.split(' ').filter(w => w.length > 0).map((w: string) => w[0]?.toUpperCase()).join('').substring(0, 3) || 'TSK';
+                const count = await TaskModel.countDocuments({ projectId, parentId: null });
+                const task = await TaskModel.create({ 
+                    ...params, 
+                    taskCode: `${prefix}-${count + 1}`, 
+                    projectId, 
+                    workspaceId, 
+                    createdBy: userId,
+                    assignedTo: params.assignedTo ? [params.assignedTo] : []
+                });
+                
+                await logActivityService({
+                    userId, workspaceId, projectId,
+                    action: ActivityActionEnum.CREATE_TASK,
+                    entityType: ActivityEntityTypeEnum.TASK,
+                    entityId: (task._id as any).toString(),
+                    details: { summary: `AI Agent created task: **${task.taskCode}**` }
+                });
+                
+                return { success: true, taskCode: task.taskCode, message: `Đã tạo task **${task.taskCode}** thành công.` };
+            }
+        },
+        updateTask: {
+            description: "Cập nhật thông tin một công việc hiện có bằng taskId hoặc taskCode.",
+            parameters: z.object({
+                taskId: z.string().optional().describe("ID của task."),
+                taskCode: z.string().optional().describe("Mã công việc (ví dụ: PRO-1)."),
+                updates: z.object({
+                    title: z.string().optional(),
+                    status: z.string().optional(),
+                    priority: z.string().optional(),
+                    assignedTo: z.string().optional(),
+                    phaseId: z.string().optional(),
+                    description: z.string().optional()
+                })
+            }),
+            execute: async ({ taskId, taskCode, updates }: any) => {
+                logger.info("[AI-Tool] updateTask invoked", { taskId, taskCode, updates });
+                const query: any = { workspaceId, deletedAt: null };
+                if (taskId) query._id = taskId;
+                else if (taskCode) query.taskCode = taskCode;
+                else return { error: "Cần cung cấp taskId hoặc taskCode để định danh công việc." };
+
+                const updatePayload = { ...updates };
+                if (updates.assignedTo) updatePayload.assignedTo = [updates.assignedTo];
+
+                const task = await TaskModel.findOneAndUpdate(query, { $set: updatePayload }, { new: true });
+                if (!task) return { error: "Không tìm thấy công việc để cập nhật." };
+
+                return { success: true, message: `Đã cập nhật công việc **${task.taskCode}** thành công.` };
+            }
+        }
+    };
+
+    // 3. Thực thi streamText với maxSteps để tự động lặp Tool Calling
+    return streamText({
+        model: groqProvider(modelId || AI_MODELS.GROQ_LLAMA_3_3_70B),
+        system: systemPrompt,
+        messages,
+        tools,
+        maxSteps: 10, // Cho phép Agent suy nghĩ và gọi tool tối đa 10 bước
+        onStepFinish({ text, toolCalls, toolResults }) {
+            logger.info(`[AI-Agent-Step] Hoàn tất bước xử lý`, {
+                hasText: !!text,
+                toolCallsCount: toolCalls?.length,
+                toolResultsCount: toolResults?.length
+            });
+        },
+    });
+};
+
