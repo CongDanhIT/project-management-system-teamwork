@@ -15,6 +15,11 @@ export interface ProjectAiContext {
   memberCount?: number;
 }
 
+export interface AiAgentContext {
+  workspaceId?: string;
+  projectId?: string;
+}
+
 export interface AiTask {
   title: string;
   description: string;

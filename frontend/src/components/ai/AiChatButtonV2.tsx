@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import { Bot, Sparkles, X } from 'lucide-react';
 import { AiChatSidebarV2 } from './AiChatSidebarV2';
-import { ProjectAiContext } from '@/services/ai.service';
+import { AiAgentContext } from '@/services/ai.service';
 
 interface AiChatButtonV2Props {
-  context?: ProjectAiContext;
+  context?: AiAgentContext;
 }
 
 export const AiChatButtonV2: React.FC<AiChatButtonV2Props> = ({ context }) => {
@@ -48,8 +48,8 @@ export const AiChatButtonV2: React.FC<AiChatButtonV2Props> = ({ context }) => {
               <X className="w-6 h-6 text-white transition-all" />
             ) : (
               <div className="flex flex-col items-center justify-center">
-                <Bot className="w-6 h-6 text-white fill-white/10" />
-                <span className="text-[7px] font-black text-brand-secondary absolute -bottom-2">V2</span>
+                <Sparkles className="w-6 h-6 text-white fill-white/20 animate-pulse" />
+                <span className="text-[7px] font-black text-brand-secondary absolute -bottom-2">AGENT</span>
               </div>
             )}
           </div>

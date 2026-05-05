@@ -108,7 +108,7 @@ export default function MainLayout({
         <InboxSidebar />
         {/* AI Chat Floating Button - hiển thị trên tất cả các trang */}
         <AiChatButton />
-        <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId } as any} />
+        <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId }} />
       </div>
 
       {typeof document !== 'undefined' && createPortal(

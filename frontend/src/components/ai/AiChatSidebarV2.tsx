@@ -4,16 +4,14 @@ import React, { useEffect, useRef } from 'react';
 import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import { toast } from 'sonner';
+import { AiAgentContext } from '@/services/ai.service';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 interface AiChatSidebarV2Props {
   isOpen: boolean;
   onClose: () => void;
-  context?: {
-    workspaceId?: string;
-    projectId?: string;
-  };
+  context?: AiAgentContext;
 }
 
 export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClose, context = {} }) => {
@@ -69,33 +67,32 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-[#1a1a1a] shadow-2xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300 transform animate-in slide-in-from-right">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-[#252525] dark:to-[#1e1e1e]">
+    <div className="fixed inset-y-0 right-0 w-[400px] bg-white/95 dark:bg-[#121212]/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col border-l border-gray-200/50 dark:border-white/5 transition-all duration-300 transform animate-in slide-in-from-right">
+      {/* Header - V1 Premium Style */}
+      <div className="p-6 border-b border-gray-200/50 dark:border-white/5 flex items-center justify-between bg-gradient-to-br from-brand-primary to-brand-primary/90 dark:from-slate-900 dark:to-brand-primary/20">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200 dark:shadow-none">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="p-2.5 bg-white/20 dark:bg-white/10 backdrop-blur-md rounded-xl shadow-inner border border-white/30 dark:border-white/10">
+            <Sparkles className="w-5 h-5 text-white fill-white/20" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-white">AI Agent V2</h3>
+            <h3 className="font-bold text-white tracking-tight">AI Agent V2</h3>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Online</span>
+              <span className="w-1.5 h-1.5 bg-brand-secondary rounded-full animate-pulse" />
+              <span className="text-[10px] text-white/70 uppercase tracking-widest font-bold">Agentic Mode</span>
             </div>
           </div>
         </div>
         <button 
           onClick={onClose}
-          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors"
+          className="p-2 hover:bg-white/10 rounded-full transition-all hover:rotate-90 group"
         >
-          <X className="w-5 h-5 text-gray-500" />
+          <X className="w-5 h-5 text-white/70 group-hover:text-white" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-800">
         {messages.map((message) => {
-          // Ẩn các tin nhắn trống của AI (thường là các bước trung gian khi gọi Tool)
           if (message.role === 'assistant' && !message.content && message.id !== 'welcome') {
             return null;
           }
@@ -103,22 +100,22 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
           return (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-3`}
             >
-              <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`flex gap-3 max-w-[88%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
                   message.role === 'user' 
-                    ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300' 
-                    : 'bg-blue-600 text-white'
+                    ? 'bg-brand-primary/10 dark:bg-brand-primary/20 text-brand-primary' 
+                    : 'bg-brand-primary text-white'
                 }`}>
-                  {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {message.role === 'user' ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4 fill-white/20" />}
                 </div>
-                <div className={`p-3 rounded-2xl text-sm leading-relaxed ${
+                <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-tr-none'
-                    : 'bg-gray-100 dark:bg-[#252525] text-gray-800 dark:text-gray-200 rounded-tl-none border border-gray-200/50 dark:border-gray-700/50'
+                    ? 'bg-brand-primary text-white rounded-tr-none shadow-brand-primary/10'
+                    : 'bg-gray-100 dark:bg-white/5 text-gray-800 dark:text-gray-200 rounded-tl-none border border-gray-200/50 dark:border-white/5'
                 }`}>
-                  <div className="whitespace-pre-wrap break-words prose dark:prose-invert prose-sm max-w-none">
+                  <div className="whitespace-pre-wrap break-words prose dark:prose-invert prose-sm max-w-none prose-p:leading-relaxed">
                     {message.content}
                   </div>
                 </div>
@@ -129,12 +126,12 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
         {isLoading && (
           <div className="flex justify-start animate-in fade-in">
             <div className="flex gap-3 max-w-[85%]">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-white fill-white/20" />
               </div>
-              <div className="bg-gray-100 dark:bg-[#252525] p-3 rounded-2xl rounded-tl-none flex items-center gap-2 border border-gray-200/50 dark:border-gray-700/50">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span className="text-xs text-gray-500">AI đang suy nghĩ...</span>
+              <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-2xl rounded-tl-none flex items-center gap-2 border border-gray-200/50 dark:border-white/5">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
+                <span className="text-xs text-gray-500 font-medium">Agent đang xử lý...</span>
               </div>
             </div>
           </div>
@@ -142,27 +139,27 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1a1a1a]">
-        <div className="relative group">
+      {/* Input - V1 Style */}
+      <form onSubmit={handleSubmit} className="p-6 border-t border-gray-200 dark:border-white/5 bg-gray-50/50 dark:bg-black/20">
+        <div className="relative group bg-white dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 p-1.5 focus-within:ring-4 focus-within:ring-brand-primary/10 transition-all shadow-inner">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={handleInputChange}
-            placeholder="Hỏi AI bất cứ điều gì..."
-            className="w-full bg-white dark:bg-[#252525] text-gray-900 dark:text-white pl-4 pr-12 py-3 rounded-xl border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm group-hover:border-gray-300 dark:group-hover:border-gray-700"
+            placeholder="Bạn muốn tôi thực hiện tác vụ nào?"
+            className="w-full bg-transparent text-gray-900 dark:text-white pl-3 pr-12 py-2.5 focus:outline-none text-sm font-medium"
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-all shadow-md active:scale-95"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 bg-brand-primary text-white rounded-xl hover:bg-brand-primary/90 disabled:opacity-30 transition-all shadow-lg shadow-brand-primary/20 active:scale-95 flex items-center justify-center"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-center text-gray-400">
-          AI Agent có thể thực thi các lệnh trực tiếp trên dự án của bạn
+        <p className="mt-3 text-[10px] text-center text-gray-400 font-medium uppercase tracking-widest opacity-60">
+          AI Agent V2 • Đa năng & Bảo mật
         </p>
       </form>
     </div>
