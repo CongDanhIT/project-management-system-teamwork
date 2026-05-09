@@ -1,5 +1,5 @@
 import express from "express";
-import { createPhase, getPhases, updatePhase, deletePhase, restorePhase, getDeletedPhases, hardDeletePhase } from "../controllers/phase.controller";
+import { createPhase, getPhases, updatePhase, deletePhase, restorePhase, getDeletedPhases, hardDeletePhase, getPhasesByWorkspace } from "../controllers/phase.controller";
 import { isAuthenticated } from "../middlewares/isAuthenticated.middleware";
 import logger from "../utils/logger";
 
@@ -9,6 +9,7 @@ logger.info(">>> LOADING Phase Routes <<<");
 
 // GET /api/v1/phase/project/:projectId
 router.get("/project/:projectId", isAuthenticated, getPhases);
+router.get("/workspace/:workspaceId", isAuthenticated, getPhasesByWorkspace);
 
 // POST /api/v1/phase
 router.post("/", isAuthenticated, createPhase);

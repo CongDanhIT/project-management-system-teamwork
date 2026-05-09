@@ -11,10 +11,16 @@ import TaskModel from "../models/task.model";
 import { TaskStatusEnum } from "../enums/task.enum";
 import ProjectModel from "../models/project.model";
 import WorkspaceAnalyticsSnapshotModel from "../models/workspace-analytics-snapshot.model";
+import ProjectAnalyticsSnapshotModel from "../models/project-analytics-snapshot.model";
 import { EmailService } from "./email.service";
 import { SlackService } from "./slack.service";
 import { logActivity } from "./activity.service";
-import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
+import ActivityLogModel, { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
+import PhaseModel from "../models/phase.model";
+import TaskCommentModel from "../models/task-comment.model";
+import ProjectAssetModel from "../models/project-asset.model";
+import AssetFolderModel from "../models/asset-folder.model";
+import AssetService from "./asset.service";
 // tạo workspace
 export const createWorkspaceService = async (userId: string, body: {
     name: string;
@@ -227,49 +233,82 @@ export const getWorkspaceMemberService = async (workspaceId: string, projectId?:
 
     return { members: membersWithStats, roles };
 };
-// lấy thông tin analytics trong workspace
-export const getWorkspaceAnalyticsService = async (workspaceId: string) => {
+// lấy thông tin analytics trong workspace (có hỗ trợ lọc theo danh sách dự án)
+export const getWorkspaceAnalyticsService = async (workspaceId: string, projectIds?: string[]) => {
     const currentDate = new Date();
     const twentyFourHoursLater = new Date(currentDate.getTime() + (24 * 60 * 60 * 1000));
 
-    // Dùng Promise.all để chạy 5 truy vấn song song - Tốc độ nhanh gấp 5 lần
+    // Xây dựng match query cơ bản
+    const baseMatch: any = { workspaceId: workspaceId, deletedAt: null };
+    if (projectIds && projectIds.length > 0) {
+        // Chuyển đổi sang ObjectId để đảm bảo chính xác khi truy vấn
+        const pIds = projectIds.map(id => new mongoose.Types.ObjectId(id));
+        baseMatch.projectId = { $in: pIds };
+    }
+
+    // Dùng Promise.all để chạy các truy vấn song song
     const [totalTasks, overdueTasks, completedTasks, inProgressTasks, nearDueDateTasks] = await Promise.all([
-        TaskModel.countDocuments({ workspaceId: workspaceId, deletedAt: null }),
+        TaskModel.countDocuments(baseMatch),
 
         TaskModel.countDocuments({
-            workspaceId: workspaceId,
+            ...baseMatch,
             dueDate: { $lt: currentDate },
-            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
-            deletedAt: null
+            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] }
         }),
 
         TaskModel.countDocuments({
-            workspaceId: workspaceId,
-            status: { $in: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
-            deletedAt: null
+            ...baseMatch,
+            status: { $in: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] }
         }),
 
         TaskModel.countDocuments({
-            workspaceId: workspaceId,
-            status: TaskStatusEnum.IN_PROGRESS,
-            deletedAt: null
+            ...baseMatch,
+            status: TaskStatusEnum.IN_PROGRESS
         }),
 
         TaskModel.find({
-            workspaceId: workspaceId,
+            ...baseMatch,
             dueDate: {
                 $gte: currentDate,
                 $lte: twentyFourHoursLater
             },
-            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
-            deletedAt: null
+            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] }
         }).sort({ dueDate: 1 })
     ]);
 
-    // Lấy snapshot gần nhất (thường là của ngày hôm trước) để tính trend
-    const yesterdaySnapshot = await WorkspaceAnalyticsSnapshotModel.findOne({
-        workspaceId: workspaceId
-    }).sort({ date: -1 });
+    // Lấy snapshot gần nhất để tính trend
+    // Nếu lọc theo dự án, trend sẽ tính dựa trên tổng snapshot của các dự án đó
+    let yesterdaySnapshot: any = null;
+
+    if (projectIds && projectIds.length > 0) {
+        // Lấy snapshot gần nhất của các dự án và tổng hợp lại
+        const pIds = projectIds.map(id => new mongoose.Types.ObjectId(id));
+        const latestSnapshots = await ProjectAnalyticsSnapshotModel.aggregate([
+            { $match: { projectId: { $in: pIds } } },
+            { $sort: { date: -1 } },
+            { $group: {
+                _id: "$projectId",
+                latest: { $first: "$$ROOT" }
+            }},
+            { $group: {
+                _id: null,
+                totalTasks: { $sum: "$latest.totalTasks" },
+                completedTasks: { $sum: "$latest.completedTasks" },
+                inProgressTasks: { $sum: "$latest.inProgressTasks" },
+                overdueTasks: { $sum: "$latest.overdueTasks" }
+            }}
+        ]);
+        if (latestSnapshots.length > 0) {
+            yesterdaySnapshot = latestSnapshots[0];
+        } else {
+            // Nếu không có snapshot nào của các dự án này, gán giá trị mặc định là 0 để không bị null
+            yesterdaySnapshot = { totalTasks: 0, completedTasks: 0, inProgressTasks: 0, overdueTasks: 0 };
+        }
+    } else {
+        yesterdaySnapshot = await WorkspaceAnalyticsSnapshotModel.findOne({
+            workspaceId: workspaceId
+        }).sort({ date: -1 });
+    }
 
     const analytics = {
         totalTasks,
@@ -482,10 +521,21 @@ export const deleteWorkspaceByIdService = async (workspaceId: string, userId: st
             .session(session);
         const affectedUserIds = affectedMembers.map(m => m.userId.toString());
 
-        // 2. Xóa toàn bộ dữ liệu liên quan đến workspace
-        await ProjectModel.deleteMany({ workspaceId: workspaceId }).session(session);
-        await TaskModel.deleteMany({ workspaceId: workspaceId }).session(session);
-        await MemberModel.deleteMany({ workspaceId: workspaceId }).session(session);
+        // [Nâng cao] Lấy danh sách các tài nguyên vật lý trên cloud để xóa
+        const assetsToDelete = await ProjectAssetModel.find({ workspaceId: workspaceId }).select("storageKey").session(session);
+
+        // 2. Xóa toàn bộ dữ liệu liên quan đến workspace (Cascading Delete)
+        await Promise.all([
+            ProjectModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            TaskModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            MemberModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            PhaseModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            TaskCommentModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            ActivityLogModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            ProjectAssetModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            AssetFolderModel.deleteMany({ workspaceId: workspaceId }).session(session),
+            WorkspaceAnalyticsSnapshotModel.deleteMany({ workspaceId: workspaceId }).session(session)
+        ]);
 
         // 3. Cập nhật currentWorkspace cho người thực hiện xóa
         if (user.currentWorkspace?.toString() === workspaceId) {
@@ -520,6 +570,21 @@ export const deleteWorkspaceByIdService = async (workspaceId: string, userId: st
 
         await workspace.deleteOne({ session });
         await session.commitTransaction();
+
+        // [Xử lý tài nguyên vật lý async sau khi transaction thành công]
+        if (assetsToDelete && assetsToDelete.length > 0) {
+            Promise.all(assetsToDelete.map(asset => {
+                if (asset.storageKey) {
+                    return AssetService.hardDeleteFromR2(asset.storageKey).catch(err => {
+                        logger.error("Lỗi khi xóa file vật lý trên R2", { storageKey: asset.storageKey, error: err });
+                    });
+                }
+                return Promise.resolve();
+            })).catch(err => {
+                 logger.error("Lỗi khi thực thi xóa hàng loạt file vật lý trên R2", { error: err });
+            });
+        }
+
         return user.currentWorkspace;
     } catch (error) {
         await session.abortTransaction();
@@ -571,17 +636,44 @@ export const removeMemberFromWorkspaceService = async (
  * Dùng cho biểu đồ xu hướng (Activity Pulse)
  * Đã cập nhật: Tự động gộp dữ liệu real-time của ngày hôm nay vào điểm cuối
  */
-export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string) => {
-    // 1. Lấy dữ liệu analytics thực tế hiện tại của toàn bộ workspace
-    const currentData = await getWorkspaceAnalyticsService(workspaceId);
+export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string, projectIds?: string[]) => {
+    // 1. Lấy dữ liệu analytics thực tế hiện tại
+    const currentData = await getWorkspaceAnalyticsService(workspaceId, projectIds);
 
-    // 2. Lấy 14 ngày lịch sử gần nhất từ snapshot
-    const history = await WorkspaceAnalyticsSnapshotModel.find({
-        workspaceId: workspaceId
-    })
-    .sort({ date: -1 })
-    .limit(14)
-    .lean();
+    // 2. Lấy lịch sử từ snapshot
+    let history: any[] = [];
+    
+    if (projectIds && projectIds.length > 0) {
+        // Lấy dữ liệu từ ProjectAnalyticsSnapshot và aggregate theo ngày
+        const pIds = projectIds.map(id => new mongoose.Types.ObjectId(id));
+        history = await ProjectAnalyticsSnapshotModel.aggregate([
+            { $match: { projectId: { $in: pIds } } },
+            { $group: {
+                _id: "$date",
+                totalTasks: { $sum: "$totalTasks" },
+                completedTasks: { $sum: "$completedTasks" },
+                inProgressTasks: { $sum: "$inProgressTasks" },
+                overdueTasks: { $sum: "$overdueTasks" }
+            }},
+            { $project: {
+                _id: 0,
+                date: "$_id",
+                totalTasks: 1,
+                completedTasks: 1,
+                inProgressTasks: 1,
+                overdueTasks: 1
+            }},
+            { $sort: { date: -1 } },
+            { $limit: 14 }
+        ]);
+    } else {
+        history = await WorkspaceAnalyticsSnapshotModel.find({
+            workspaceId: workspaceId
+        })
+        .sort({ date: -1 })
+        .limit(14)
+        .lean();
+    }
 
     const formattedHistory = history.reverse();
     const today = new Date();

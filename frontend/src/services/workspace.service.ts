@@ -59,13 +59,17 @@ export const workspaceService = {
     return response.data.workspace as Workspace;
   },
 
-  getWorkspaceAnalytics: async (id: string) => {
-    const response = await api.get(`/workspace/analytics/${id}`);
+  getWorkspaceAnalytics: async (id: string, projectIds?: string[]) => {
+    const response = await api.get(`/workspace/analytics/${id}`, {
+      params: { projectIds: projectIds?.join(',') }
+    });
     return response.data.analytics as WorkspaceAnalytics;
   },
 
-  getWorkspaceAnalyticsHistory: async (id: string) => {
-    const response = await api.get(`/workspace/analytics/history/${id}`);
+  getWorkspaceAnalyticsHistory: async (id: string, projectIds?: string[]) => {
+    const response = await api.get(`/workspace/analytics/history/${id}`, {
+      params: { projectIds: projectIds?.join(',') }
+    });
     return response.data.history as WorkspaceAnalyticsSnapshot[];
   },
 

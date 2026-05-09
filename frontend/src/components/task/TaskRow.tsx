@@ -3,7 +3,7 @@ import { Task } from '@/types/task';
 import { StatusBadge } from '../shared/StatusBadge';
 import { PriorityBadge } from '../shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, MessageSquare } from 'lucide-react';
+import { Calendar, MessageSquare, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -17,7 +17,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
   return (
     <div 
       onClick={() => onClick(task)}
-      className="group grid grid-cols-[40px_100px_1fr_140px_140px_140px_80px] items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-transparent hover:border-slate-100 dark:hover:border-white/5"
+      className="group grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-white/5 transition-all duration-200 cursor-pointer border-b border-transparent hover:border-slate-100 dark:hover:border-white/5 hover:shadow-sm"
     >
       <div className="flex justify-center items-center">
         <div className="w-4 h-4 rounded-full border-2 border-slate-200 group-hover:border-brand-primary transition-colors flex items-center justify-center">
@@ -29,7 +29,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
       </div>
 
       {/* Code */}
-      <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 group-hover:text-brand-primary transition-colors">
+      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 group-hover:text-brand-primary tracking-widest transition-colors">
         {task.taskCode}
       </span>
 
@@ -61,10 +61,24 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
         <PriorityBadge priority={task.priority} />
       </div>
 
+      {/* Phase */}
+      <div className="flex items-center justify-center gap-1.5 text-slate-500 dark:text-slate-400">
+        {task.phaseId ? (
+          <>
+            <Layers className="w-3 h-3 text-slate-400" />
+            <span className="text-[10px] font-bold truncate max-w-[100px] uppercase tracking-wider">
+              {task.phaseId.name}
+            </span>
+          </>
+        ) : (
+          <span className="text-[10px] font-medium text-slate-300 dark:text-slate-600 italic">--</span>
+        )}
+      </div>
+
       {/* Due Date */}
-      <div className="flex items-center justify-center gap-2 text-slate-400 italic">
-        <Calendar className="w-3.5 h-3.5" />
-        <span className="text-[11px] font-bold uppercase tracking-wider">
+      <div className="flex items-center justify-center gap-2 text-slate-400/80 italic">
+        <Calendar className="w-3 h-3 stroke-[2.5px]" />
+        <span className="text-[10px] font-black uppercase tracking-widest">
           {task.dueDate ? format(new Date(task.dueDate), 'dd MMM', { locale: vi }) : '--'}
         </span>
       </div>
@@ -72,7 +86,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
       {/* [MULTI-ASSIGNEE] Assignee Avatar Stack */}
       <div className="flex justify-end pr-4">
         {task.assignedTo && task.assignedTo.length > 0 ? (
-          <div className="flex -space-x-1.5">
+          <div className="flex -space-x-2">
             {task.assignedTo.slice(0, 2).map((user) => (
               <Avatar key={user._id} className="w-7 h-7 border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-200 dark:ring-white/5">
                 <AvatarImage src={user.profilePicture} />

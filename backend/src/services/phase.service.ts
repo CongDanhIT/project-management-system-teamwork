@@ -169,6 +169,13 @@ class PhaseService {
         // 2. Delete the phase itself
         return await PhaseModel.findByIdAndDelete(phaseId);
     }
+
+    async getPhasesByWorkspace(workspaceId: string) {
+        return await PhaseModel.find({
+            workspaceId: new mongoose.Types.ObjectId(workspaceId),
+            deletedAt: null,
+        }).sort({ projectId: 1, startDate: 1, createdAt: 1 });
+    }
 }
 
 export default new PhaseService();

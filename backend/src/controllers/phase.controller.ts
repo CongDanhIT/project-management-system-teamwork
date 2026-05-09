@@ -109,3 +109,13 @@ export const hardDeletePhase = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+export const getPhasesByWorkspace = async (req: Request, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const phases = await PhaseService.getPhasesByWorkspace(workspaceId as string);
+        res.status(200).json({ data: phases });
+    } catch (error: any) {
+        logger.error("Error fetching workspace phases", { error: error.message });
+        res.status(500).json({ message: error.message });
+    }
+};

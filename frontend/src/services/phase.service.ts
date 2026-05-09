@@ -6,6 +6,11 @@ export const PhaseService = {
         return response.data;
     },
 
+    getPhasesByWorkspace: async (workspaceId: string) => {
+        const response = await api.get(`/phase/workspace/${workspaceId}`);
+        return response.data;
+    },
+
     createPhase: async (data: any) => {
         const response = await api.post("/phase", data);
         return response.data;

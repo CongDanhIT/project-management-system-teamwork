@@ -20,7 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { taskService } from '@/services/task.service';
-import * as XLSX from 'xlsx';
+import { ExcelService, SummaryItem } from '@/services/excel.service';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
@@ -29,6 +29,15 @@ import { PhaseService } from '@/services/phase.service';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@/stores/workspace.store';
+
+const STATUS_LABELS: Record<string, string> = {
+  'TODO': 'Cần làm',
+  'DONE': 'Hoàn thành',
+  'IN_PROGRESS': 'Đang làm',
+  'INREVIEW': 'Đang kiểm tra',
+  'BACKLOG': 'Tồn đọng',
+  'CANCELLED': 'Đã hủy'
+};
 
 
 export default function ProjectAnalyticsPage() {
@@ -90,22 +99,61 @@ export default function ProjectAnalyticsPage() {
     try {
       const response = await taskService.getProjectTasks(workspaceId, projectId, { pageSize: 1000, phaseId });
       const tasks = response.tasks;
+
+      // Tính toán các thông tin Dashboard cho Giai đoạn
+      const now = new Date();
+      const totalTasks = tasks.length;
+      const doneTasks = tasks.filter((t: any) => t.status === 'DONE').length;
+      const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
       
+      const overdueTasks = tasks.filter((t: any) => 
+        t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) < now
+      );
+
+      const summary: SummaryItem[] = [
+        { label: 'Giai đoạn', value: phase?.name || '---' },
+        { label: 'Tỷ lệ hoàn thành', value: `${completionRate}%`, color: completionRate > 70 ? 'FF38A169' : 'FFDD6B20' },
+        { label: 'Tổng số Task', value: totalTasks },
+        { label: 'Task đã hoàn thành', value: doneTasks },
+        { label: 'Task quá hạn', value: overdueTasks.length, color: overdueTasks.length > 0 ? 'FFE53E3E' : 'FF38A169' },
+      ];
+
+      if (overdueTasks.length > 0) {
+        summary.push({ label: 'CẢNH BÁO', value: `Phát hiện ${overdueTasks.length} task trễ hạn!`, color: 'FFE53E3E' });
+      }
+      
+      const columns = [
+        { header: 'Giai đoạn', key: 'phase', width: 25 },
+        { header: 'Mã Task', key: 'taskCode', width: 15 },
+        { header: 'Tên công việc', key: 'title', width: 45 },
+        { header: 'Trạng thái', key: 'status', width: 18 },
+        { header: 'Mức ưu tiên', key: 'priority', width: 15 },
+        { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
+        { header: 'Hạn chót', key: 'dueDate', width: 15 },
+        { header: 'Người thực hiện', key: 'assignees', width: 35 },
+      ];
+
       const data = tasks.map(t => ({
-        'Mã Task': t.taskCode,
-        'Tên công việc': t.title,
-        'Trạng thái': t.status,
-        'Mức ưu tiên': t.priority,
-        'Ngày bắt đầu': t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
-        'Hạn chót': t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
-        'Người thực hiện': t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
+        phase: phase?.name || '---',
+        taskCode: t.taskCode,
+        title: t.title,
+        status: STATUS_LABELS[t.status] || t.status,
+        priority: t.priority,
+        startDate: t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
+        dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
+        assignees: t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
       }));
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-      XLSX.writeFile(wb, `Project_${project.name}_Tasks.xlsx`);
-      toast.success('Xuất file Excel thành công');
+      await ExcelService.exportToExcel({
+        filename: `Project_${project.name}_Phase_${phase?.name || ''}_Tasks`,
+        sheetName: 'Công việc giai đoạn',
+        columns,
+        data,
+        title: `BÁO CÁO GIAI ĐOẠN: ${phase?.name?.toUpperCase() || ''} - DỰ ÁN: ${project.name.toUpperCase()}`,
+        summary
+      });
+
+      toast.success('Xuất file Excel cao cấp thành công');
     } catch (error) {
       console.error(error);
       toast.error('Lỗi khi xuất file Excel');

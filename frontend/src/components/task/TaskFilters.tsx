@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, X, Users, GitBranch, Layout, CheckCircle2, AlertCircle, ChevronDown } from 'lucide-react';
+import { Search, Filter, X, Users, GitBranch, Layout, CheckCircle2, AlertCircle, ChevronDown, Layers } from 'lucide-react';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,8 +31,10 @@ interface TaskFiltersProps {
   onProjectChange: (value: string) => void;
   onAssigneeChange: (values: string[]) => void;
   onParentTaskChange: (value: string) => void;
+  onPhaseChange: (value: string) => void;
   projects: Project[];
   members: any[];
+  phases: any[];
   tasks: Task[];
   filters: {
     search: string;
@@ -41,6 +43,7 @@ interface TaskFiltersProps {
     projectId: string;
     assigneeIds: string[];
     parentId: string;
+    phaseId: string;
   };
   onClear: () => void;
 }
@@ -52,8 +55,10 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   onProjectChange,
   onAssigneeChange,
   onParentTaskChange,
+  onPhaseChange,
   projects,
   members,
+  phases,
   tasks,
   filters,
   onClear,
@@ -64,6 +69,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
     filters.projectId !== 'all',
     filters.assigneeIds.length > 0,
     filters.parentId !== 'all',
+    filters.phaseId !== 'all',
   ].filter(Boolean).length;
 
   const hasFilters = filters.search || activeFiltersCount > 0;
@@ -116,7 +122,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   });
 
   return (
-    <div className="flex items-center gap-3 mb-6 bg-white/40 dark:bg-slate-900/50 backdrop-blur-md p-2 rounded-2xl border border-slate-200/50 dark:border-white/10 shadow-sm">
+    <div className="flex items-center gap-3 mb-8 bg-slate-50/50 dark:bg-slate-900/40 backdrop-blur-xl p-2.5 rounded-[32px] border border-slate-100/80 dark:border-white/5 shadow-sm">
       <SearchInput
         placeholder="Tìm kiếm công việc nhanh..."
         value={filters.search}
@@ -159,7 +165,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Trạng thái</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Trạng thái</label>
                     <Select value={filters.status} onValueChange={(val) => onStatusChange(val || 'all')}>
                       <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
@@ -177,7 +183,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mức độ ưu tiên</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Mức độ ưu tiên</label>
                     <Select value={filters.priority} onValueChange={(val) => onPriorityChange(val || 'all')}>
                       <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
@@ -194,7 +200,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Theo dự án</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Theo dự án</label>
                     <Select value={filters.projectId} onValueChange={(val) => onProjectChange(val || 'all')}>
                       <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>
@@ -221,7 +227,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Thành viên thực hiện</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Người thực hiện</label>
                     <Popover>
                       <PopoverTrigger>
                         <div className="flex items-center justify-between w-full h-10 px-3 border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl hover:bg-slate-100/50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
@@ -290,7 +296,31 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Nhiệm vụ cha</label>
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Giai đoạn</label>
+                    <Select value={filters.phaseId} onValueChange={(val) => onPhaseChange(val || 'all')}>
+                      <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
+                        <SelectValue>
+                          <div className="flex items-center gap-2">
+                             <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                             <span className="truncate">
+                               {phases.find(p => p._id === filters.phaseId)?.name || "Tất cả"}
+                             </span>
+                          </div>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100 max-h-64">
+                        <SelectItem value="all">Tất cả giai đoạn</SelectItem>
+                        {phases.map(phase => (
+                          <SelectItem key={phase._id} value={phase._id} className="max-w-[250px] truncate">
+                            {phase.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Nhiệm vụ cha</label>
                     <Select value={filters.parentId} onValueChange={(val) => onParentTaskChange(val || 'all')}>
                       <SelectTrigger className="h-10 border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl focus:ring-1 focus:ring-brand-primary/80 font-medium dark:text-slate-200">
                         <SelectValue>

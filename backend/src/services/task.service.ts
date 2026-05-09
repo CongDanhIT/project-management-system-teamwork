@@ -304,13 +304,25 @@ export const updateTaskService = async (
     }
 
     // [ACTIVITY-LOG] Ghi nhật ký cập nhật Task
-    const changedFields = Object.keys(oldValues);
+    const changedFields = Object.keys(oldValues).filter(key => {
+        const oldV = oldValues[key];
+        const newV = (body as any)[key];
+        
+        // So sánh Date hoặc String/Number
+        if (oldV instanceof Date || (typeof oldV === 'string' && !isNaN(Date.parse(oldV)))) {
+           return new Date(oldV).getTime() !== new Date(newV).getTime();
+        }
+        return JSON.stringify(oldV) !== JSON.stringify(newV);
+    });
+
     let detailedSummary = `đã cập nhật thông tin công việc **${task.title}**`;
     
     if (changedFields.includes('status')) {
         detailedSummary = `đã chuyển trạng thái công việc **${task.title}** từ **${oldValues.status}** sang **${task.status}**`;
     } else if (changedFields.includes('priority')) {
         detailedSummary = `đã đổi mức ưu tiên công việc **${task.title}** từ **${oldValues.priority}** sang **${task.priority}**`;
+    } else if (changedFields.includes('startDate') || changedFields.includes('dueDate')) {
+        detailedSummary = `đã cập nhật lại lịch trình thời gian cho công việc **${task.title}**`;
     }
 
     await logActivityService({
@@ -421,6 +433,7 @@ export const getAllTasksService = async (
             .populate("assignedTo", "_id name email profilePicture")
             .populate("projectId", "_id name")
             .populate("parentId", "_id title taskCode")
+            .populate("phaseId", "_id name")
             .populate("tags")
             .sort(sortOptions)
             .skip(skip)

@@ -29,6 +29,7 @@ import interactionRoutes from './routes/interaction.route';
 import activityRoutes from './routes/activity.route';
 import phaseRoutes from './routes/phase.route';
 import assetRoutes from './routes/asset.route';
+import analyticsRoutes from './routes/analytics.route';
 import { startCronService } from './services/cron.service';
 import webhookRoutes from './routes/webhook.route';
 import { createServer } from 'http';
@@ -123,6 +124,7 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/activity`, activityRoutes); // 🚀 Nhật ký hệ thống
         app.use(`${BASE_PATH}/phase`, phaseRoutes); // 🚀 Quản lý giai đoạn dự án
         app.use(`${BASE_PATH}/asset`, isAuthenticated, assetRoutes); // 🚀 Quản lý tài nguyên & R2
+        app.use(`${BASE_PATH}/analytics`, isAuthenticated, analyticsRoutes); // 🚀 Báo cáo chuyên sâu
         logger.info(">>> INTERACTION ROUTES LOADED <<<");
 
         // Catch-all 404: Bắt các request không khớp bất kỳ route nào

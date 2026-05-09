@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { workspaceService } from '@/services/workspace.service';
 import { projectService } from '@/services/project.service';
@@ -67,6 +67,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import ProjectAnalyticsTab from '@/components/workspace/ProjectAnalyticsTab';
 import WorkspaceActivityTab from '@/components/workspace/WorkspaceActivityTab';
 import { ActivityHeatmap } from '@/components/workspace/ActivityHeatmap';
+import { DashboardMacroFilter, FilterState } from '@/components/workspace/DashboardMacroFilter';
+import { isSameMonth, isSameQuarter, isSameYear, parseISO, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, subMonths, subQuarters } from 'date-fns';
 
 
 
@@ -101,16 +103,54 @@ export default function WorkspaceDashboardPage() {
   const [deletingProject, setDeletingProject] = React.useState<Project | null>(null);
   const [projectFormOpen, setProjectFormOpen] = React.useState(false);
 
+  // Macro Filter State
+  const [filters, setFilters] = React.useState<FilterState>({
+    year: new Date().getFullYear(),
+    periodType: 'month',
+    periodValue: new Date().getMonth() + 1,
+    projectIds: [],
+    healthStatus: 'all'
+  });
+
+  const isReportMode = React.useMemo(() => {
+    const now = new Date();
+    if (filters.year < now.getFullYear()) return true;
+    if (filters.periodType === 'month') {
+      if (filters.periodValue === 0) return false;
+      if (filters.periodValue < now.getMonth() + 1) return true;
+    }
+    if (filters.periodType === 'quarter') {
+      if (filters.periodValue < Math.ceil((now.getMonth() + 1) / 3)) return true;
+    }
+    return false;
+  }, [filters]);
+
+  // Kiểm tra xem kỳ được chọn có phải là tương lai không
+  const isFutureMode = React.useMemo(() => {
+    const now = new Date();
+    if (filters.year > now.getFullYear()) return true;
+    if (filters.year < now.getFullYear()) return false;
+
+    if (filters.periodType === 'month') {
+      if (filters.periodValue === 0) return false;
+      return filters.periodValue > (now.getMonth() + 1);
+    }
+    if (filters.periodType === 'quarter') {
+      return filters.periodValue > Math.ceil((now.getMonth() + 1) / 3);
+    }
+    return false;
+  }, [filters]);
+
   // Fetch Analytics
   const { data: analytics, isLoading: isAnalyticsLoading } = useQuery({
-    queryKey: ['workspace-analytics', workspaceId],
-    queryFn: () => workspaceService.getWorkspaceAnalytics(workspaceId),
+    queryKey: ['workspace-analytics', workspaceId, filters.projectIds],
+    queryFn: () => workspaceService.getWorkspaceAnalytics(workspaceId, filters.projectIds),
     enabled: !!workspaceId,
   });
 
   const { data: analyticsHistory } = useQuery({
-    queryKey: ['workspace-analytics-history', workspaceId],
-    queryFn: () => workspaceService.getWorkspaceAnalyticsHistory(workspaceId),
+    queryKey: ['workspace-analytics-history', workspaceId, filters.projectIds],
+    queryFn: () => workspaceService.getWorkspaceAnalyticsHistory(workspaceId, filters.projectIds),
     enabled: !!workspaceId,
   });
 
@@ -143,9 +183,17 @@ export default function WorkspaceDashboardPage() {
     enabled: !!workspaceId,
   });
 
-  // Sort tasks by priority (HIGH > MEDIUM > LOW)
+  // Sort tasks by priority (HIGH > MEDIUM > LOW) and filter by selected projects
   const priorityWeight: Record<string, number> = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
   const overdueTasksList = (tasksData?.tasks || [])
+    .filter((task: any) => {
+      if (filters.projectIds.length === 0) return true;
+      // Handle both string ID and populated object ID
+      const pId = typeof task.projectId === 'object' && task.projectId !== null 
+        ? (task.projectId._id || task.projectId.$oid) 
+        : task.projectId;
+      return filters.projectIds.includes(String(pId));
+    })
     .sort((a: any, b: any) => {
       const weightA = priorityWeight[a.priority as string] || 0;
       const weightB = priorityWeight[b.priority as string] || 0;
@@ -155,72 +203,177 @@ export default function WorkspaceDashboardPage() {
 
 
 
-  const stats = [
-    {
-      label: 'Tổng công việc',
-      value: analytics?.totalTasks || 0,
-      trend: { 
-        value: analytics?.trends?.totalTasksTrend ? 
-          (analytics.trends.totalTasksTrend.percent > 0 
-            ? `${Math.round(analytics.trends.totalTasksTrend.percent)}%` 
-            : Math.abs(analytics.trends.totalTasksTrend.value).toString()) 
-          : '0', 
-        isUp: (analytics?.trends?.totalTasksTrend?.value || 0) >= 0 
+  // Tính toán Stats dựa trên bộ lọc
+  const computedStats = React.useMemo(() => {
+    if (!analytics || !analyticsHistory) return [];
+
+    // Trường hợp 1: Kỳ tương lai -> Trả về 0 hoặc rỗng
+    if (isFutureMode) {
+      return [
+        { 
+          label: 'Tổng công việc', 
+          value: 0, 
+          trend: { value: '0', isUp: true }, 
+          icon: CheckCircle2,
+          color: 'text-brand-primary',
+          glow: 'from-brand-primary/20 to-transparent',
+          accent: 'bg-brand-primary'
+        },
+        { 
+          label: 'Đang thực hiện', 
+          value: 0, 
+          trend: { value: '0', isUp: true }, 
+          icon: Clock,
+          color: 'text-amber-500',
+          glow: 'from-amber-500/20 to-transparent',
+          accent: 'bg-amber-500'
+        },
+        { 
+          label: 'Đã hoàn thành', 
+          value: 0, 
+          trend: { value: '0', isUp: true }, 
+          icon: CheckCircle2,
+          color: 'text-emerald-500',
+          glow: 'from-emerald-500/20 to-transparent',
+          accent: 'bg-emerald-500'
+        },
+        { 
+          label: 'Quá hạn', 
+          value: 0, 
+          trend: { value: '0', isUp: false }, 
+          icon: AlertCircle,
+          color: 'text-red-500',
+          glow: 'from-red-500/20 to-transparent',
+          accent: 'bg-red-500'
+        }
+      ];
+    }
+
+    // Trường hợp 2: Thời điểm hiện tại (Real-time)
+    if (!isReportMode) {
+      return [
+        {
+          label: 'Tổng công việc',
+          value: analytics.totalTasks || 0,
+          trend: { 
+            value: analytics.trends?.totalTasksTrend ? (analytics.trends.totalTasksTrend.percent > 0 ? `${Math.round(analytics.trends.totalTasksTrend.percent)}%` : Math.abs(analytics.trends.totalTasksTrend.value).toString()) : '0', 
+            isUp: (analytics.trends?.totalTasksTrend?.value || 0) >= 0 
+          },
+          icon: CheckCircle2,
+          color: 'text-brand-primary',
+          glow: 'from-brand-primary/20 to-transparent',
+          accent: 'bg-brand-primary'
+        },
+        {
+          label: 'Đang thực hiện',
+          value: analytics.inProgressTasks || 0,
+          trend: { 
+            value: analytics.trends?.inProgressTasksTrend ? (analytics.trends.inProgressTasksTrend.percent > 0 ? `${Math.round(analytics.trends.inProgressTasksTrend.percent)}%` : Math.abs(analytics.trends.inProgressTasksTrend.value).toString()) : '0', 
+            isUp: (analytics.trends?.inProgressTasksTrend?.value || 0) >= 0 
+          },
+          icon: Clock,
+          color: 'text-amber-500',
+          glow: 'from-amber-500/20 to-transparent',
+          accent: 'bg-amber-500'
+        },
+        {
+          label: 'Đã hoàn thành',
+          value: analytics.completedTasks || 0,
+          trend: { 
+            value: analytics.trends?.completedTasksTrend ? (analytics.trends.completedTasksTrend.percent > 0 ? `${Math.round(analytics.trends.completedTasksTrend.percent)}%` : Math.abs(analytics.trends.completedTasksTrend.value).toString()) : '0', 
+            isUp: (analytics.trends?.completedTasksTrend?.value || 0) >= 0 
+          },
+          icon: CheckCircle2,
+          color: 'text-emerald-500',
+          glow: 'from-emerald-500/20 to-transparent',
+          accent: 'bg-emerald-500'
+        },
+        {
+          label: 'Quá hạn',
+          value: analytics.overdueTasks || 0,
+          trend: { 
+            value: analytics.trends?.overdueTasksTrend ? (analytics.trends.overdueTasksTrend.percent > 0 ? `${Math.round(analytics.trends.overdueTasksTrend.percent)}%` : Math.abs(analytics.trends.overdueTasksTrend.value).toString()) : '0', 
+            isUp: (analytics.trends?.overdueTasksTrend?.value || 0) >= 0 
+          },
+          icon: AlertCircle,
+          color: 'text-red-500',
+          glow: 'from-red-500/20 to-transparent',
+          accent: 'bg-red-500'
+        },
+      ];
+    }
+
+    // Chế độ báo cáo: Tìm snapshot cuối cùng của kỳ được chọn
+    const findSnapshotForPeriod = (year: number, periodType: 'month' | 'quarter', periodValue: number) => {
+      return analyticsHistory.filter(s => {
+        const d = parseISO(s.date);
+        if (d.getFullYear() !== year) return false;
+        if (periodType === 'month') {
+          if (periodValue === 0) return true; // Lấy mọi tháng trong năm
+          return (d.getMonth() + 1) === periodValue;
+        }
+        return Math.ceil((d.getMonth() + 1) / 3) === periodValue;
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    };
+
+    const currentSnapshot = findSnapshotForPeriod(filters.year, filters.periodType, filters.periodValue);
+    
+    // Tìm snapshot của kỳ trước để tính trend
+    let prevYear = filters.year;
+    let prevValue = filters.periodValue - 1;
+    if (prevValue === 0) {
+      prevYear -= 1;
+      prevValue = filters.periodType === 'month' ? 12 : 4;
+    }
+    const prevSnapshot = findSnapshotForPeriod(prevYear, filters.periodType, prevValue);
+
+    const getTrend = (curr: number, prev: number) => {
+      const diff = curr - prev;
+      return {
+        value: Math.abs(diff).toString(),
+        isUp: diff >= 0
+      };
+    };
+
+    return [
+      {
+        label: 'Tổng công việc',
+        value: currentSnapshot?.totalTasks || 0,
+        trend: getTrend(currentSnapshot?.totalTasks || 0, prevSnapshot?.totalTasks || 0),
+        icon: CheckCircle2,
+        color: 'text-brand-primary',
+        glow: 'from-brand-primary/20 to-transparent',
+        accent: 'bg-brand-primary'
       },
-      icon: CheckCircle2,
-      color: 'text-brand-primary',
-      glow: 'from-brand-primary/20 to-transparent',
-      accent: 'bg-brand-primary'
-    },
-    {
-      label: 'Đang thực hiện',
-      value: analytics?.inProgressTasks || 0,
-      trend: { 
-        value: analytics?.trends?.inProgressTasksTrend ? 
-          (analytics.trends.inProgressTasksTrend.percent > 0 
-            ? `${Math.round(analytics.trends.inProgressTasksTrend.percent)}%` 
-            : Math.abs(analytics.trends.inProgressTasksTrend.value).toString()) 
-          : '0', 
-        isUp: (analytics?.trends?.inProgressTasksTrend?.value || 0) >= 0 
+      {
+        label: 'Đang thực hiện',
+        value: currentSnapshot?.inProgressTasks || 0,
+        trend: getTrend(currentSnapshot?.inProgressTasks || 0, prevSnapshot?.inProgressTasks || 0),
+        icon: Clock,
+        color: 'text-amber-500',
+        glow: 'from-amber-500/20 to-transparent',
+        accent: 'bg-amber-500'
       },
-      icon: Clock,
-      color: 'text-amber-500',
-      glow: 'from-amber-500/20 to-transparent',
-      accent: 'bg-amber-500'
-    },
-    {
-      label: 'Đã hoàn thành',
-      value: analytics?.completedTasks || 0,
-      trend: { 
-        value: analytics?.trends?.completedTasksTrend ? 
-          (analytics.trends.completedTasksTrend.percent > 0 
-            ? `${Math.round(analytics.trends.completedTasksTrend.percent)}%` 
-            : Math.abs(analytics.trends.completedTasksTrend.value).toString()) 
-          : '0', 
-        isUp: (analytics?.trends?.completedTasksTrend?.value || 0) >= 0 
+      {
+        label: 'Đã hoàn thành',
+        value: currentSnapshot?.completedTasks || 0,
+        trend: getTrend(currentSnapshot?.completedTasks || 0, prevSnapshot?.completedTasks || 0),
+        icon: CheckCircle2,
+        color: 'text-emerald-500',
+        glow: 'from-emerald-500/20 to-transparent',
+        accent: 'bg-emerald-500'
       },
-      icon: CheckCircle2,
-      color: 'text-emerald-500',
-      glow: 'from-emerald-500/20 to-transparent',
-      accent: 'bg-emerald-500'
-    },
-    {
-      label: 'Quá hạn',
-      value: analytics?.overdueTasks || 0,
-      trend: { 
-        value: analytics?.trends?.overdueTasksTrend ? 
-          (analytics.trends.overdueTasksTrend.percent > 0 
-            ? `${Math.round(analytics.trends.overdueTasksTrend.percent)}%` 
-            : Math.abs(analytics.trends.overdueTasksTrend.value).toString()) 
-          : '0', 
-        isUp: (analytics?.trends?.overdueTasksTrend?.value || 0) >= 0 
+      {
+        label: 'Quá hạn',
+        value: currentSnapshot?.overdueTasks || 0,
+        trend: getTrend(currentSnapshot?.overdueTasks || 0, prevSnapshot?.overdueTasks || 0),
+        icon: AlertCircle,
+        color: 'text-red-500',
+        glow: 'from-red-500/20 to-transparent',
+        accent: 'bg-red-500'
       },
-      icon: AlertCircle,
-      color: 'text-red-500',
-      glow: 'from-red-500/20 to-transparent',
-      accent: 'bg-red-500'
-    },
-  ];
+    ];
+  }, [analytics, analyticsHistory, filters, isReportMode]);
 
 
   const isLoading = isAnalyticsLoading || isProjectsLoading || isTasksLoading;
@@ -428,6 +581,17 @@ export default function WorkspaceDashboardPage() {
     </DropdownMenu>
   );
 
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'overview';
+
+  const handleTabChange = (value: string) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    current.set('tab', value);
+    const search = current.toString();
+    const query = search ? `?${search}` : "";
+    router.push(`${window.location.pathname}${query}`, { scroll: false });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -438,11 +602,11 @@ export default function WorkspaceDashboardPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto pt-2 px-4 md:pt-6 md:px-10 animate-in fade-in duration-700 pb-20">
-      <Tabs defaultValue="overview" className="w-full space-y-16">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-16">
         {/* Welcome Header & Tabs Control */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-[36px] font-black text-[#035D5B] dark:text-[#C7F964] tracking-[-0.02em] leading-tight uppercase">
+            <h1 className="text-[42px] font-black text-[#035D5B] dark:text-[#C7F964] tracking-[-0.04em] leading-tight uppercase">
               Chiến lược Workspace
             </h1>
             <p className="text-[16px] text-[#3F4948] dark:text-[#E5F4EF]/80 font-medium">
@@ -450,19 +614,41 @@ export default function WorkspaceDashboardPage() {
             </p>
           </div>
 
-          <TabsList className="shrink-0">
-            <TabsTrigger value="overview">Tổng quan Workspace</TabsTrigger>
-            <TabsTrigger value="focus">Tiêu điểm dự án</TabsTrigger>
-            <TabsTrigger value="project">Bản tin hoạt động</TabsTrigger>
+          <TabsList className="shrink-0 bg-slate-100/50 dark:bg-slate-800/40 p-1.5 rounded-[24px] border border-slate-200 dark:border-white/5 backdrop-blur-xl">
+            <TabsTrigger 
+              value="overview"
+              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+            >
+              Tổng quan
+            </TabsTrigger>
+            <TabsTrigger 
+              value="focus"
+              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+            >
+              Tiêu điểm
+            </TabsTrigger>
+            <TabsTrigger 
+              value="project"
+              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+            >
+              Hoạt động
+            </TabsTrigger>
           </TabsList>
         </div>
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview" className="mt-0 space-y-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="space-y-8">
+            {/* Macro Filter Bar */}
+            <DashboardMacroFilter 
+              filters={filters} 
+              setFilters={setFilters} 
+              projects={allProjectsData?.projects || []} 
+            />
+
             {/* Stats Bento Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {stats.map((stat) => (
+              {computedStats.map((stat) => (
                 <div
                   key={stat.label}
                   className={cn(
@@ -532,7 +718,10 @@ export default function WorkspaceDashboardPage() {
 
             {/* Analytics Chart - Báo cáo phân tích nhịp độ lâu dài */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-              <WorkspaceAnalyticsChart data={analyticsHistory || []} />
+              <WorkspaceAnalyticsChart 
+                data={analyticsHistory || []} 
+                macroFilters={filters}
+              />
             </div>
 
             {/* Hoạt động nhịp điệu (Heatmap) */}
@@ -568,9 +757,18 @@ export default function WorkspaceDashboardPage() {
                   </div>
                 ) : projectsData?.projects?.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pt-10 pb-16">
-                    {projectsData.projects.slice(0, 4).map((project: any, index: number) => {
-                      const isHero = index === 0;
-                      return (
+                    {(projectsData?.projects || [])
+                      .filter((p: any) => {
+                        if (filters.healthStatus === 'all') return true;
+                        if (filters.healthStatus === 'completed') return p.status === 'COMPLETED';
+                        if (filters.healthStatus === 'at-risk') return (p.overdueTasks || 0) > 0;
+                        if (filters.healthStatus === 'active') return p.status === 'ACTIVE' || (p.inProgressTasks || 0) > 0;
+                        return true;
+                      })
+                      .slice(0, 4)
+                      .map((project: any, index: number) => {
+                        const isHero = index === 0;
+                        return (
                         <div
                           key={typeof project._id === 'object' ? (project._id?.$oid || JSON.stringify(project._id)) : (project._id || index)}
                           onClick={() => handleProjectClick(project._id)}
@@ -683,7 +881,7 @@ export default function WorkspaceDashboardPage() {
                       );
                     })}
                   </div>
-                ) : (
+            ) : (
                   <div className="col-span-full py-20 bg-slate-50/20 dark:bg-card/10 rounded-[48px] border-2 border-dashed border-slate-200/60 dark:border-brand-primary/20 flex flex-col items-center justify-center text-center w-full animate-in fade-in zoom-in duration-700 min-h-[300px]">
                     <div className="w-16 h-16 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6 shadow-depth-flat text-slate-300 dark:text-slate-600">
                       <Layout className="w-6 h-6" />

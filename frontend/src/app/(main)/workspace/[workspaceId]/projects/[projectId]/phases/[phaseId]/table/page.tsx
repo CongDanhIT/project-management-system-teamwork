@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { projectService, Project } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { workspaceService } from '@/services/workspace.service';
-import { Task } from '@/types/task';
+import { Task, TaskStatus, TaskPriority } from '@/types/task';
 import { 
   Layout, 
   LayoutGrid, 
@@ -29,8 +29,12 @@ import {
   Expand, 
   MessageSquare,
   User,
-  Layers
+  Layers,
+  X,
+  Wand2,
+  CalendarDays
 } from 'lucide-react';
+
 import Loader from "@/components/ui/Loader";
 import { SearchInput } from '@/components/shared/SearchInput';
 import { cn } from '@/lib/utils';
@@ -40,7 +44,7 @@ import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { format } from 'date-fns';
+import { format, addDays, differenceInDays, startOfDay } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
@@ -48,6 +52,20 @@ import { toast } from 'sonner';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRole } from '@/hooks/useRole';
 import { PhaseService } from '@/services/phase.service';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
+
 
 
 export default function ProjectTablePage() {
@@ -66,6 +84,12 @@ export default function ProjectTablePage() {
   const [members, setMembers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Filter states
+  const [selectedStatus, setSelectedStatus] = useState<TaskStatus | 'all'>('all');
+  const [selectedPriority, setSelectedPriority] = useState<TaskPriority | 'all'>('all');
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | 'all'>('all');
+
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
@@ -76,6 +100,7 @@ export default function ProjectTablePage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Queries
@@ -86,27 +111,42 @@ export default function ProjectTablePage() {
   });
 
   const { data: rootTasksData, isLoading: isRootTasksLoading, isPlaceholderData } = useQuery({
-    queryKey: ['project-root-tasks', workspaceId, projectId, phaseId, currentPage, searchQuery],
+    queryKey: ['project-root-tasks', workspaceId, projectId, phaseId, selectedStatus, selectedPriority, selectedAssigneeId, currentPage, searchQuery],
     queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
       pageNumber: currentPage, 
       pageSize, 
       parentId: 'null', // Fetch only top-level
       keyword: searchQuery,
-      phaseId
+      phaseId,
+      status: selectedStatus === 'all' ? undefined : selectedStatus,
+      priority: selectedPriority === 'all' ? undefined : selectedPriority,
+      assignedTo: selectedAssigneeId === 'all' ? undefined : selectedAssigneeId
     }),
     placeholderData: keepPreviousData,
     enabled: !!workspaceId && !!projectId,
   });
 
   const { data: subtasksData, isLoading: isSubtasksLoading } = useQuery({
-    queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId],
+    queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId, selectedStatus, selectedPriority, selectedAssigneeId],
     queryFn: () => taskService.getProjectTasks(workspaceId, projectId, { 
       pageSize: 1000, 
       parentId: 'not-null',
-      phaseId
+      phaseId,
+      status: selectedStatus === 'all' ? undefined : selectedStatus,
+      priority: selectedPriority === 'all' ? undefined : selectedPriority,
+      assignedTo: selectedAssigneeId === 'all' ? undefined : selectedAssigneeId
     }),
     enabled: !!workspaceId && !!projectId,
   });
+
+
+  const { data: phasesData, isLoading: isPhasesLoading } = useQuery({
+    queryKey: ['project-phases', projectId],
+    queryFn: () => PhaseService.getPhases(projectId),
+    enabled: !!projectId,
+  });
+
+  const allPhases = phasesData?.data || [];
 
   const { data: workspaceData, isLoading: isMembersLoading } = useQuery({
     queryKey: ['workspace-members', workspaceId],
@@ -131,6 +171,16 @@ export default function ProjectTablePage() {
           router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
       }
   }, [phase, isPrivileged, loading, workspaceId, projectId, router]);
+
+  useEffect(() => {
+    if (workspaceData?.members) {
+      // Map to the user object inside each member record
+      const memberUsers = workspaceData.members
+        .map((m: any) => m.userId)
+        .filter((u: any) => !!u); // Remove null/undefined
+      setMembers(memberUsers);
+    }
+  }, [workspaceData]);
 
   useEffect(() => {
     if (targetTaskId && workspaceId && projectId) {
@@ -171,8 +221,6 @@ export default function ProjectTablePage() {
     }
     
     setTasks(combinedTasks);
-    
-    if (workspaceData) setMembers(workspaceData.members || []);
   }, [projectData, rootTasksData, subtasksData, workspaceData, queryClient, workspaceId]);
 
 
@@ -203,6 +251,81 @@ export default function ProjectTablePage() {
     setExpandedRows(newExpanded);
   };
 
+  const handleAutoAssignDates = async () => {
+    if (!phase?.startDate || !phase?.endDate) {
+      toast.error("Vui lòng thiết lập ngày bắt đầu và kết thúc cho Giai đoạn (Phase) trước khi phân bổ Task.");
+      return;
+    }
+
+    try {
+      setIsAutoAssigning(true);
+      
+      // 1. Lấy tất cả task của phase này (không phân trang để lấy đủ)
+      const response = await taskService.getProjectTasks(workspaceId as string, projectId as string, {
+        phaseId: phaseId,
+        pageSize: 100 // Giả định phase không quá 100 task
+      });
+
+      const tasksInPhase = response.tasks || [];
+      
+      // 2. Lọc task chưa có ngày
+      const tasksWithoutDates = tasksInPhase.filter(t => !t.startDate && !t.dueDate);
+
+      if (tasksWithoutDates.length === 0) {
+        toast.info("Tất cả công việc trong giai đoạn này đã có lịch trình.");
+        setIsAutoAssigning(false);
+        return;
+      }
+
+      // 3. Tính toán phân bổ
+      const phaseStart = startOfDay(new Date(phase.startDate));
+      const phaseEnd = startOfDay(new Date(phase.endDate));
+      const totalDays = differenceInDays(phaseEnd, phaseStart) + 1;
+      
+      if (totalDays <= 0) {
+        toast.error("Ngày kết thúc của giai đoạn phải sau ngày bắt đầu.");
+        setIsAutoAssigning(false);
+        return;
+      }
+
+      // Chia đều số ngày cho số task. 
+      // Nếu số task > số ngày, mỗi task sẽ chiếm 1 ngày (gối đầu nhau)
+      const count = tasksWithoutDates.length;
+      const daysPerTask = Math.max(1, Math.floor(totalDays / count));
+
+      toast.loading(`Đang phân bổ lịch trình cho ${count} công việc...`);
+
+      // 4. Cập nhật từng task
+      const updatePromises = tasksWithoutDates.map((task, index) => {
+        const startOffset = Math.min(index * daysPerTask, totalDays - 1);
+        const endOffset = Math.min((index + 1) * daysPerTask - 1, totalDays - 1);
+        
+        const taskStart = addDays(phaseStart, startOffset);
+        const taskEnd = addDays(phaseStart, endOffset);
+
+        return taskService.updateTask(workspaceId as string, projectId as string, task._id, {
+          startDate: taskStart.toISOString(),
+          dueDate: taskEnd.toISOString()
+        });
+      });
+
+      await Promise.all(updatePromises);
+      
+      toast.dismiss();
+      toast.success(`Đã tự động gán ngày cho ${count} công việc thành công!`);
+      
+      // 5. Làm mới dữ liệu
+      queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
+      
+    } catch (error) {
+      console.error("Auto assign error:", error);
+      toast.dismiss();
+      toast.error("Có lỗi xảy ra khi tự động phân bổ ngày.");
+    } finally {
+      setIsAutoAssigning(false);
+    }
+  };
+
   const handleUpdateTask = async (taskId: string, data: Partial<Task>) => {
     try {
       // [FIX] Map assignedTo objects to IDs for the update request
@@ -221,6 +344,7 @@ export default function ProjectTablePage() {
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
+
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -241,6 +365,7 @@ export default function ProjectTablePage() {
       queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId, phaseId] });
       queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId, phaseId] });
+
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-tasks', 'list', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
@@ -404,10 +529,126 @@ export default function ProjectTablePage() {
         />
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="h-10 border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-slate-400 dark:bg-slate-800">
-            <Filter className="w-4 h-4 mr-2" />
-            Lọc
-          </Button>
+          {/* Auto-assign Dates Action */}
+          <div className="flex items-center gap-3 bg-white/50 dark:bg-slate-900/50 p-1 px-3 rounded-xl border border-slate-200/60 dark:border-white/5 backdrop-blur-sm mr-2">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-none mb-1">Schedule</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Auto-sync</span>
+              </div>
+            </div>
+            <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
+            <Button 
+              variant="ghost" 
+              size="sm"
+              disabled={isAutoAssigning || isProjectCompleted}
+              onClick={handleAutoAssignDates}
+              className="h-8 px-2.5 rounded-lg hover:bg-brand-primary/10 hover:text-brand-primary group transition-all"
+            >
+              {isAutoAssigning ? (
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+              ) : (
+                <Wand2 className="w-3.5 h-3.5 mr-2 group-hover:rotate-12 transition-transform" />
+              )}
+              <span className="text-[11px] font-medium">Gán ngày nhanh</span>
+            </Button>
+          </div>
+
+          {(selectedStatus !== 'all' || selectedPriority !== 'all' || selectedAssigneeId !== 'all') && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setSelectedStatus('all');
+                setSelectedPriority('all');
+                setSelectedAssigneeId('all');
+                setCurrentPage(1);
+              }}
+              className="h-9 px-2 text-slate-500 hover:text-red-500 transition-colors"
+            >
+              <X className="w-4 h-4 mr-1.5" />
+              Xóa lọc
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" className={cn(
+                  "h-10 border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-slate-400 dark:bg-slate-800",
+                  (selectedStatus !== 'all' || selectedPriority !== 'all' || selectedAssigneeId !== 'all') && "border-brand-primary/50 bg-brand-primary/5 text-brand-primary"
+                )}>
+                  <Filter className="w-4 h-4 mr-2" />
+                  Lọc
+                </Button>
+              }
+            />
+            <DropdownMenuContent className="w-64" align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Tùy chọn lọc</DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Clock className="w-4 h-4 mr-2" />
+                  <span>Trạng thái</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  <DropdownMenuRadioGroup value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v as any); setCurrentPage(1); }}>
+                    <DropdownMenuRadioItem value="all">Tất cả trạng thái</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskStatus.TODO}>Cần làm</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskStatus.IN_PROGRESS}>Đang thực hiện</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskStatus.COMPLETED}>Hoàn thành</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskStatus.CANCELLED}>Đã hủy</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  <span>Độ ưu tiên</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  <DropdownMenuRadioGroup value={selectedPriority} onValueChange={(v) => { setSelectedPriority(v as any); setCurrentPage(1); }}>
+                    <DropdownMenuRadioItem value="all">Tất cả độ ưu tiên</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskPriority.LOW}>Thấp</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskPriority.MEDIUM}>Trung bình</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={TaskPriority.HIGH}>Cao</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <User className="w-4 h-4 mr-2" />
+                  <span>Người thực hiện</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-64 max-h-[300px] overflow-y-auto">
+                  <DropdownMenuRadioGroup value={selectedAssigneeId} onValueChange={(v) => { setSelectedAssigneeId(v); setCurrentPage(1); }}>
+                    <DropdownMenuRadioItem value="all">Tất cả mọi người</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {members.map((member) => (
+                      <DropdownMenuRadioItem key={member._id || member.id} value={member._id || member.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={member.profilePicture} />
+                            <AvatarFallback className="text-[8px] font-bold">
+                              {member.name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs truncate">{member.name}</span>
+                        </div>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {!isProjectCompleted && (
             <Button
               className="h-10 bg-brand-primary hover:bg-brand-primary/90 rounded-xl shadow-brand-primary/10"

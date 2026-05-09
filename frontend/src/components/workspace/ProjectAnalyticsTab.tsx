@@ -34,7 +34,8 @@ import {
   FastForward,
   History,
   Timer,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -45,10 +46,27 @@ import { vi } from 'date-fns/locale';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2, Download, Table } from 'lucide-react';
+import { FileText, Loader2, Download, Table as TableIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { taskService } from '@/services/task.service';
-import * as XLSX from 'xlsx';
+import { ExcelService, SummaryItem } from '@/services/excel.service';
+import { AdvancedInsightsDrawer } from '@/components/analytics/AdvancedInsightsDrawer';
+import { PhaseService } from '@/services/phase.service';
+import { Sparkles, RotateCcw, Filter } from 'lucide-react';
+import { StatusBadge } from '../shared/StatusBadge';
+import { PriorityBadge } from '../shared/PriorityBadge';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { TaskStatus, TaskPriority } from '@/types/task';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+
 
 interface ProjectAnalyticsTabProps {
   workspaceId: string;
@@ -58,11 +76,9 @@ interface ProjectAnalyticsTabProps {
 
 const COLORS = ['#035D5B', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#8B5CF6'];
 const PRIORITY_COLORS: Record<string, string> = {
-  'URGENT': '#EF4444',
-  'HIGH': '#F59E0B',
-  'MEDIUM': '#10B981',
-  'NORMAL': '#035D5B',
-  'LOW': '#64748B',
+  'HIGH': '#EF4444', // Chuyển High sang màu đỏ để nhấn mạnh rủi ro cao nhất hiện tại
+  'MEDIUM': '#F59E0B',
+  'LOW': '#10B981',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -74,6 +90,15 @@ const STATUS_LABELS: Record<string, string> = {
   'CANCELLED': 'Đã hủy'
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  'TODO': 'bg-slate-500',
+  'DONE': 'bg-teal-500',
+  'IN_PROGRESS': 'bg-blue-500',
+  'INREVIEW': 'bg-purple-500',
+  'BACKLOG': 'bg-amber-600',
+  'CANCELLED': 'bg-red-500'
+};
+
 const TaskDeadlineCard = ({ task, type, onClick }: { task: any, type: 'overdue' | 'upcoming', onClick?: () => void }) => (
   <div 
     onClick={onClick}
@@ -83,8 +108,8 @@ const TaskDeadlineCard = ({ task, type, onClick }: { task: any, type: 'overdue' 
       <div className="space-y-0.5 flex-1 min-w-0">
         <div className="flex items-center gap-2">
            <Badge className={cn("text-[8px] font-black uppercase px-2 py-0", 
-             task.priority === 'URGENT' ? "bg-red-500" :
-             task.priority === 'HIGH' ? "bg-amber-500" :
+             task.priority === 'HIGH' ? "bg-red-500" :
+             task.priority === 'MEDIUM' ? "bg-amber-500" :
              "bg-slate-500"
            )}>
              {task.priority}
@@ -151,6 +176,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
   const [selectedProjectId, setSelectedProjectId] = React.useState<string>("");
   const [isExporting, setIsExporting] = React.useState(false);
   const [isExportingExcel, setIsExportingExcel] = React.useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (projects && projects.length > 0 && !selectedProjectId) {
@@ -170,11 +196,93 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     enabled: !!workspaceId && !!selectedProjectId,
   });
 
+  const { data: phasesData, isLoading: phasesLoading } = useQuery({
+    queryKey: ['project-phases', selectedProjectId],
+    queryFn: () => PhaseService.getPhases(selectedProjectId as string).then(res => {
+      if (Array.isArray(res)) return res;
+      if (res && Array.isArray(res.data)) return res.data;
+      return [];
+    }),
+    enabled: !!selectedProjectId,
+  });
+
   const { data: historyData } = useQuery({
     queryKey: ['projectAnalyticsHistory', workspaceId, selectedProjectId],
     queryFn: () => projectService.getProjectAnalyticsHistory(workspaceId as string, selectedProjectId as string),
     enabled: !!workspaceId && !!selectedProjectId,
   });
+
+  interface TaskFilters {
+    status: string;
+    priority: string;
+    tag: string;
+    member: string;
+    phase: string;
+  }
+
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [taskFilters, setTaskFilters] = React.useState<TaskFilters>({
+    status: 'ALL',
+    priority: 'ALL',
+    tag: 'ALL',
+    member: 'ALL',
+    phase: 'ALL'
+  });
+
+  const { data: explorerTasksData, isLoading: explorerTasksLoading } = useQuery({
+    queryKey: ['projectTasksExplorer', workspaceId, selectedProjectId],
+    queryFn: () => taskService.getProjectTasks(workspaceId, selectedProjectId, { pageSize: 500 }),
+    enabled: !!workspaceId && !!selectedProjectId
+  });
+
+  const filteredTasks = React.useMemo(() => {
+    return explorerTasksData?.tasks?.filter((task: any) => {
+      if (searchTerm && !task.title?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (taskFilters.status !== 'ALL' && task.status !== taskFilters.status) return false;
+      if (taskFilters.priority !== 'ALL' && task.priority !== taskFilters.priority) return false;
+      if (taskFilters.tag !== 'ALL' && !task.tags?.some((t: any) => t.name === taskFilters.tag)) return false;
+      if (taskFilters.member !== 'ALL' && !task.assignedTo?.some((u: any) => {
+        const userId = typeof u === 'object' ? (u._id || u.id) : u;
+        return String(userId) === String(taskFilters.member);
+      })) return false;
+      
+      if (taskFilters.phase !== 'ALL') {
+        const tPhase = task.phaseId;
+        const taskPhaseId = tPhase ? (typeof tPhase === 'object' ? (tPhase._id || tPhase.id) : tPhase) : null;
+        if (String(taskPhaseId || '') !== String(taskFilters.phase)) return false;
+      }
+      
+      return true;
+    }) || [];
+  }, [explorerTasksData, taskFilters, searchTerm]);
+
+  // Memoize selected item info for Filter UI labels
+  const selectedMemberInfo = React.useMemo(() => {
+    if (taskFilters.member === 'ALL') return null;
+    return membersData?.members?.find((m: any) => {
+      const user = m.userId || m;
+      const id = user._id || m._id || m;
+      return id === taskFilters.member;
+    });
+  }, [membersData, taskFilters.member]);
+
+  const selectedPhaseInfo = React.useMemo(() => {
+    if (taskFilters.phase === 'ALL') return null;
+    const phases = Array.isArray(phasesData) ? phasesData : [];
+    return phases.find((p: any) => (p._id || p.id) === taskFilters.phase);
+  }, [phasesData, taskFilters.phase]);
+
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setTaskFilters({
+      status: 'ALL',
+      priority: 'ALL',
+      tag: 'ALL',
+      member: 'ALL',
+      phase: 'ALL'
+    });
+  };
 
   if (analyticsLoading) {
     return <div className="flex justify-center py-20"><Loader /></div>;
@@ -197,22 +305,100 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     try {
       const response = await taskService.getProjectTasks(workspaceId, selectedProjectId, { pageSize: 1000 });
       const tasks = response.tasks;
+
+      // Tính toán các thông tin Dashboard
+      const now = new Date();
+      const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       
-      const data = tasks.map((t: any) => ({
-        'Mã Task': t.taskCode,
-        'Tên công việc': t.title,
-        'Trạng thái': t.status,
-        'Mức ưu tiên': t.priority,
-        'Ngày bắt đầu': t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
-        'Hạn chót': t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
-        'Người thực hiện': t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
+      const totalTasks = tasks.length;
+      const doneTasks = tasks.filter((t: any) => t.status === 'DONE').length;
+      const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      
+      const overdueTasks = tasks.filter((t: any) => 
+        t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) < now
+      );
+      
+      const upcomingTasks = tasks.filter((t: any) => 
+        t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= nextWeek
+      );
+
+      // Xác định hiệu suất dựa trên tỷ lệ hoàn thành
+      let performanceLabel = 'Trung bình';
+      let performanceColor = 'FF718096'; // Gray
+      if (completionRate >= 80) {
+        performanceLabel = 'Xuất sắc';
+        performanceColor = 'FF38A169'; // Green
+      } else if (completionRate >= 50) {
+        performanceLabel = 'Tốt';
+        performanceColor = 'FF3182CE'; // Blue
+      } else if (completionRate < 30 && totalTasks > 5) {
+        performanceLabel = 'Cần cải thiện';
+        performanceColor = 'FFE53E3E'; // Red
+      }
+
+      const summary: SummaryItem[] = [
+        { label: 'Tỷ lệ hoàn thành', value: `${completionRate}%`, color: completionRate > 70 ? 'FF38A169' : 'FFDD6B20' },
+        { label: 'Hiệu suất dự án', value: performanceLabel, color: performanceColor },
+        { label: 'Tổng số Task', value: totalTasks },
+        { label: 'Task đã hoàn thành', value: doneTasks },
+        { label: 'Task quá hạn (Số lượng)', value: overdueTasks.length, color: overdueTasks.length > 0 ? 'FFE53E3E' : 'FF38A169' },
+        { label: 'Task sắp hết hạn (7 ngày tới)', value: upcomingTasks.length, color: upcomingTasks.length > 0 ? 'FFD69E2E' : 'FF38A169' },
+      ];
+
+      // Nếu có task quá hạn, thêm thông tin chi tiết vào summary
+      if (overdueTasks.length > 0) {
+        summary.push({ label: '---', value: '---' }); // Spacer
+        summary.push({ label: 'CẢNH BÁO QUÁ HẠN', value: `Có ${overdueTasks.length} task trễ hạn!`, color: 'FFE53E3E' });
+        
+        overdueTasks.slice(0, 5).forEach((t: any) => {
+          const delayDays = Math.floor((now.getTime() - new Date(t.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+          summary.push({ label: `! ${t.title}`, value: `Trễ ${delayDays} ngày`, color: 'FFE53E3E' });
+        });
+        
+        if (overdueTasks.length > 5) {
+          summary.push({ label: '...', value: `Và ${overdueTasks.length - 5} task khác` });
+        }
+      }
+
+      // Sắp xếp task theo Giai đoạn (Phase) để các task cùng phase nằm cạnh nhau
+      const sortedTasks = [...tasks].sort((a: any, b: any) => {
+        const phaseA = a.phaseId?.name || 'Z_NONE'; 
+        const phaseB = b.phaseId?.name || 'Z_NONE';
+        return phaseA.localeCompare(phaseB);
+      });
+      
+      const columns = [
+        { header: 'Giai đoạn', key: 'phase', width: 25 },
+        { header: 'Mã Task', key: 'taskCode', width: 15 },
+        { header: 'Tên công việc', key: 'title', width: 45 },
+        { header: 'Trạng thái', key: 'status', width: 18 },
+        { header: 'Mức ưu tiên', key: 'priority', width: 15 },
+        { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
+        { header: 'Hạn chót', key: 'dueDate', width: 15 },
+        { header: 'Người thực hiện', key: 'assignees', width: 35 },
+      ];
+
+      const data = sortedTasks.map((t: any) => ({
+        phase: t.phaseId?.name || '---',
+        taskCode: t.taskCode,
+        title: t.title,
+        status: STATUS_LABELS[t.status] || t.status,
+        priority: t.priority,
+        startDate: t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
+        dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
+        assignees: t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
       }));
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-      XLSX.writeFile(wb, `Project_${project.name}_Tasks.xlsx`);
-      toast.success('Xuất file Excel thành công');
+      await ExcelService.exportToExcel({
+        filename: `Project_${project.name}_Tasks`,
+        sheetName: 'Danh sách công việc',
+        columns,
+        data,
+        title: `BÁO CÁO CÔNG VIỆC DỰ ÁN: ${project.name.toUpperCase()}`,
+        summary
+      });
+
+      toast.success('Xuất file Excel cao cấp thành công');
     } catch (error) {
       console.error(error);
       toast.error('Lỗi khi xuất file Excel');
@@ -337,7 +523,8 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     : [];
 
   return (
-    <div id="project-analytics-tab-export" className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 bg-transparent dark:bg-transparent">
+    <>
+      <div id="project-analytics-tab-export" className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 bg-transparent dark:bg-transparent">
       {/* Selector Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-xl p-8 rounded-[32px] border border-white dark:border-white/10 shadow-ambient">
         <div className="space-y-1">
@@ -387,6 +574,15 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
         >
           {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2 text-rose-500" />}
           <span className="font-bold text-slate-700 dark:text-slate-200">Xuất PDF</span>
+        </Button>
+
+        <Button 
+          onClick={() => setIsInsightsOpen(true)}
+          disabled={!selectedProjectId}
+          className="h-12 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-glow border-none transition-all duration-300 group whitespace-nowrap px-6"
+        >
+          <Sparkles className="w-5 h-5 mr-2 text-yellow-300 group-hover:animate-pulse" />
+          <span className="font-black tracking-wide">Phân tích AI</span>
         </Button>
         </div>
       </div>
@@ -472,29 +668,91 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Trạng thái công việc</CardTitle>
               </CardHeader>
-              <CardContent className="h-[280px] p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      cornerRadius={8}
-                      dataKey="value"
-                    >
-                      {statusData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '9px', fontWeight: 'bold' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <CardContent className="p-4 flex flex-col gap-4">
+                {/* Chart 1: Doughnut for Counts - Shrinked for better vertical space */}
+                <div className="relative h-[160px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={60}
+                        paddingAngle={5}
+                        cornerRadius={6}
+                        dataKey="value"
+                      >
+                        {statusData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Central Indicator */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pt-1">
+                    <span className="text-[18px] font-black text-brand-primary leading-none">
+                      {Number(analytics?.completionRate || 0).toFixed(0)}%
+                    </span>
+                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Xong</span>
+                  </div>
+                </div>
+
+                {/* Chart 2: Stacked Horizontal Progress for Percentage */}
+                <div className="space-y-3 px-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Phân bổ tỷ lệ %</span>
+                    <span className="text-[9px] font-bold text-brand-primary">Tổng {analytics?.totalTasks || 0} việc</span>
+                  </div>
+                  
+                  {/* Custom Progress Bar */}
+                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex overflow-hidden">
+                    {statusData.map((item: any, index: number) => {
+                      const percentage = analytics?.totalTasks > 0 
+                        ? (item.value / analytics.totalTasks) * 100 
+                        : 0;
+                      if (percentage === 0) return null;
+                      
+                      return (
+                        <div 
+                          key={`progress-${index}`}
+                          style={{ 
+                            width: `${percentage}%`,
+                            backgroundColor: COLORS[index % COLORS.length]
+                          }}
+                          className="h-full transition-all duration-1000 relative group"
+                        >
+                          {/* Tooltip on hover */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                            <div className="bg-slate-800 text-white text-[9px] py-1 px-2 rounded-lg whitespace-nowrap font-bold">
+                              {item.name}: {percentage.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend with percentages */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2">
+                    {statusData.map((item: any, index: number) => {
+                      const percentage = analytics?.totalTasks > 0 
+                        ? (item.value / analytics.totalTasks) * 100 
+                        : 0;
+                      return (
+                        <div key={`legend-detail-${index}`} className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                          <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate">{item.name}</span>
+                          <span className="text-[9px] font-black text-slate-400 ml-auto">{percentage.toFixed(0)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -503,29 +761,93 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-brand-primary/80">Mức độ ưu tiên</CardTitle>
               </CardHeader>
-              <CardContent className="h-[280px] p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={priorityData} layout="vertical" margin={{ left: -20, right: 30, top: 0, bottom: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 9, fontWeight: 700, fill: 'currentColor' }} 
-                      width={70}
-                    />
-                    <RechartsTooltip
-                      cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
-                    />
-                    <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={16}>
-                      {priorityData.map((entry: any, index: number) => (
-                         <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <CardContent className="p-4 flex flex-col gap-4">
+                {/* Chart 1: Doughnut for Counts */}
+                <div className="relative h-[160px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={priorityData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={60}
+                        paddingAngle={5}
+                        cornerRadius={6}
+                        dataKey="count"
+                      >
+                        {priorityData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Central Icon Indicator */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pt-1">
+                    <Zap className={cn(
+                      "w-6 h-6 mb-0.5 animate-pulse",
+                      priorityData.find((p: any) => p.name === 'HIGH' && p.count > 0) ? "text-red-500" : "text-amber-500"
+                    )} />
+                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Ưu tiên</span>
+                  </div>
+                </div>
+
+                {/* Chart 2: Stacked Horizontal Progress for Percentage */}
+                <div className="space-y-3 px-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Trọng số rủi ro</span>
+                    <Badge variant="outline" className="text-[8px] font-black bg-red-50 dark:bg-red-500/10 text-red-500 border-red-100 dark:border-red-500/20 px-1.5 py-0 h-4">
+                      {priorityData.find((p: any) => p.name === 'HIGH')?.count || 0} QUAN TRỌNG
+                    </Badge>
+                  </div>
+                  
+                  {/* Custom Progress Bar */}
+                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex overflow-hidden">
+                    {priorityData.map((item: any, index: number) => {
+                      const percentage = analytics?.totalTasks > 0 
+                        ? (item.count / analytics.totalTasks) * 100 
+                        : 0;
+                      if (percentage === 0) return null;
+                      
+                      return (
+                        <div 
+                          key={`priority-progress-${index}`}
+                          style={{ 
+                            width: `${percentage}%`,
+                            backgroundColor: item.fill
+                          }}
+                          className="h-full transition-all duration-1000 relative group"
+                        >
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                            <div className="bg-slate-800 text-white text-[9px] py-1 px-2 rounded-lg whitespace-nowrap font-bold">
+                              {item.name}: {percentage.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend Grid */}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1">
+                    {priorityData.map((item: any, index: number) => {
+                      const percentage = analytics?.totalTasks > 0 
+                        ? (item.count / analytics.totalTasks) * 100 
+                        : 0;
+                      return (
+                        <div key={`priority-legend-${index}`} className="flex items-center gap-2 bg-slate-50/50 dark:bg-white/5 p-1.5 rounded-xl border border-slate-100 dark:border-white/5">
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
+                          <span className="text-[8px] font-bold text-slate-500 dark:text-slate-400 truncate">{item.name}</span>
+                          <span className="text-[8px] font-black text-slate-400 ml-auto">{percentage.toFixed(0)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -545,6 +867,292 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
               fill="#8B5CF6"
             />
           </div>
+
+          {/* Row 2.5: Task Explorer (Filter & Table) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="my-10 bg-white dark:bg-slate-900/40 backdrop-blur-2xl border border-slate-100 dark:border-white/5 rounded-[40px] p-8 shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden"
+          >
+             {/* Decorative Background Element */}
+             <div className="absolute -top-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[100px]" />
+
+             <div className="relative z-10 space-y-8">
+                {/* Header with Title and Quick Search */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                        <Search className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Trình khám phá công việc</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tra cứu và lọc chi tiết các tác vụ của dự án</p>
+                      </div>
+                   </div>
+
+                   <div className="flex items-center gap-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="h-10 px-4 rounded-2xl border-slate-100 dark:border-white/10 text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition-all gap-2"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span className="text-xs font-bold">Đặt lại</span>
+                      </Button>
+                      
+                      <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
+                        <input 
+                          type="text" 
+                          placeholder="Tìm nhanh tên công việc..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl py-2.5 pl-10 pr-4 text-sm w-full lg:w-72 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all"
+                        />
+                      </div>
+                   </div>
+                </div>
+
+                {/* Horizontal Filter Bar */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-5 bg-slate-50/50 dark:bg-white/5 rounded-[28px] border border-slate-100 dark:border-white/5">
+                   {/* Status */}
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Trạng thái</label>
+                      <Select value={taskFilters.status} onValueChange={(v: string | null) => setTaskFilters(prev => ({...prev, status: v || 'ALL'}))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/50 border-none shadow-sm rounded-xl h-10 text-xs font-bold">
+                          <SelectValue placeholder="Trạng thái">
+                            {taskFilters.status === 'ALL' ? "Tất cả trạng thái" : (STATUS_LABELS[taskFilters.status] || taskFilters.status)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 dark:border-white/10">
+                          <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                          <SelectItem value="TODO">Cần làm</SelectItem>
+                          <SelectItem value="IN_PROGRESS">Đang làm</SelectItem>
+                          <SelectItem value="INREVIEW">Đang kiểm tra</SelectItem>
+                          <SelectItem value="DONE">Hoàn thành</SelectItem>
+                        </SelectContent>
+                      </Select>
+                   </div>
+
+                   {/* Phase */}
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Giai đoạn</label>
+                      <Select value={taskFilters.phase} onValueChange={(v: string | null) => setTaskFilters(prev => ({...prev, phase: v || 'ALL'}))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/50 border-none shadow-sm rounded-xl h-10 text-xs font-bold">
+                          <SelectValue placeholder="Giai đoạn">
+                            {selectedPhaseInfo ? selectedPhaseInfo.name : "Tất cả giai đoạn"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 dark:border-white/10">
+                          <SelectItem value="ALL">Tất cả giai đoạn</SelectItem>
+                          {phasesLoading ? (
+                            <div className="p-2 text-center text-[10px] text-slate-400 italic">Đang tải...</div>
+                          ) : Array.isArray(phasesData) && phasesData.length > 0 ? (
+                            phasesData.map((p: any) => (
+                              <SelectItem key={p._id || p.id} value={p._id || p.id}>{p.name}</SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-2 text-center text-[10px] text-slate-400 italic">Không có giai đoạn</div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                   </div>
+
+                   {/* Priority */}
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mức ưu tiên</label>
+                      <Select value={taskFilters.priority} onValueChange={(v: string | null) => setTaskFilters(prev => ({...prev, priority: v || 'ALL'}))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/50 border-none shadow-sm rounded-xl h-10 text-xs font-bold">
+                          <SelectValue placeholder="Mức ưu tiên">
+                            {taskFilters.priority === 'ALL' ? "Tất cả mức độ" : taskFilters.priority}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 dark:border-white/10">
+                          <SelectItem value="ALL">Tất cả mức độ</SelectItem>
+                          {Object.entries(TaskPriority).map(([key, value]) => (
+                            <SelectItem key={key} value={value}>{value}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                   </div>
+
+                   {/* Tag */}
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phân loại</label>
+                      <Select value={taskFilters.tag} onValueChange={(v: string | null) => setTaskFilters(prev => ({...prev, tag: v || 'ALL'}))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/50 border-none shadow-sm rounded-xl h-10 text-xs font-bold">
+                          <SelectValue placeholder="Phân loại">
+                            {taskFilters.tag === 'ALL' ? "Tất cả nhãn" : taskFilters.tag}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 dark:border-white/10">
+                          <SelectItem value="ALL">Tất cả nhãn</SelectItem>
+                          {analytics?.tagDistribution?.map((t: any) => (
+                            <SelectItem key={t.tag} value={t.tag}>{t.tag}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                   </div>
+
+                   {/* Member */}
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Thành viên</label>
+                      <Select value={taskFilters.member} onValueChange={(v: string | null) => setTaskFilters(prev => ({...prev, member: v || 'ALL'}))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900/50 border-none shadow-sm rounded-xl h-10 text-xs font-bold">
+                          <SelectValue placeholder="Thành viên">
+                             {selectedMemberInfo ? (
+                               <div className="flex items-center gap-2">
+                                 <Avatar className="w-5 h-5">
+                                   <AvatarImage src={selectedMemberInfo.userId?.avatar || selectedMemberInfo.userId?.profilePicture || selectedMemberInfo.avatar} />
+                                   <AvatarFallback className="text-[7px] font-black bg-teal-50 text-teal-600">
+                                     {(selectedMemberInfo.userId?.fullName || selectedMemberInfo.userId?.name || "U").substring(0,2).toUpperCase()}
+                                   </AvatarFallback>
+                                 </Avatar>
+                                 <span className="truncate max-w-[80px]">
+                                   {selectedMemberInfo.userId?.fullName || selectedMemberInfo.userId?.name || "Thành viên"}
+                                 </span>
+                               </div>
+                             ) : "Tất cả thành viên"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 dark:border-white/10">
+                          <SelectItem value="ALL">Tất cả thành viên</SelectItem>
+                          {membersData?.members?.map((m: any) => {
+                             const user = m.userId || m;
+                             const id = String(user._id || m._id || m);
+                             const name = user.fullName || user.name || user.email || m.email || "Unknown";
+                             return (
+                               <SelectItem key={id} value={id}>
+                                 <div className="flex items-center gap-2">
+                                   <Avatar className="w-5 h-5">
+                                     <AvatarImage src={user.avatar || user.profilePicture} />
+                                     <AvatarFallback className="text-[7px] font-black">
+                                       {name.substring(0,2).toUpperCase()}
+                                     </AvatarFallback>
+                                   </Avatar>
+                                   {name}
+                                 </div>
+                               </SelectItem>
+                             );
+                          })}
+                        </SelectContent>
+                      </Select>
+                   </div>
+                </div>
+
+                {/* Task Table Container */}
+                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-[32px] overflow-hidden shadow-sm">
+                   <div className="max-h-[460px] overflow-y-auto custom-scrollbar">
+                      <Table>
+                         <TableHeader className="bg-slate-50/80 dark:bg-white/5 sticky top-0 z-20 backdrop-blur-md">
+                            <TableRow className="hover:bg-transparent border-none">
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tên công việc</TableHead>
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Giai đoạn</TableHead>
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</TableHead>
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ưu tiên</TableHead>
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Người thực hiện</TableHead>
+                            </TableRow>
+                         </TableHeader>
+                         <TableBody>
+                            {explorerTasksLoading ? (
+                               <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 italic">Đang tải dữ liệu...</TableCell></TableRow>
+                            ) : filteredTasks.length > 0 ? (
+                               filteredTasks.map((task: any) => (
+                                  <TableRow 
+                                    key={task._id} 
+                                    className="group hover:bg-slate-50/50 dark:hover:bg-white/5 border-slate-100 dark:border-white/5 transition-all duration-200 cursor-pointer" 
+                                    onClick={() => onTaskClick?.(task)}
+                                  >
+                                     <TableCell className="px-6 py-4">
+                                        <div className="space-y-1.5">
+                                           <div className="font-bold text-sm text-slate-700 dark:text-slate-200 group-hover:text-teal-600 transition-colors">
+                                              {task.title}
+                                           </div>
+                                           <div className="flex flex-wrap gap-1.5">
+                                              {task.tags?.map((tag: any) => (
+                                                 <span key={tag._id || tag} className="text-[9px] bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md text-slate-500 font-bold uppercase tracking-tight">
+                                                    #{tag.name || tag}
+                                                 </span>
+                                              ))}
+                                           </div>
+                                        </div>
+                                     </TableCell>
+                                     <TableCell className="text-center">
+                                        {task.phaseId ? (
+                                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50/50 dark:bg-teal-500/5 border border-teal-100/50 dark:border-teal-500/20">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]" />
+                                            <span className="text-[10px] font-bold text-teal-700 dark:text-teal-400 tracking-tight">
+                                              {typeof task.phaseId === 'object' ? task.phaseId.name : task.phaseId}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400 font-medium italic opacity-60">---</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="px-6 py-4">
+                                         <div className="flex items-center justify-center">
+                                            <StatusBadge status={task.status as any} />
+                                         </div>
+                                      </TableCell>
+                                      <TableCell className="px-6 py-4">
+                                         <div className="flex items-center justify-center">
+                                            <PriorityBadge priority={task.priority as any} />
+                                         </div>
+                                      </TableCell>
+                                     <TableCell className="px-6 py-4">
+                                        <div className="flex justify-end -space-x-2">
+                                           {task.assignedTo?.map((u: any) => (
+                                              <Avatar key={u._id} className="w-7 h-7 border-2 border-white dark:border-slate-950 shadow-sm hover:z-10 transition-all">
+                                                 <AvatarImage src={u.avatar || u.profilePicture} />
+                                                 <AvatarFallback className="text-[8px] font-black bg-teal-50 text-teal-600">
+                                                   {(u.fullName || u.name || "U").substring(0,2).toUpperCase()}
+                                                 </AvatarFallback>
+                                              </Avatar>
+                                           ))}
+                                        </div>
+                                     </TableCell>
+                                  </TableRow>
+                               ))
+                            ) : (
+                               <TableRow>
+                                  <TableCell colSpan={5} className="px-6 py-24 text-center">
+                                     <div className="flex flex-col items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center">
+                                           <Search className="w-6 h-6 text-slate-200" />
+                                        </div>
+                                        <p className="text-slate-400 italic text-sm">Không tìm thấy công việc nào phù hợp với bộ lọc hiện tại</p>
+                                     </div>
+                                  </TableCell>
+                               </TableRow>
+                            )}
+                         </TableBody>
+                      </Table>
+                   </div>
+                </div>
+
+                {/* Explorer Footer */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+                   <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                         Hiển thị <span className="text-slate-800 dark:text-white">{filteredTasks.length}</span> kết quả công việc
+                      </span>
+                   </div>
+                   
+                   <div className="flex items-center gap-6">
+                      <div className="h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block" />
+                      <Button 
+                        variant="ghost" 
+                        className="text-[10px] font-black text-teal-500 uppercase tracking-widest hover:text-teal-600 hover:bg-teal-500/5 px-4 rounded-xl gap-2 h-9 transition-all"
+                      >
+                         Xem chi tiết báo cáo
+                         <ChevronRight className="w-4 h-4" />
+                      </Button>
+                   </div>
+                </div>
+             </div>
+          </motion.div>
 
           {/* Row 3: Detail Insights (8-4 Layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -711,7 +1319,16 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
           </>
         )}
       </div>
-    );
+
+      {/* Advanced Insights Drawer */}
+      <AdvancedInsightsDrawer
+        isOpen={isInsightsOpen}
+        onClose={() => setIsInsightsOpen(false)}
+        workspaceId={workspaceId}
+        projectId={selectedProjectId}
+      />
+    </>
+  );
 }
 
 function MetricCard({ label, value, icon: Icon, color, subValue, tooltip }: any) {

@@ -100,7 +100,15 @@ export const getWorkspaceAnalyticsController = asyncHandler(
         // Chạy Guard kiểm tra quyền
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
-        const analytics = await getWorkspaceAnalyticsService(workspaceId);
+        const rawProjectIds = req.query.projectIds;
+        const projectIds = rawProjectIds 
+            ? (Array.isArray(rawProjectIds) 
+                ? (rawProjectIds as string[]) 
+                : (rawProjectIds as string).split(',')
+              ).map(id => id.trim()).filter(id => id !== "") 
+            : undefined;
+        
+        const analytics = await getWorkspaceAnalyticsService(workspaceId, projectIds);
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -119,7 +127,15 @@ export const getWorkspaceAnalyticsHistoryController = asyncHandler(
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
-        const history = await getWorkspaceAnalyticsHistoryService(workspaceId);
+        const rawProjectIds = req.query.projectIds;
+        const projectIds = rawProjectIds 
+            ? (Array.isArray(rawProjectIds) 
+                ? (rawProjectIds as string[]) 
+                : (rawProjectIds as string).split(',')
+              ).map(id => id.trim()).filter(id => id !== "") 
+            : undefined;
+
+        const history = await getWorkspaceAnalyticsHistoryService(workspaceId, projectIds);
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,

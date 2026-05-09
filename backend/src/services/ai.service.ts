@@ -612,3 +612,76 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
     });
 };
 
+/**
+ * [AI Feature - Sprint 6 Part 3] Báo cáo chuyên sâu (Advanced Analytics)
+ * Sử dụng Groq Llama 3 70B để phân tích log và đưa ra nhận định.
+ */
+export const AdvancedInsightsSchema = z.object({
+    bottlenecks: z.array(z.string()).describe("Danh sách các điểm nghẽn hoặc vấn đề phát hiện được từ log"),
+    velocity_analysis: z.string().describe("Nhận định chung về tốc độ làm việc của team"),
+    recommendations: z.array(z.string()).describe("Các đề xuất hành động cụ thể để cải thiện tình hình")
+});
+
+export type AdvancedInsights = z.infer<typeof AdvancedInsightsSchema>;
+
+export const generateAdvancedInsightsService = async (logsData: any[]): Promise<AdvancedInsights> => {
+    try {
+        logger.info("[AI-Groq] Đang phân tích chuyên sâu log dự án", { logCount: logsData.length });
+
+        if (!logsData || logsData.length === 0) {
+            return {
+                bottlenecks: ["Không có đủ dữ liệu log để phân tích điểm nghẽn."],
+                velocity_analysis: "Dự án mới hoặc chưa có hoạt động nào được ghi nhận.",
+                recommendations: ["Hãy bắt đầu tạo công việc và cập nhật tiến độ để AI có thể theo dõi."]
+            };
+        }
+
+        const promptStr = JSON.stringify(logsData);
+
+        const { text } = await generateText({
+            model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B),
+            prompt: `
+Bạn là một Chuyên gia Phân tích Dữ liệu Dự án (Lead Project Data Analyst).
+Nhiệm vụ: Dựa vào lịch sử hoạt động (Activity Logs) của một dự án dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) và đưa ra "Báo cáo phân tích chuyên sâu".
+
+Dữ liệu log:
+${promptStr}
+
+YÊU CẦU VỀ NỘI DUNG:
+1. **Tính cụ thể**: Không đưa ra những nhận xét chung chung. Phải chỉ rõ ĐÂU là vấn đề, AI là người liên quan, hoặc MÃ CÔNG VIỆC nào đang gây chú ý (nếu có trong log).
+2. **Dẫn chứng**: Mỗi nhận định về điểm nghẽn hoặc tốc độ phải đi kèm với bằng chứng từ log (ví dụ: "Task X bị đổi trạng thái 5 lần", "User A không có hoạt động nào trong 3 ngày qua").
+3. **Phân tích sâu**: Giải thích TẠI SAO vấn đề đó xảy ra dựa trên dữ liệu.
+4. **Khuyến nghị**: Phải mang tính thực thi cao, không sáo rỗng.
+
+QUY TẮC TRẢ VỀ:
+- CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ.
+- KHÔNG giải thích ngoài lề.
+- Cấu trúc JSON:
+{
+  "bottlenecks": [ "Phân tích điểm nghẽn kèm dẫn chứng cụ thể 1", "Phân tích điểm nghẽn kèm dẫn chứng cụ thể 2" ],
+  "velocity_analysis": "Phân tích chi tiết về nhịp độ làm việc, hiệu suất của các thành viên và xu hướng tiến độ dự án hiện tại.",
+  "recommendations": [ "Đề xuất hành động 1 (kèm lý do)", "Đề xuất hành động 2 (kèm lý do)" ]
+}
+
+Ngôn ngữ: Tiếng Việt, văn phong chuyên nghiệp, sắc bén như một cố vấn cấp cao.
+`,
+        });
+
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const cleanJson = jsonMatch ? jsonMatch[0] : text;
+        const object = JSON.parse(cleanJson);
+
+        const validated = AdvancedInsightsSchema.parse(object);
+
+        logger.info("[AI-Groq] Đã phân tích chuyên sâu thành công");
+        return validated;
+
+    } catch (error: any) {
+        logger.error("[AI-Groq] Lỗi khi phân tích chuyên sâu", { 
+            message: error?.message,
+            stack: error?.stack
+        });
+        throw new Error("AI không thể phân tích dữ liệu lúc này, vui lòng thử lại sau.");
+    }
+};
+

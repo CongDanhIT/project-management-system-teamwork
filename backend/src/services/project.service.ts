@@ -154,21 +154,6 @@ export const getProjectByIdService = async (projectId: string, workspaceId: stri
         throw new Error("Không tìm thấy dự án hoặc dự án đã bị đóng băng/xóa");
     }
 
-    // Ghi nhật ký
-    if (userId) {
-        await logActivity({
-            workspaceId,
-            projectId: (project._id as any).toString(),
-            userId,
-            action: ActivityActionEnum.UPDATE_PROJECT,
-            entityType: ActivityEntityTypeEnum.PROJECT,
-            entityId: (project._id as any).toString(),
-            details: {
-                summary: `đã cập nhật thông tin dự án: ${project.name}`
-            }
-        });
-    }
-
     return project;
 };
 
@@ -582,7 +567,7 @@ export const getProjectAnalyticsHistoryService = async (projectId: string, works
     // Đường lý tưởng (Ideal Burn): Giảm dần từ totalTasks về 0 theo thời gian dự án
     const projectStart = project.startDate || project.createdAt;
     const projectEnd = project.endDate;
-    const totalTasksAtStart = timeline.length > 0 ? timeline[0].totalTasks : currentData.totalTasks;
+    const totalTasksAtStart = currentData.totalTasks;
 
 
     // 5. Trả về timeline kèm dữ liệu bổ sung

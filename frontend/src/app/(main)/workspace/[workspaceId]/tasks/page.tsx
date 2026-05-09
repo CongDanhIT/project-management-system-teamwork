@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskService } from '@/services/task.service';
 import { projectService } from '@/services/project.service';
+import { PhaseService } from '@/services/phase.service';
 import { TaskRow } from '@/components/task/TaskRow';
 import { TaskFilters } from '@/components/task/TaskFilters';
 import { Loader2, Inbox, Plus } from 'lucide-react';
@@ -43,11 +44,12 @@ export default function TaskListPage() {
     projectId: 'all',
     assigneeIds: user?.id ? [user.id] : [],
     parentId: 'all',
+    phaseId: 'all',
   });
 
   // Đảm bảo cập nhật filter khi user load xong (nếu chưa có ở lần render đầu)
   useEffect(() => {
-    if (user?.id && filters.assigneeIds.length === 0 && filters.search === '' && filters.status === 'all' && filters.priority === 'all' && filters.projectId === 'all' && filters.parentId === 'all') {
+    if (user?.id && filters.assigneeIds.length === 0 && filters.search === '' && filters.status === 'all' && filters.priority === 'all' && filters.projectId === 'all' && filters.parentId === 'all' && filters.phaseId === 'all') {
       setFilters(prev => ({ ...prev, assigneeIds: [user.id] }));
     }
   }, [user?.id]);
@@ -64,6 +66,7 @@ export default function TaskListPage() {
       ... (filters.projectId !== 'all' && { projectId: filters.projectId }),
       ... (filters.assigneeIds.length > 0 && { assignedTo: filters.assigneeIds.join(',') }),
       ... (filters.parentId !== 'all' && { parentId: filters.parentId === 'root' ? '' : filters.parentId }),
+      ... (filters.phaseId !== 'all' && { phaseId: filters.phaseId }),
       ... (filters.search && { search: filters.search }),
       pageSize: 50
     }),
@@ -124,8 +127,15 @@ export default function TaskListPage() {
     enabled: !!workspaceId,
   });
 
+  const { data: phasesData } = useQuery({
+    queryKey: ['workspace-phases', workspaceId],
+    queryFn: () => PhaseService.getPhasesByWorkspace(workspaceId),
+    enabled: !!workspaceId,
+  });
+
   const members = membersData?.members || [];
   const projects = projectsData?.projects || [];
+  const phases = phasesData?.data || [];
   const allTasks = allTasksData?.tasks || [];
 
   const handleTaskClick = (task: Task) => {
@@ -272,6 +282,7 @@ export default function TaskListPage() {
         projectId: 'all',
         assigneeIds: [],
         parentId: 'all',
+        phaseId: 'all',
     });
   };
 
@@ -297,18 +308,21 @@ export default function TaskListPage() {
         onProjectChange={(projectId: string) => setFilters(prev => ({ ...prev, projectId }))}
         onAssigneeChange={(assigneeIds: string[]) => setFilters(prev => ({ ...prev, assigneeIds }))}
         onParentTaskChange={(parentId: string) => setFilters(prev => ({ ...prev, parentId }))}
+        onPhaseChange={(phaseId: string) => setFilters(prev => ({ ...prev, phaseId }))}
         onClear={clearFilters}
+        phases={phases}
       />
 
       {/* List Container */}
-      <div className="flex-1 min-h-0 bg-white/50 dark:bg-slate-950/40 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-white/5 overflow-hidden shadow-sm dark:shadow-2xl">
-        <div className="bg-slate-50/50 dark:bg-slate-900/80 px-4 py-2 grid grid-cols-[40px_100px_1fr_140px_140px_140px_80px] items-center gap-4 text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-white/10">
-           <div className="flex justify-center" /> {/* Checkbox space */}
+      <div className="flex-1 min-h-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xl rounded-[40px] border border-slate-100 dark:border-white/5 overflow-hidden shadow-sm dark:shadow-2xl">
+        <div className="bg-slate-50/80 dark:bg-slate-900/90 px-6 py-3 grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100/50 sticky top-0 z-20 backdrop-blur-md">
+           <div className="flex justify-center" />
            <div>Mã Task</div>
            <div>Công việc & Dự án</div>
            <div className="text-center">Trạng thái</div>
            <div className="text-center">Ưu tiên</div>
-           <div className="text-center">Ngày hết hạn</div>
+           <div className="text-center">Giai đoạn</div>
+           <div className="text-center">Hạn chót</div>
            <div className="text-right pr-4">Người làm</div>
         </div>
 

@@ -49,5 +49,9 @@ export interface Task {
   startDate?: string | null;
   deletedAt?: string | null;
   tags: Tag[]; // Danh sách nhãn thực tế
+  phaseId?: {
+    _id: string;
+    name: string;
+  };
   userCommentCount?: number; // Số bình luận do user chủ động gửi (không tính SYSTEM)
 }

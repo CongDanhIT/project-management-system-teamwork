@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import { Loader2 } from 'lucide-react';
 import Loader from "@/components/ui/Loader";
 
+import LandingPage from '@/components/landing/LandingPage';
+
 export default function Home() {
   const router = useRouter();
   const { user, isAuthenticated, isInitializing } = useAuthStore();
@@ -16,33 +18,30 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Nếu chưa mount hoặc đang trong quá trình khởi tạo, đừng làm gì cả
-    if (!mounted || isInitializing) return;
+    // Chỉ thực hiện chuyển hướng nếu đã mount, không còn initializing và đã login
+    if (!mounted || isInitializing || !isAuthenticated) return;
 
-    const redirect = async () => {
-      if (!isAuthenticated) {
-        router.replace('/login');
-        return;
+    if (user) {
+      if (user.currentWorkspaceId) {
+        router.replace(`/workspace/${user.currentWorkspaceId}`);
+      } else {
+        router.replace('/onboarding');
       }
-
-      if (user) {
-        if (user.currentWorkspaceId) {
-          router.replace(`/workspace/${user.currentWorkspaceId}`);
-        } else {
-          router.replace('/onboarding');
-        }
-      }
-    };
-
-    redirect();
+    }
   }, [isAuthenticated, user, router, isInitializing, mounted]);
 
-  return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-      <div className="flex flex-col items-center gap-4">
-        <Loader size="lg" />
-        <p className="text-sm font-medium text-slate-500 animate-pulse">Đang chuẩn bị không gian làm việc của bạn...</p>
+  // Trong khi chờ đợi (khởi tạo, chưa mount, hoặc đang chuẩn bị chuyển hướng)
+  if (!mounted || isInitializing || isAuthenticated) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader size="lg" />
+          <p className="text-sm font-medium text-slate-500 animate-pulse">Đang chuẩn bị không gian làm việc của bạn...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Nếu không đăng nhập, hiển thị Landing Page
+  return <LandingPage />;
 }
