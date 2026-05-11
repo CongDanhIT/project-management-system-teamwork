@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bell, Check, Clock, MessageSquare, User, AtSign, AlertCircle, X } from 'lucide-react';
+import { Bell, Check, Clock, MessageSquare, User, AtSign, AlertCircle, X, CheckSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { interactionService } from '@/services/interaction.service';
 import { format } from 'date-fns';
@@ -78,13 +78,18 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspac
       await markAsReadMutation.mutateAsync(notification._id);
     }
 
-    // Điều hướng dựa trên refType
+    // Điều hướng dựa trên loại hoặc refType
+    if (notification.type === 'TASK_OVERDUE') {
+      router.push(`/workspace/${workspaceId}/notifications`);
+      return;
+    }
+
     if (notification.refType === 'Announcement') {
       const announcementId = notification.refId;
       const commentId = notification.metadata?.commentId;
       
       router.push(`/workspace/${workspaceId}/newsfeed?announcementId=${announcementId}${commentId ? `&commentId=${commentId}` : ''}`);
-    } else if (notification.refType === 'Task') {
+    } else if (notification.refType === 'Task' || notification.type === 'TASK_REVIEW_REQUESTED') {
       const taskId = notification.refId;
       const projectId = notification.metadata?.projectId;
       const commentId = notification.metadata?.commentId;
@@ -106,6 +111,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspac
       case 'COMMENT_ADDED': return <MessageSquare className="w-3 h-3 text-blue-400" />;
       case 'TASK_ASSIGNED': return <User className="w-3 h-3 text-emerald-400" />;
       case 'TASK_UPDATED': return <Clock className="w-3 h-3 text-amber-400" />;
+      case 'TASK_REVIEW_REQUESTED': return <CheckSquare className="w-3 h-3 text-brand-secondary" />;
       default: return <AlertCircle className="w-3 h-3 text-slate-400" />;
     }
   };

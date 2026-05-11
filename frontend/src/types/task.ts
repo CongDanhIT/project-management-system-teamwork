@@ -49,6 +49,7 @@ export interface Task {
   startDate?: string | null;
   deletedAt?: string | null;
   tags: Tag[]; // Danh sách nhãn thực tế
+  requiresApproval: boolean; // [AI-ADDED] Cần chờ duyệt trước khi hoàn thành
   phaseId?: {
     _id: string;
     name: string;

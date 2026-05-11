@@ -29,7 +29,7 @@ export function PulseSidebar({ announcements }: PulseSidebarProps) {
       
       {/* Pinned Updates - Real Data from Database */}
       {pinnedAnnouncements.length > 0 && (
-        <div className="p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-ambient dark:shadow-none transition-all">
+        <div className="p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none transition-all">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/10">
               <Pin className="w-5 h-5 text-amber-500" />

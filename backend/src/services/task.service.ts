@@ -11,6 +11,10 @@ import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-l
 import PhaseModel from "../models/phase.model";
 import { RoleEnum } from "../enums/role.enum";
 import { getMemberRoleInWorkspace } from "./member.service";
+import NotificationModel, { NotificationType } from "../models/notification.model";
+import RoleModel from "../models/role-permission.model";
+import eventDispatcher, { EVENTS } from "../utils/eventDispatcher";
+import { NotificationService } from "./notification.service";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -51,6 +55,7 @@ export const createTaskService = async (
         subtasks?: string[];
         tags?: string[]; // Mảng ID nhãn
         phaseId?: string | null;
+        requiresApproval?: boolean;
     },
     userId: string
 ) => {
@@ -58,6 +63,14 @@ export const createTaskService = async (
     
     // 0. Kiểm tra phase bị khóa (nếu có phaseId)
     await validatePhaseLock(workspaceId, userId, phaseId);
+
+    // 0.1 [APPROVAL-WORKFLOW] Kiểm tra quyền bật yêu cầu phê duyệt
+    if (body.requiresApproval) {
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        if (role.name === RoleEnum.MEMBER) {
+            throw new Error("Chỉ Quản trị viên hoặc Chủ sở hữu mới có quyền thiết lập yêu cầu phê duyệt.");
+        }
+    }
 
     // 1. [MULTI-ASSIGNEE] Kiểm tra tất cả Workspace Members
     if (assignedTo && assignedTo.length > 0) {
@@ -128,9 +141,24 @@ export const createTaskService = async (
         phaseId: phaseId ? new mongoose.Types.ObjectId(phaseId) : null,
         createdBy: userId,
         tags: (tags && tags.length > 0) ? tags.map(id => new mongoose.Types.ObjectId(id)) : [],
+        requiresApproval: body.requiresApproval || false,
     });
 
     await task.save();
+    
+    // [NOTIFICATION] Thông báo cho những người được gán
+    if (task.assignedTo && task.assignedTo.length > 0) {
+        for (const recipientId of task.assignedTo) {
+            await NotificationService.sendTaskAssignedNotification(
+                workspaceId,
+                (task._id as mongoose.Types.ObjectId).toString(),
+                userId,
+                recipientId.toString(),
+                task.title,
+                projectId
+            );
+        }
+    }
 
     // 4. Tạo nhiệm vụ con (nếu có - gọi tuần tự để tránh trùng taskCode)
     if (subtasks && subtasks.length > 0) {
@@ -187,6 +215,7 @@ export const updateTaskService = async (
         loggedHours?: number;
         tags?: string[]; // Thêm tags vào đây
         phaseId?: string | null;
+        requiresApproval?: boolean;
     },
     userId: string,
     taskId: string
@@ -226,7 +255,19 @@ export const updateTaskService = async (
         }
     }
 
-    // 2.1 Capture old values for logging
+    // 2.1 [RBAC-STRICT] Hạn chế Member chỉ được phép đổi trạng thái (status)
+    const role = await getMemberRoleInWorkspace(workspaceId, userId);
+    if (role.name === RoleEnum.MEMBER) {
+        const allowedFields = ['status'];
+        const updateFields = Object.keys(body).filter(key => (body as any)[key] !== undefined);
+        const forbiddenFields = updateFields.filter(key => !allowedFields.includes(key));
+        
+        if (forbiddenFields.length > 0) {
+            throw new Error(`Bạn không có quyền thay đổi các thông tin: ${forbiddenFields.join(', ')}. Thành viên chỉ có thể thay đổi trạng thái công việc.`);
+        }
+    }
+
+    // 2.2 Capture old values for logging
     const oldValues: any = {};
     Object.keys(body).forEach((key) => {
         if ((body as any)[key] !== undefined) {
@@ -242,6 +283,17 @@ export const updateTaskService = async (
         const oldPriority = task.priority;
         task.priority = body.priority as TaskPriorityEnumType;
         await createSystemCommentService(workspaceId, taskId, userId, `đã thay đổi mức ưu tiên từ **${oldPriority}** sang **${body.priority}**`);
+    }
+
+    // 3.1 Kiểm tra quyền thay đổi requiresApproval
+    if (body.requiresApproval !== undefined && task.requiresApproval !== body.requiresApproval) {
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        if (role.name === RoleEnum.MEMBER) {
+            throw new Error("Chỉ Quản trị viên hoặc Chủ sở hữu mới có quyền thay đổi thiết lập xét duyệt.");
+        }
+        task.requiresApproval = body.requiresApproval;
+        await createSystemCommentService(workspaceId, taskId, userId, 
+            `đã ${body.requiresApproval ? 'bật' : 'tắt'} chế độ **Cần chờ duyệt** cho công việc này`);
     }
     
     // Kiểm tra quy tắc hoàn thành (DONE)
@@ -260,6 +312,13 @@ export const updateTaskService = async (
         const isDone = body.status === TaskStatusEnum.DONE || body.status === TaskStatusEnum.COMPLETED;
         const wasDone = task.status === TaskStatusEnum.DONE || task.status === TaskStatusEnum.COMPLETED;
 
+        if (isDone && !wasDone && task.requiresApproval) {
+            const role = await getMemberRoleInWorkspace(workspaceId, userId);
+            if (role.name === RoleEnum.MEMBER) {
+                throw new Error("Công việc này cần được Quản trị viên hoặc Chủ sở hữu duyệt. Vui lòng chuyển trạng thái sang 'Đang duyệt' để gửi yêu cầu.");
+            }
+        }
+
         if (isDone && !wasDone) {
             task.completedAt = new Date();
         } else if (!isDone) {
@@ -270,6 +329,42 @@ export const updateTaskService = async (
         task.status = body.status as TaskStatusEnumType;
         if (oldStatus !== body.status) {
             await createSystemCommentService(workspaceId, taskId, userId, `đã chuyển trạng thái từ **${oldStatus}** sang **${body.status}**`);
+            
+            // Gửi thông báo xét duyệt nếu chuyển sang INREVIEW và task yêu cầu duyệt
+            if (body.status === TaskStatusEnum.INREVIEW && task.requiresApproval) {
+                const adminRoles = await RoleModel.find({ name: { $in: [RoleEnum.ADMIN, RoleEnum.OWNER] } }).select('_id');
+                const adminRoleIds = adminRoles.map(r => r._id);
+                
+                const admins = await MemberModel.find({
+                    workspaceId,
+                    role: { $in: adminRoleIds }
+                }).select('userId');
+
+                const notificationPromises = admins.map(admin => {
+                    if (admin.userId.toString() === userId) return null; // Không tự gửi cho mình
+                    
+                    return new NotificationModel({
+                        recipientId: admin.userId,
+                        senderId: userId,
+                        workspaceId,
+                        type: NotificationType.TASK_REVIEW_REQUESTED,
+                        title: 'Yêu cầu xét duyệt công việc',
+                        message: `vừa gửi yêu cầu xét duyệt cho công việc: "${task.title}"`,
+                        refId: task._id,
+                        refType: 'Task',
+                        metadata: {
+                            projectId: task.projectId
+                        }
+                    }).save();
+                });
+
+                const notifications = await Promise.all(notificationPromises.filter(n => n !== null));
+                notifications.forEach(notif => {
+                    if (notif) {
+                        eventDispatcher.emit(EVENTS.NOTIFICATION.RECEIVED, notif);
+                    }
+                });
+            }
         }
     }
     // Update dates - Only update if explicitly provided and not null to prevent accidental data loss
@@ -282,9 +377,26 @@ export const updateTaskService = async (
       await createSystemCommentService(workspaceId, taskId, userId, `đã cập nhật hạn chót mới là **${new Date(body.dueDate).toLocaleDateString('vi-VN')}**`);
     }
     if (body.assignedTo !== undefined) {
+        const oldAssignees = task.assignedTo.map(id => id.toString());
+        const newAssignees = body.assignedTo.filter(id => !oldAssignees.includes(id));
+        
         task.assignedTo = body.assignedTo.length > 0
             ? body.assignedTo.map(id => new mongoose.Types.ObjectId(id)) as any
             : [];
+
+        // [NOTIFICATION] Thông báo cho những người MỚI được gán
+        if (newAssignees.length > 0) {
+            for (const recipientId of newAssignees) {
+                await NotificationService.sendTaskAssignedNotification(
+                    workspaceId,
+                    task._id.toString(),
+                    userId,
+                    recipientId,
+                    task.title,
+                    projectId
+                );
+            }
+        }
     }
     
     if (body.estimatedHours !== undefined) task.estimatedHours = body.estimatedHours;
@@ -294,6 +406,9 @@ export const updateTaskService = async (
     }
     if (body.phaseId !== undefined) {
         task.phaseId = body.phaseId ? new mongoose.Types.ObjectId(body.phaseId) : null;
+    }
+    if (body.requiresApproval !== undefined) {
+        task.requiresApproval = body.requiresApproval;
     }
 
     await task.save();

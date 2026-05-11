@@ -315,7 +315,7 @@ export default function TaskListPage() {
 
       {/* List Container */}
       <div className="flex-1 min-h-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xl rounded-[40px] border border-slate-100 dark:border-white/5 overflow-hidden shadow-sm dark:shadow-2xl">
-        <div className="bg-slate-50/80 dark:bg-slate-900/90 px-6 py-3 grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100/50 sticky top-0 z-20 backdrop-blur-md">
+        <div className="bg-slate-50/80 dark:bg-slate-900/90 px-6 py-5 grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100/80 dark:border-white/5 sticky top-0 z-20 backdrop-blur-md">
            <div className="flex justify-center" />
            <div>Mã Task</div>
            <div>Công việc & Dự án</div>
@@ -333,7 +333,7 @@ export default function TaskListPage() {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Đang nạp bộ nhớ công việc...</p>
             </div>
           ) : tasks.length > 0 ? (
-            <div className="divide-y divide-slate-50">
+            <div className="flex flex-col">
               {tasks.map((task: Task) => (
                 <TaskRow key={task._id} task={task} onClick={handleTaskClick} />
               ))}
@@ -380,6 +380,7 @@ export default function TaskListPage() {
         projects={projects}
         onSubmit={handleCreateTask}
         workspaceId={workspaceId}
+        isAdminOrOwner={isAdminOrOwner}
       />
     </div>
   );

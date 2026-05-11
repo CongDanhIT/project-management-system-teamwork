@@ -59,7 +59,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     
     const socketInstance = io(socketUrl, {
       withCredentials: true,
-      transports: ["polling", "websocket"], // Bắt đầu bằng polling để ổn định, sau đó tự động upgrade lên websocket
+      transports: ["websocket"], // Ép sử dụng websocket để tránh lỗi polling (xhr poll error)
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,

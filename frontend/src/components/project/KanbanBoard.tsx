@@ -138,6 +138,22 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
         if (originalStatus === targetStatus) return;
 
+        // [APPROVAL-WORKFLOW] Chặn Member hoàn thành task cần duyệt
+        if (targetStatus === TaskStatus.DONE && dragStartedTaskSnapshot.requiresApproval && !isAdminOrOwner) {
+          toast.info("Công việc này cần được phê duyệt. Hãy chuyển sang 'Đang duyệt' để thông báo cho Quản trị viên.", {
+            duration: 5000,
+          });
+          
+          // Hoàn tác UI về trạng thái cũ
+          setTasks(prev => {
+            const reverted = [...prev];
+            const idx = reverted.findIndex(t => t._id === taskId);
+            if (idx !== -1) reverted[idx].status = originalStatus;
+            return reverted;
+          });
+          return;
+        }
+
         try {
           const updatedTaskFromApi = await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
           

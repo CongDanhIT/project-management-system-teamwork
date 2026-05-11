@@ -278,7 +278,7 @@ export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highl
   return (
     <div 
       id={`announcement-${announcement._id}`}
-      className="group relative p-8 rounded-[32px] bg-white dark:bg-surface-secondary shadow-ambient dark:shadow-none transition-all duration-500 scroll-mt-24"
+      className="group relative p-8 rounded-[32px] bg-white dark:bg-surface-secondary shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none transition-all duration-500 scroll-mt-24"
     >
       
       {/* Header section */}
@@ -493,7 +493,7 @@ export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highl
               {allParticipants.slice(0, 5).map((p, idx) => (
                 <div 
                   key={p._id} 
-                  className="w-7 h-7 rounded-full border-2 border-white dark:border-surface-secondary bg-slate-100 dark:bg-surface-tertiary transition-transform hover:-translate-y-1 hover:z-10 cursor-alias"
+                  className="w-7 h-7 rounded-full border-2 border-white dark:border-surface-secondary bg-slate-100 dark:bg-surface-tertiary transition-transform hover:-translate-y-1 hover:z-10 cursor-alias shadow-sm"
                   title={p.name}
                 >
                   {p.profilePicture ? (
@@ -506,7 +506,7 @@ export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highl
                 </div>
               ))}
               {allParticipants.length > 5 && (
-                 <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-surface-tertiary border-2 border-white dark:border-surface-secondary flex items-center justify-center text-[9px] font-black text-slate-500">
+                 <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-surface-tertiary border-2 border-white dark:border-surface-secondary flex items-center justify-center text-[9px] font-black text-slate-500 shadow-sm">
                     +{allParticipants.length - 5}
                  </div>
               )}

@@ -18,12 +18,16 @@ import {
   Sun,
   Heart,
   ChevronDown,
-  Megaphone
+  Megaphone,
+  Briefcase,
+  Map,
+  Files
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { useWorkspaceStore } from '@/stores/workspace.store';
 import { authService } from '@/services/auth.service';
+import { PhaseService } from '@/services/phase.service';
 import WorkspaceSelector from './WorkspaceSelector';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
@@ -55,6 +59,8 @@ export default function Sidebar() {
   const { isAdminOrOwner } = useWorkspaceRole();
   const queryClient = useQueryClient();
   const [isFavoritesOpen, setIsFavoritesOpen] = React.useState(true);
+  const [isProjectsOpen, setIsProjectsOpen] = React.useState(false);
+  const [expandedProjectId, setExpandedProjectId] = React.useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -79,6 +85,21 @@ export default function Sidebar() {
     queryFn: () => projectService.getFavoriteProjects(workspaceId),
     enabled: !!workspaceId,
   });
+
+  const { data: projectsData } = useQuery({
+    queryKey: ['workspace-projects-all', workspaceId],
+    queryFn: () => projectService.getProjectsByWorkspace(workspaceId, 1, 100),
+    enabled: !!workspaceId,
+  });
+
+  const { data: phasesData } = useQuery({
+    queryKey: ['workspace-phases-all', workspaceId],
+    queryFn: () => PhaseService.getPhasesByWorkspace(workspaceId),
+    enabled: !!workspaceId,
+  });
+
+  const allProjects = projectsData?.projects || [];
+  const allPhases = phasesData?.data || [];
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col bg-white dark:bg-sidebar lg:flex shadow-[inset_1px_1px_0_rgba(255,255,255,0.6),4px_0_16px_-4px_rgba(0,0,0,0.1)] dark:shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),4px_0_24px_rgba(0,0,0,0.4)] border-none transition-all duration-300">
@@ -108,14 +129,116 @@ export default function Sidebar() {
         {[
           { label: 'Dashboard', icon: LayoutDashboard, href: `/workspace/${workspaceId}` },
           { label: 'Bản tin', icon: Megaphone, href: `/workspace/${workspaceId}/newsfeed` },
-          { label: 'Dự án', icon: FolderKanban, href: `/workspace/${workspaceId}/projects` },
+          { label: 'Lịch trình', icon: Map, href: `/workspace/${workspaceId}/roadmap` },
+          { label: 'Dự án', icon: FolderKanban, href: `/workspace/${workspaceId}/projects`, hasDropdown: true },
+          { label: 'Tài liệu', icon: Files, href: `/workspace/${workspaceId}/documents` },
           { label: 'Công việc của tôi', icon: CheckSquare, href: `/workspace/${workspaceId}/tasks` },
           { label: 'Thành viên', icon: Users, href: `/workspace/${workspaceId}/members` },
           ...(workspaceId && isAdminOrOwner ? [
             { label: 'Cài đặt Workspace', icon: Settings, href: `/workspace/${workspaceId}/settings` }
           ] : []),
-        ].map((item) => {
+        ].map((item: any) => {
           const isActive = pathname === item.href || (item.href !== `/workspace/${workspaceId}` && pathname.startsWith(item.href));
+          
+          if (item.hasDropdown) {
+            return (
+              <div key={item.label} className="space-y-1">
+                <div
+                  className={cn(
+                    "group flex items-center gap-3 px-5 py-3 rounded-2xl text-[14px] font-medium transition-all duration-300 cursor-pointer",
+                    isActive
+                      ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                      : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary"
+                  )}
+                  onClick={() => setIsProjectsOpen(!isProjectsOpen)}
+                >
+                  <item.icon className={cn("w-5 h-5 transition-all duration-300", isActive ? "text-[#C7F964] scale-105" : "text-current opacity-70 group-hover:opacity-100")} />
+                  <span className={cn(isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
+                  <div className="ml-auto flex items-center gap-2">
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#C7F964] shadow-[0_0_8px_#C7F964]" />}
+                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-300 opacity-50 group-hover:opacity-100", isProjectsOpen && "rotate-180")} />
+                  </div>
+                </div>
+
+                {isProjectsOpen && (
+                  <div className="ml-4 pl-4 border-l border-slate-100 dark:border-white/5 space-y-1 py-1 animate-in slide-in-from-top-2 duration-300">
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] transition-all",
+                        pathname === item.href 
+                          ? "text-brand-primary dark:text-brand-secondary font-bold" 
+                          : "text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary"
+                      )}
+                    >
+                      <Layout className="w-3.5 h-3.5" />
+                      <span>Xem tất cả dự án</span>
+                    </Link>
+
+                    {allProjects.map((project: any) => {
+                      const projectHref = `/workspace/${workspaceId}/projects/${project._id}/phases`;
+                      const isProjectActive = pathname.startsWith(projectHref);
+                      const isExpanded = expandedProjectId === project._id;
+                      const projectPhases = allPhases.filter((p: any) => p.projectId === project._id);
+
+                      return (
+                        <div key={project._id} className="space-y-0.5">
+                          <div
+                            className={cn(
+                              "group flex items-center justify-between px-4 py-2 rounded-xl text-[13px] cursor-pointer transition-all",
+                              isProjectActive
+                                ? "text-brand-primary dark:text-brand-secondary font-bold bg-brand-primary/5"
+                                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5"
+                            )}
+                            onClick={() => setExpandedProjectId(isExpanded ? null : project._id)}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                isProjectActive ? "bg-brand-primary dark:bg-brand-secondary" : "bg-slate-300 dark:bg-slate-600"
+                              )} />
+                              <span className="truncate">{project.name}</span>
+                            </div>
+                            {projectPhases.length > 0 && (
+                              <ChevronDown className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
+                            )}
+                          </div>
+
+                          {isExpanded && projectPhases.length > 0 && (
+                            <div className="ml-3 pl-3 border-l border-slate-100 dark:border-white/10 space-y-0.5 py-1">
+                              {projectPhases.map((phase: any) => {
+                                const phaseHref = `/workspace/${workspaceId}/projects/${project._id}/phases/${phase._id}/board`;
+                                const isPhaseActive = pathname.startsWith(`/workspace/${workspaceId}/projects/${project._id}/phases/${phase._id}`);
+                                return (
+                                  <Link
+                                    key={phase._id}
+                                    href={phaseHref}
+                                    className={cn(
+                                      "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] transition-all",
+                                      isPhaseActive
+                                        ? "text-brand-primary dark:text-brand-secondary font-bold"
+                                        : "text-slate-400 dark:text-slate-500 hover:text-brand-primary dark:hover:text-brand-secondary"
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "w-1 h-1 rounded-full",
+                                      isPhaseActive ? "bg-brand-primary dark:bg-brand-secondary" : "bg-slate-200 dark:bg-slate-800"
+                                    )} />
+                                    <span className="truncate">{phase.name}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.label}
@@ -141,7 +264,7 @@ export default function Sidebar() {
               onClick={() => setIsFavoritesOpen(!isFavoritesOpen)}
               className="flex items-center justify-between w-full px-5 mb-2 group outline-none"
             >
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
                 Dự án yêu thích
               </span>
               <ChevronDown 
@@ -164,15 +287,15 @@ export default function Sidebar() {
                       className={cn(
                         "group flex items-center gap-3 px-5 py-2.5 rounded-xl text-[13px] transition-all duration-300",
                         isActive
-                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
-                          : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-rose-500 dark:hover:text-rose-400"
+                          ? "bg-brand-primary/10 text-brand-primary dark:text-brand-secondary font-bold"
+                          : "text-slate-500 dark:text-slate-400 hover:bg-brand-primary/5 dark:hover:bg-white/5 hover:text-brand-primary dark:hover:text-brand-secondary"
                       )}
                     >
                       <div className={cn(
                         "w-2 h-2 rounded-full transition-all duration-300",
                         isActive 
-                          ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" 
-                          : "bg-slate-200 dark:bg-slate-700 group-hover:bg-rose-400"
+                          ? "bg-brand-primary shadow-[0_0_8px_rgba(3,93,91,0.4)] dark:bg-brand-secondary dark:shadow-[0_0_8px_rgba(199,249,100,0.4)]" 
+                          : "bg-slate-200 dark:bg-slate-700 group-hover:bg-brand-primary/60 dark:group-hover:bg-brand-secondary/60"
                       )} />
                       <span className="truncate">{project.name}</span>
                     </Link>

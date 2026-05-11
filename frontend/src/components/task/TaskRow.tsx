@@ -17,7 +17,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
   return (
     <div 
       onClick={() => onClick(task)}
-      className="group grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-white/5 transition-all duration-200 cursor-pointer border-b border-transparent hover:border-slate-100 dark:hover:border-white/5 hover:shadow-sm"
+      className="group grid grid-cols-[40px_100px_1fr_120px_120px_120px_120px_80px] items-center gap-4 px-6 py-5 hover:bg-slate-50/90 dark:hover:bg-white/[0.03] transition-all duration-300 cursor-pointer border-b border-slate-100/50 dark:border-white/[0.02] last:border-none hover:shadow-sm"
     >
       <div className="flex justify-center items-center">
         <div className="w-4 h-4 rounded-full border-2 border-slate-200 group-hover:border-brand-primary transition-colors flex items-center justify-center">

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MoreHorizontal, Clock, User, MessageCircle } from 'lucide-react';
+import { Calendar, MoreHorizontal, Clock, User, MessageCircle, ExternalLink } from 'lucide-react';
 import { Task, TaskPriority } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,26 @@ const priorityColors = {
   [TaskPriority.LOW]: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
   [TaskPriority.MEDIUM]: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
   [TaskPriority.HIGH]: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20',
+};
+
+const generateGoogleCalendarUrl = (task: Task) => {
+  const baseUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+  const title = encodeURIComponent(`[TeamFlow] ${task.title}`);
+  const details = encodeURIComponent(task.description || '');
+  
+  const formatDate = (dateStr?: string | Date | null) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    // Google Calendar format: YYYYMMDDTHHMMSSZ
+    return date.toISOString().replace(/-|:|\.\d+/g, '');
+  };
+
+  const start = task.startDate || task.dueDate;
+  const end = task.dueDate;
+
+  if (!end) return '';
+
+  return `${baseUrl}&text=${title}&details=${details}&dates=${formatDate(start)}/${formatDate(end)}`;
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick }) => {
@@ -114,9 +134,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
             {task.priority}
           </Badge>
           {task.dueDate && (
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-secondary/30 px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-secondary/30 px-2 py-0.5 rounded-full relative group/calendar">
               <Calendar className="w-3.5 h-3.5" />
               <span>{new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</span>
+              
+              {/* Google Calendar Quick Add Button */}
+              <a
+                href={generateGoogleCalendarUrl(task)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "absolute -right-1.5 -top-1.5 w-5 h-5 bg-white dark:bg-slate-800 border border-border-subtle rounded-full flex items-center justify-center shadow-sm transition-all duration-300",
+                  "opacity-30 group-hover:opacity-60 hover:!opacity-100 hover:scale-110 hover:bg-brand-primary hover:text-white hover:border-brand-primary"
+                )}
+                title="Thêm vào Google Calendar"
+              >
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
             </div>
           )}
           {task.userCommentCount != null && task.userCommentCount > 0 && (

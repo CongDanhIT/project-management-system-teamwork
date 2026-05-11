@@ -62,6 +62,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SubtaskEditModal } from './SubtaskEditModal';
 import { taskService } from '@/services/task.service';
@@ -111,6 +113,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [loggedHours, setLoggedHours] = useState<number | ''>('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]); // [MULTI-ASSIGNEE]
   const [parentId, setParentId] = useState<string>('none');
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
@@ -234,6 +237,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
       const pId = typeof task.parentId === 'object' ? (task.parentId as any)?._id : task.parentId;
       setParentId(pId || 'none');
+      setRequiresApproval(task.requiresApproval || false);
 
       // [MULTI-ASSIGNEE] Khởi tạo mảng assigneeIds từ task.assignedTo
       const ids = Array.isArray(task.assignedTo)
@@ -317,6 +321,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const handleSave = async () => {
     if (!task) return;
+
+    // [APPROVAL-WORKFLOW] Chặn Member lưu task với trạng thái DONE nếu cần duyệt
+    if (status === TaskStatus.DONE && requiresApproval && !isAdminOrOwner && task.status !== TaskStatus.DONE) {
+      toast.warning("Công việc này cần được Quản trị viên phê duyệt trước khi hoàn thành.");
+      return;
+    }
+
     setIsUpdating(true);
     try {
       // Prepare date values: only send null if explicitly intended, 
@@ -336,6 +347,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         loggedHours: loggedHours === '' ? 0 : Number(loggedHours),
         parentId: parentId === 'none' ? null : parentId,
         tags: selectedTagIds,
+        requiresApproval,
       });
       // toast.success("Đã cập nhật công việc thành công"); // [REDUNDANT] Xóa vì parent page đã có toast
       onClose();
@@ -479,6 +491,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <Layout className="w-3 h-3" />
                       <span>{task?.projectId?.name || 'Dự án'}</span>
                     </div>
+                    {task?.phaseId && (
+                      <>
+                        <ChevronRight className="w-3 h-3 text-text-dim/30" />
+                        <div className="flex items-center gap-1.5 text-[10px] font-black text-brand-secondary uppercase tracking-widest">
+                          <GitBranch className="w-3 h-3" />
+                          <span>{task.phaseId.name}</span>
+                        </div>
+                      </>
+                    )}
                     <ChevronRight className="w-3 h-3 text-text-dim/30" />
                     <div className="text-[10px] font-black text-text-dim/40 uppercase tracking-widest">
                       <span>Chi tiết nhiệm vụ</span>
@@ -490,8 +511,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="text-4xl font-black text-foreground border-none p-0 focus-visible:ring-0 shadow-none bg-transparent h-auto max-w-full placeholder:text-text-dim/20 tracking-tight leading-none"
+                    className="text-4xl font-black text-foreground border-none p-0 focus-visible:ring-0 shadow-none bg-transparent h-auto max-w-full placeholder:text-text-dim/20 tracking-tight leading-none disabled:opacity-100 disabled:cursor-default"
                     placeholder="Tiêu đề công việc..."
+                    disabled={!isAdminOrOwner}
                   />
                   <div className="absolute -bottom-2 left-0 w-12 h-1 bg-brand-primary/20 rounded-full scale-x-0 group-focus-within/title:scale-x-100 transition-transform origin-left duration-300" />
                 </div>
@@ -518,7 +540,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <SelectItem value={TaskStatus.TODO} className="rounded-xl py-3 cursor-pointer">Cần làm</SelectItem>
                       <SelectItem value={TaskStatus.IN_PROGRESS} className="rounded-xl py-3 cursor-pointer">Đang thực hiện</SelectItem>
                       <SelectItem value={TaskStatus.INREVIEW} className="rounded-xl py-3 cursor-pointer">Đang duyệt</SelectItem>
-                      <SelectItem value={TaskStatus.DONE} className="rounded-xl py-3 cursor-pointer">Hoàn thành</SelectItem>
+                      <SelectItem 
+                        value={TaskStatus.DONE} 
+                        className="rounded-xl py-3 cursor-pointer"
+                        disabled={requiresApproval && !isAdminOrOwner}
+                      >
+                        Hoàn thành {requiresApproval && !isAdminOrOwner && "(Cần duyệt)"}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -533,6 +561,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onValueChange={(val) => setPriority(val as TaskPriority)}
                     open={activeDropdown === 'priority'}
                     onOpenChange={(open) => setActiveDropdown(open ? 'priority' : null)}
+                    disabled={!isAdminOrOwner}
                   >
                     <SelectTrigger className="w-full border border-modal-border bg-input-bg hover:border-brand-primary/20 hover:shadow-md transition-[border-color,box-shadow] duration-200 px-4 h-14 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10">
                       <PriorityBadge priority={priority} />
@@ -543,6 +572,40 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <SelectItem value={TaskPriority.HIGH} className="rounded-xl py-3 cursor-pointer">Cao</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* --- APPROVAL TOGGLE --- */}
+                <div className="space-y-3 col-span-2 sm:col-span-1">
+                  <label className="text-[11px] font-black text-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
+                    <div className="w-[2px] h-3 bg-brand-secondary rounded-full" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-brand-primary/80" /> Quy trình kiểm duyệt
+                  </label>
+                  <div className={cn(
+                    "w-full border transition-all duration-300 px-4 h-14 rounded-2xl shadow-sm flex items-center justify-between group",
+                    requiresApproval 
+                      ? "bg-brand-primary/[0.03] border-brand-primary/30 shadow-[0_0_15px_rgba(45,212,191,0.05)]" 
+                      : "bg-input-bg border-modal-border hover:border-brand-primary/20"
+                  )}>
+                    <div className="flex flex-col">
+                      <span className={cn(
+                        "text-sm font-bold transition-colors duration-300", 
+                        requiresApproval ? "text-brand-primary" : "text-foreground"
+                      )}>
+                        Cần chờ duyệt?
+                      </span>
+                      <span className="text-[9px] font-medium text-text-dim/60 leading-none">
+                        {isAdminOrOwner 
+                          ? "Bật quy trình phê duyệt cho task này" 
+                          : "Chỉ quản trị viên mới có quyền thiết lập"}
+                      </span>
+                    </div>
+                    <Switch 
+                      checked={requiresApproval}
+                      onCheckedChange={setRequiresApproval}
+                      disabled={!isAdminOrOwner}
+                      className="data-[state=checked]:bg-brand-primary shadow-sm"
+                    />
+                  </div>
                 </div>
 
                 {/* [MULTI-ASSIGNEE] Multi-select Assignee Picker */}
@@ -561,7 +624,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     open={activeDropdown === 'assignee'}
                     onOpenChange={(open) => setActiveDropdown(open ? 'assignee' : null)}
                   >
-                    <PopoverTrigger className="w-full group">
+                    <PopoverTrigger className="w-full group" disabled={!isAdminOrOwner}>
                       <div className="w-full border border-modal-border bg-input-bg hover:border-brand-primary/20 hover:shadow-md transition-[border-color,box-shadow] duration-200 px-4 h-14 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10 flex items-center justify-between gap-3 text-left cursor-pointer">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {activeAssignees.length > 0 ? (
@@ -687,10 +750,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       open={activeDropdown === 'tags'}
                       onOpenChange={(open) => setActiveDropdown(open ? 'tags' : null)}
                     >
-                      <PopoverTrigger className={cn(
-                        "h-7 px-2 text-text-dim hover:text-brand-primary rounded-lg text-[10px] font-black uppercase tracking-widest gap-1 flex items-center transition-colors",
-                        activeDropdown === 'tags' && "text-brand-primary bg-brand-primary/5"
-                      )}>
+                      <PopoverTrigger 
+                        disabled={!isAdminOrOwner}
+                        className={cn(
+                          "h-7 px-2 text-text-dim hover:text-brand-primary rounded-lg text-[10px] font-black uppercase tracking-widest gap-1 flex items-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
+                          activeDropdown === 'tags' && "text-brand-primary bg-brand-primary/5"
+                        )}
+                      >
                         <Plus className="w-3 h-3" /> Thêm nhãn
                       </PopoverTrigger>
                       <PopoverContent className="w-64 p-3 rounded-2xl border-modal-border shadow-2xl bg-modal-bg/95 backdrop-blur-xl" align="start">
@@ -736,8 +802,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onOpenChange={(open) => setActiveDropdown(open ? 'startDate' : null)}
                   >
                     <PopoverTrigger
+                      disabled={!isAdminOrOwner}
                       className={cn(
-                        "w-full justify-start text-left font-bold text-sm px-4 h-14 border border-modal-border bg-input-bg hover:bg-modal-bg hover:border-brand-primary/20 transition-colors duration-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10",
+                        "w-full justify-start text-left font-bold text-sm px-4 h-14 border border-modal-border bg-input-bg hover:bg-modal-bg hover:border-brand-primary/20 transition-colors duration-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10 disabled:opacity-60 disabled:cursor-default",
                         !startDate && "text-text-dim font-medium opacity-60"
                       )}
                     >
@@ -765,8 +832,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onOpenChange={(open) => setActiveDropdown(open ? 'dueDate' : null)}
                   >
                     <PopoverTrigger
+                      disabled={!isAdminOrOwner}
                       className={cn(
-                        "w-full justify-start text-left font-bold text-sm px-4 h-14 border border-modal-border bg-input-bg hover:bg-modal-bg hover:border-brand-primary/20 transition-colors duration-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10",
+                        "w-full justify-start text-left font-bold text-sm px-4 h-14 border border-modal-border bg-input-bg hover:bg-modal-bg hover:border-brand-primary/20 transition-colors duration-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-brand-primary/10 disabled:opacity-60 disabled:cursor-default",
                         !dueDate && "text-text-dim font-medium opacity-60"
                       )}
                     >
@@ -813,7 +881,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onChange={(e) => setEstimatedHours(e.target.value ? Number(e.target.value) : '')}
                     className="h-12 border border-modal-border bg-input-bg hover:border-brand-primary/30 focus-visible:ring-2 focus-visible:ring-brand-primary/10 font-bold text-foreground text-lg px-4 rounded-2xl shadow-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-text-dim/40"
                     placeholder="0"
-                    disabled={subtasks.length > 0}
+                    disabled={subtasks.length > 0 || !isAdminOrOwner}
                   />
                 </div>
                 <div className="space-y-3">
@@ -829,7 +897,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onChange={(e) => setLoggedHours(e.target.value ? Number(e.target.value) : '')}
                     className="h-12 border border-modal-border bg-input-bg hover:border-brand-primary/30 focus-visible:ring-2 focus-visible:ring-brand-primary/10 font-bold text-foreground text-lg px-4 rounded-2xl shadow-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-text-dim/40"
                     placeholder="0"
-                    disabled={subtasks.length > 0}
+                    disabled={subtasks.length > 0 || !isAdminOrOwner}
                   />
                 </div>
               </div>
@@ -868,7 +936,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Thêm mô tả chi tiết cho nhiệm vụ này... (Hỗ trợ Markdown)"
-                      className="w-full h-full min-h-[170px] bg-transparent border-none p-0 text-[15px] text-foreground placeholder:text-text-dim/30 focus-visible:ring-0 resize-none leading-relaxed"
+                      className="w-full h-full min-h-[170px] bg-transparent border-none p-0 text-[15px] text-foreground placeholder:text-text-dim/30 focus-visible:ring-0 resize-none leading-relaxed disabled:opacity-100 disabled:cursor-default"
+                      disabled={!isAdminOrOwner}
                     />
                     <div className="mt-4 flex items-center justify-end border-t border-modal-border pt-3">
                       <span className="text-[10px] font-bold text-text-dim/40 uppercase tracking-widest">Markdown Supported</span>
@@ -885,9 +954,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <Paperclip className="w-3.5 h-3.5 text-brand-primary/80" />
                     <span className="text-[11px] font-black uppercase tracking-[0.25em]">Tệp đính kèm ({attachments.length})</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-[10px] font-black text-brand-primary uppercase tracking-widest hover:bg-brand-primary/5 rounded-xl px-3">
-                    Tải lên tệp mới
-                  </Button>
+                  {isAdminOrOwner && (
+                    <Button variant="ghost" size="sm" className="text-[10px] font-black text-brand-primary uppercase tracking-widest hover:bg-brand-primary/5 rounded-xl px-3">
+                      Tải lên tệp mới
+                    </Button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -20,6 +20,8 @@ export interface TaskDocument extends mongoose.Document {
     phaseId: mongoose.Types.ObjectId | null; // ID của Giai đoạn dự án
     tags: mongoose.Types.ObjectId[]; // Danh sách nhãn cho Task
     deletedAt: Date | null; // [AI-ADDED] Ngày xóa (Cho Soft Delete dự án cha)
+    requiresApproval: boolean; // [AI-ADDED] Cần chờ duyệt trước khi hoàn thành
+    overdueNotificationSent: boolean; // [AI-ADDED] Đã gửi thông báo quá hạn chưa
     createdAt: Date;
     updatedAt: Date;
 }
@@ -41,6 +43,8 @@ const taskSchema = new Schema<TaskDocument>({
     loggedHours: { type: Number, default: 0 },
     tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tag" }],
     phaseId: { type: Schema.Types.ObjectId, ref: "Phase", default: null },
+    requiresApproval: { type: Boolean, default: false },
+    overdueNotificationSent: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
 
 }, {

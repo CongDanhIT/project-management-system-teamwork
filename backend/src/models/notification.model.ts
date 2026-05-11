@@ -6,6 +6,8 @@ export enum NotificationType {
   COMMENT_ADDED = 'COMMENT_ADDED',
   MENTIONED = 'MENTIONED',
   PROJECT_INVITATION = 'PROJECT_INVITATION',
+  TASK_REVIEW_REQUESTED = 'TASK_REVIEW_REQUESTED',
+  TASK_OVERDUE = 'TASK_OVERDUE',
 }
 
 export interface INotification extends Document {

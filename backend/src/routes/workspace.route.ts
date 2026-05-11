@@ -15,7 +15,13 @@ import {
     triggerSlackTestController,
     triggerEmailTestController,
 } from "../controllers/workspace.controller";
+import { getWorkspaceRoadmapController } from "../controllers/roadmap.controller";
+import { getWorkspaceExplorerController } from "../controllers/explorer.controller";
+
 const workspaceRoutes = Router();
+
+workspaceRoutes.get("/:workspaceId/roadmap", getWorkspaceRoadmapController);
+workspaceRoutes.get("/:workspaceId/explorer", getWorkspaceExplorerController);
 
 // tạo workspace
 workspaceRoutes.post("/create/new", createWorkspaceController);

@@ -651,7 +651,7 @@ export default function ProjectTablePage() {
 
           {!isProjectCompleted && (
             <Button
-              className="h-10 bg-brand-primary hover:bg-brand-primary/90 rounded-xl shadow-brand-primary/10"
+              className="h-10 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold rounded-xl shadow-brand-primary/20 transition-all active:scale-95"
               onClick={() => setIsCreateModalOpen(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -678,7 +678,7 @@ export default function ProjectTablePage() {
                 <th className="px-6 py-4 w-16"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+            <tbody className="divide-y divide-slate-200/40 dark:divide-white/5">
               {filteredData.length > 0 ? (
                 filteredData.map(({ parent, subtasks }) => {
                   const parentIdStr = String(parent._id);
@@ -691,11 +691,11 @@ export default function ProjectTablePage() {
                       <tr 
                         onClick={() => handleTaskClick(parent)}
                         className={cn(
-                          "group hover:bg-slate-50/50 dark:hover:bg-white/5 cursor-pointer transition-colors relative",
-                          hasSubtasks && isExpanded && "bg-slate-50/30 dark:bg-white/5"
+                          "group hover:bg-slate-50/80 dark:hover:bg-white/[0.03] cursor-pointer transition-all duration-300 relative",
+                          hasSubtasks && isExpanded && "bg-slate-50/40 dark:bg-white/[0.02]"
                         )}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap relative">
+                        <td className="px-6 py-5 whitespace-nowrap relative">
                           <div className="flex items-center gap-3">
                             {hasSubtasks ? (
                               <button 
@@ -727,9 +727,9 @@ export default function ProjectTablePage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4"><StatusBadge status={parent.status} /></td>
-                        <td className="px-6 py-4"><PriorityBadge priority={parent.priority} /></td>
-                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                        <td className="px-6 py-5"><StatusBadge status={parent.status} /></td>
+                        <td className="px-6 py-5"><PriorityBadge priority={parent.priority} /></td>
+                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400">
                           {parent.assignedTo && parent.assignedTo.length > 0 ? (
                             <div className="flex items-center gap-2">
                               <Avatar className="w-6 h-6 ring-1 ring-slate-200 dark:ring-white/10">
@@ -749,16 +749,16 @@ export default function ProjectTablePage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                            <span className="text-xs font-medium tracking-wider">
+                            <span className="text-xs font-semibold tracking-wider text-slate-600 dark:text-slate-300">
                               {parent.dueDate ? format(new Date(parent.dueDate), 'dd MMM, yyyy', { locale: vi }) : '--'}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500">
+                        <td className="px-6 py-5 text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </td>
@@ -771,44 +771,44 @@ export default function ProjectTablePage() {
                           <tr 
                             key={subtask._id} 
                             onClick={() => handleTaskClick(subtask)}
-                            className="group hover:bg-brand-primary/5 cursor-pointer transition-colors relative"
+                            className="group hover:bg-brand-primary/[0.02] dark:hover:bg-white/[0.02] cursor-pointer transition-all duration-300 relative border-b border-slate-100/50 dark:border-white/[0.02] last:border-none"
                           >
-                            <td className="px-6 py-3 whitespace-nowrap relative">
+                            <td className="px-6 py-3.5 whitespace-nowrap relative">
                               {!isLast ? (
-                                <div className="absolute left-[34px] top-0 bottom-0 w-[1.5px] bg-slate-200 group-hover:bg-brand-primary/30 transition-colors" />
+                                <div className="absolute left-[34px] top-0 bottom-0 w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               ) : (
-                                <div className="absolute left-[34px] top-0 h-[50%] w-[1.5px] bg-slate-200 group-hover:bg-brand-primary/30 transition-colors" />
+                                <div className="absolute left-[34px] top-0 h-[50%] w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               )}
-                              <div className="absolute left-[34px] top-1/2 -translate-y-1/2 w-4 h-[1.5px] bg-slate-200 group-hover:bg-brand-primary/30 transition-colors" />
+                              <div className="absolute left-[34px] top-1/2 -translate-y-1/2 w-4 h-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               <div className="flex items-center gap-3 pl-8">
-                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 group-hover:bg-brand-primary/10 group-hover:text-brand-primary px-1.5 py-0.5 rounded transition-all">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 group-hover:bg-brand-primary/10 group-hover:text-brand-primary px-1.5 py-0.5 rounded transition-all">
                                   {subtask.taskCode}
                                 </span>
                               </div>
                             </td>
                             <td className="px-6 py-3">
-                              <span className="text-sm font-medium text-slate-600 transition-colors group-hover:text-brand-primary">
+                              <span className="text-sm font-medium text-slate-600 dark:text-slate-400 transition-colors group-hover:text-brand-primary">
                                 {subtask.title}
                               </span>
                             </td>
                             <td className="px-6 py-3"><StatusBadge status={subtask.status} /></td>
                             <td className="px-6 py-3"><PriorityBadge priority={subtask.priority} /></td>
-                            <td className="px-6 py-3">
+                            <td className="px-6 py-3.5">
                               {subtask.assignedTo && subtask.assignedTo.length > 0 ? (
-                                <div className="flex items-center gap-2 opacity-80">
-                                  <Avatar className="w-5 h-5 ring-1 ring-slate-100">
+                                <div className="flex items-center gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
+                                  <Avatar className="w-5 h-5 ring-1 ring-slate-100 dark:ring-white/10 shadow-sm">
                                     <AvatarImage src={subtask.assignedTo[0].profilePicture} />
-                                    <AvatarFallback className="text-[9px] bg-slate-50 text-slate-500 font-bold uppercase">
+                                    <AvatarFallback className="text-[9px] bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase">
                                       {subtask.assignedTo[0].name?.[0]}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="text-xs text-slate-500 truncate max-w-[80px]">{subtask.assignedTo[0].name}</span>
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[80px]">{subtask.assignedTo[0].name}</span>
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-slate-300 italic pl-7">Chưa gán</span>
+                                <span className="text-[10px] text-slate-300 dark:text-slate-600 italic pl-7 font-medium">Chưa gán</span>
                               )}
                             </td>
-                            <td className="px-6 py-3 text-slate-400 whitespace-nowrap">
+                            <td className="px-6 py-3.5 text-slate-400 dark:text-slate-500 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-3 h-3 opacity-50" />
                                 <span className="text-[10px] font-medium tracking-wider">
@@ -839,23 +839,23 @@ export default function ProjectTablePage() {
         </div>
 
         {/* Pagination & Footer info */}
-        <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6 text-xs font-medium text-slate-500">
+        <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-6 text-xs font-medium text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md text-brand-primary font-bold">
+              <span className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-md text-brand-primary font-bold">
                 {currentPage}
               </span>
               <span>trên {totalPages} trang</span>
             </div>
-            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-            <span>Tổng số: <strong className="text-slate-900">{totalCount}</strong> tác vụ chính</span>
+            <div className="h-4 w-px bg-slate-200 dark:bg-white/10 hidden sm:block" />
+            <span>Tổng số: <strong className="text-slate-900 dark:text-slate-100">{totalCount}</strong> tác vụ chính</span>
           </div>
 
           <div className="flex items-center gap-2">
             <Button 
               variant="outline" 
               size="sm" 
-              className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-white hover:text-brand-primary transition-all disabled:opacity-30"
+              className="h-8 px-3 rounded-lg border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-brand-primary dark:hover:text-white transition-all disabled:opacity-30"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || loading}
             >
@@ -863,7 +863,7 @@ export default function ProjectTablePage() {
               Trước
             </Button>
             
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-white/10">
                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                  // Simple pagination window logic
                  let pageNum = i + 1;
@@ -879,8 +879,8 @@ export default function ProjectTablePage() {
                      className={cn(
                        "w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all",
                        currentPage === pageNum
-                         ? "bg-white text-brand-primary shadow-sm border border-slate-200/60"
-                         : "text-slate-500 hover:bg-white/80 hover:text-brand-primary"
+                         ? "bg-white dark:bg-slate-700 text-brand-primary shadow-sm border border-slate-200/60 dark:border-white/20"
+                         : "text-slate-500 dark:text-slate-400 hover:bg-white/80 dark:hover:bg-slate-700 hover:text-brand-primary dark:hover:text-white"
                      )}
                    >
                      {pageNum}
@@ -892,7 +892,7 @@ export default function ProjectTablePage() {
             <Button 
               variant="outline" 
               size="sm" 
-              className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 hover:bg-white hover:text-brand-primary transition-all disabled:opacity-30"
+              className="h-8 px-3 rounded-lg border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-brand-primary dark:hover:text-white transition-all disabled:opacity-30"
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages || loading}
             >
@@ -934,6 +934,9 @@ export default function ProjectTablePage() {
         onSubmit={handleCreateTask}
         workspaceId={workspaceId}
         phaseId={phaseId}
+        projectName={project?.name}
+        phaseName={phase?.name}
+        isAdminOrOwner={isPrivileged}
       />
     </div>
   );

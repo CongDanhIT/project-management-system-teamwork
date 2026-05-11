@@ -22,8 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import { Calendar as CalendarIcon, Sparkles, Loader2, Plus } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, 
+  Sparkles, 
+  Loader2, 
+  Plus, 
+  ChevronRight, 
+  Layout, 
+  GitBranch 
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,6 +56,9 @@ interface CreateTaskModalProps {
   initialStatus?: TaskStatus;
   workspaceId?: string; // Dùng để fetch tasks và members
   phaseId?: string; // [FIX] Liên kết task với Phase hiện tại
+  projectName?: string; // [NEW] Hiển thị trong breadcrumb
+  phaseName?: string; // [NEW] Hiển thị trong breadcrumb
+  isAdminOrOwner?: boolean; // [NEW] Phân quyền cho option phê duyệt
 }
 
 const getInitials = (name: string) => {
@@ -79,6 +92,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   initialStatus = TaskStatus.TODO,
   workspaceId,
   phaseId,
+  projectName,
+  phaseName,
+  isAdminOrOwner = false,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -91,6 +107,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [selectedParentId, setSelectedParentId] = useState<string>(parentId || 'none');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -206,6 +223,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         tags: selectedTagIds,
         assignedTo: selectedAssigneeIds,
         phaseId: phaseId, // [FIX] Gửi phaseId lên backend
+        requiresApproval: requiresApproval, // [NEW] Quy trình phê duyệt
       });
       setTitle('');
       setDescription('');
@@ -219,6 +237,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setAiSubtaskSuggestions([]);
       setSelectedTagIds([]);
       setSelectedAssigneeIds([]);
+      setRequiresApproval(false);
       onClose();
     } catch (error) {
       toast.error("Lỗi khi tạo công việc");
@@ -233,6 +252,30 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         <div className="p-8 pb-4 relative">
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-brand-primary/5 to-transparent pointer-events-none" />
           <DialogHeader>
+            <div className="flex items-center gap-2 mb-6 group cursor-default">
+              <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                <span>Workspace</span>
+              </div>
+              <ChevronRight className="w-3 h-3 text-slate-300 dark:text-slate-700" />
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-brand-primary uppercase tracking-widest">
+                <Layout className="w-3 h-3" />
+                <span>{projectName || 'Dự án'}</span>
+              </div>
+              {phaseName && (
+                <>
+                  <ChevronRight className="w-3 h-3 text-slate-300 dark:text-slate-700" />
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-brand-secondary uppercase tracking-widest">
+                    <GitBranch className="w-3 h-3" />
+                    <span>{phaseName}</span>
+                  </div>
+                </>
+              )}
+              <ChevronRight className="w-3 h-3 text-slate-300 dark:text-slate-700" />
+              <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                <span>{parentId ? 'Nhiệm vụ con mới' : 'Nhiệm vụ mới'}</span>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 bg-brand-primary/10 rounded-2xl flex items-center justify-center">
                 <Plus className="text-brand-primary w-6 h-6" />
@@ -602,17 +645,38 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                   <div className="w-1 h-1 bg-brand-primary rounded-full" />
-                  Thanh khoản
+                  Quy trình phê duyệt
                 </label>
-                <Input 
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={estimatedHours}
-                  onChange={(e) => setEstimatedHours(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="Ví dụ: 8"
-                  className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 focus:ring-brand-primary/30 focus:bg-white dark:focus:bg-slate-900 rounded-2xl font-bold shadow-sm transition-all"
-                />
+                <div className={cn(
+                  "h-14 flex items-center justify-between px-5 border rounded-2xl transition-all duration-300 group",
+                  requiresApproval 
+                    ? "bg-brand-primary/[0.03] border-brand-primary/30 shadow-[0_0_15px_rgba(45,212,191,0.05)]" 
+                    : "bg-white/20 dark:bg-white/5 border-white/50 dark:border-white/10 hover:border-brand-primary/20"
+                )}>
+                  <div className="flex flex-col">
+                    <Label 
+                      htmlFor="create-approval-toggle" 
+                      className={cn(
+                        "text-xs font-bold transition-colors duration-300",
+                        requiresApproval ? "text-brand-primary" : "text-slate-700 dark:text-slate-200"
+                      )}
+                    >
+                      Cần chờ duyệt?
+                    </Label>
+                    <span className="text-[9px] text-slate-400 font-medium uppercase tracking-tight">
+                      {isAdminOrOwner 
+                        ? "Bật quy trình phê duyệt cho task này" 
+                        : "Chỉ quản trị viên mới có quyền thiết lập"}
+                    </span>
+                  </div>
+                  <Switch
+                    id="create-approval-toggle"
+                    checked={requiresApproval}
+                    onCheckedChange={setRequiresApproval}
+                    disabled={!isAdminOrOwner}
+                    className="data-[state=checked]:bg-brand-primary shadow-sm"
+                  />
+                </div>
               </div>
             </div>
 

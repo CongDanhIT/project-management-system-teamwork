@@ -638,7 +638,7 @@ export default function WorkspaceDashboardPage() {
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview" className="mt-0 space-y-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="space-y-8">
+          <div className="space-y-12">
             {/* Macro Filter Bar */}
             <DashboardMacroFilter 
               filters={filters} 

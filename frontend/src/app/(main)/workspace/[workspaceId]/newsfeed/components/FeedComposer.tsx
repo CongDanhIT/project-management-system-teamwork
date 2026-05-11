@@ -205,7 +205,7 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
   };
 
   return (
-    <div className="mb-8 p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-ambient dark:shadow-none transition-all duration-300 relative">
+    <div className="mb-8 p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none transition-all duration-300 relative">
       
       {/* Decorative Gradient Line at Top if Expanded */}
       {isExpanded && (

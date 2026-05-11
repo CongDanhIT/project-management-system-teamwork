@@ -290,7 +290,13 @@ export const getPaginatedNotificationsService = async (
   type?: string
 ) => {
   const query: any = { recipientId: userId, workspaceId };
-  if (type) query.type = type;
+  if (type) {
+    if (type.includes(',')) {
+      query.type = { $in: type.split(',') };
+    } else {
+      query.type = type;
+    }
+  }
 
   const total = await NotificationModel.countDocuments(query);
   const notifications = await NotificationModel.find(query)

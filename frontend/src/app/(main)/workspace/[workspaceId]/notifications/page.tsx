@@ -64,6 +64,11 @@ export default function NotificationsPage() {
     }
 
     // Logic điều hướng (copy từ NotificationCenter)
+    if (notification.type === 'TASK_OVERDUE') {
+      // Đã ở trang thông báo rồi nên không cần điều hướng đi đâu cả
+      return;
+    }
+
     if (notification.refType === 'Announcement') {
       router.push(`/workspace/${workspaceId}/newsfeed?announcementId=${notification.refId}${notification.metadata?.commentId ? `&commentId=${notification.metadata.commentId}` : ''}`);
     } else if (notification.refType === 'Task') {
@@ -79,8 +84,10 @@ export default function NotificationsPage() {
       case 'MENTIONED': return <AtSign className="w-4 h-4 text-brand-primary" />;
       case 'COMMENT_ADDED': return <MessageSquare className="w-4 h-4 text-blue-400" />;
       case 'TASK_ASSIGNED': return <User className="w-4 h-4 text-emerald-400" />;
-      case 'TASK_UPDATED': return <Clock className="w-4 h-4 text-amber-400" />;
-      default: return <AlertCircle className="w-4 h-4 text-slate-400" />;
+      case 'TASK_OVERDUE': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'TASK_REVIEW_REQUESTED': return <Check className="w-4 h-4 text-amber-500" />;
+      case 'TASK_UPDATED': return <Clock className="w-4 h-4 text-slate-400" />;
+      default: return <Bell className="w-4 h-4 text-slate-400" />;
     }
   };
 
@@ -88,7 +95,8 @@ export default function NotificationsPage() {
     { label: 'Tất cả', value: undefined },
     { label: 'Nhắc tên', value: 'MENTIONED' },
     { label: 'Bình luận', value: 'COMMENT_ADDED' },
-    { label: 'Giao việc', value: 'TASK_ASSIGNED' },
+    { label: 'Giao việc', value: 'TASK_ASSIGNED,TASK_REVIEW_REQUESTED,TASK_UPDATED' },
+    { label: 'Quá hạn', value: 'TASK_OVERDUE' },
   ];
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader size="lg" /></div>;
@@ -141,7 +149,9 @@ export default function NotificationsPage() {
                   "cursor-pointer transition-all duration-300 border-none rounded-3xl overflow-hidden group",
                   n.isRead 
                     ? "bg-slate-50/50 dark:bg-white/2 opacity-70 hover:opacity-100" 
-                    : "bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/20 dark:shadow-none border-l-4 border-l-brand-primary"
+                    : n.type === 'TASK_OVERDUE'
+                      ? "bg-white dark:bg-slate-900 shadow-xl shadow-red-200/20 dark:shadow-none border-l-4 border-l-red-500"
+                      : "bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/20 dark:shadow-none border-l-4 border-l-brand-primary"
                 )}
               >
                 <CardContent className="p-6 flex gap-6 items-start">
@@ -163,8 +173,22 @@ export default function NotificationsPage() {
                         <span className="text-sm font-black text-slate-900 dark:text-slate-100">
                           {n.senderId?.name}
                         </span>
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-full border-slate-200 dark:border-white/10">
-                          {n.type}
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-[9px] font-black uppercase tracking-tighter rounded-full border-slate-200 dark:border-white/10",
+                            n.type === 'TASK_OVERDUE' ? "text-red-500 border-red-200" :
+                            n.type === 'TASK_ASSIGNED' ? "text-emerald-500 border-emerald-200" :
+                            n.type === 'COMMENT_ADDED' ? "text-blue-500 border-blue-200" :
+                            n.type === 'MENTIONED' ? "text-brand-primary border-brand-primary/20" : ""
+                          )}
+                        >
+                          {n.type === 'MENTIONED' ? 'Nhắc tên' : 
+                           n.type === 'COMMENT_ADDED' ? 'Bình luận' : 
+                           n.type === 'TASK_ASSIGNED' ? 'Giao việc' : 
+                           n.type === 'TASK_OVERDUE' ? 'Quá hạn' : 
+                           n.type === 'TASK_REVIEW_REQUESTED' ? 'Xét duyệt' : 
+                           n.type === 'TASK_UPDATED' ? 'Cập nhật' : n.type}
                         </Badge>
                       </div>
                       <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">

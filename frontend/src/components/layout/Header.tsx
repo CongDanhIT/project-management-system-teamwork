@@ -201,6 +201,7 @@ export default function Header() {
           projects={projects}
           onSubmit={handleCreateTask}
           workspaceId={workspaceId}
+          isAdminOrOwner={isAdminOrOwner}
         />
       )}
     </header>

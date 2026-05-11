@@ -13,6 +13,8 @@ import AssetService from "./asset.service";
 import ProjectAssetModel from "../models/project-asset.model";
 import PhaseModel from "../models/phase.model";
 import AssetFolderModel from "../models/asset-folder.model";
+import { NotificationService } from "./notification.service";
+import { TaskStatusEnum } from "../enums/task.enum";
 
 /**
  * Trích xuất public_id từ Cloudinary URL
@@ -219,11 +221,72 @@ export const cleanupOrphanedR2Files = async () => {
 };
 
 /**
+ * 3. Kiểm tra và gửi thông báo cho các công việc quá hạn (Chạy hàng giờ)
+ */
+export const checkOverdueTasks = async () => {
+    try {
+        const now = new Date();
+        logger.info("[CRON] Đang kiểm tra các công việc quá hạn...");
+
+        // Tìm các task chưa hoàn thành, có hạn chót và đã quá hạn mà chưa gửi thông báo
+        const overdueTasks = await TaskModel.find({
+            status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
+            dueDate: { $ne: null, $lt: now },
+            overdueNotificationSent: { $ne: true },
+            deletedAt: null
+        });
+
+        if (overdueTasks.length === 0) {
+            logger.info("[CRON] Không có công việc mới quá hạn.");
+            return;
+        }
+
+        for (const task of overdueTasks) {
+            // [DATA-INTEGRITY] Chỉ gửi thông báo nếu có người được gán thực sự
+            if (task.assignedTo && task.assignedTo.length > 0) {
+                // Lọc bỏ các ID không hợp lệ nếu có
+                const validAssignees = task.assignedTo.filter(id => id != null);
+                
+                if (validAssignees.length === 0) {
+                    logger.warn(`[CRON] Task ${task.taskCode} quá hạn nhưng không có người gán hợp lệ. Bỏ qua.`);
+                } else {
+                    for (const recipientId of validAssignees) {
+                        await NotificationService.sendTaskOverdueNotification(
+                            task.workspaceId.toString(),
+                            task._id.toString(),
+                            task.createdBy.toString(),
+                            recipientId.toString(),
+                            task.title,
+                            task.taskCode,
+                            task.dueDate as Date,
+                            task.projectId.toString()
+                        );
+                    }
+                    logger.info(`[CRON] Đã gửi thông báo quá hạn cho task ${task.taskCode} tới ${validAssignees.length} người dùng.`);
+                }
+            } else {
+                logger.info(`[CRON] Task ${task.taskCode} quá hạn nhưng không có người gán. Không gửi thông báo.`);
+            }
+
+            // Đánh dấu là đã gửi thông báo để tránh gửi lại
+            task.overdueNotificationSent = true;
+            await task.save();
+        }
+
+        logger.info(`[CRON] Đã gửi thông báo quá hạn cho ${overdueTasks.length} công việc.`);
+    } catch (error) {
+        logger.error("[CRON-ERR] Lỗi khi kiểm tra công việc quá hạn:", { error });
+    }
+};
+
+/**
  * Khởi chạy các tiến trình định kỳ
  */
 export const startCronService = () => {
     // Chạy dọn dẹp thùng rác 1 lần ngay khi khởi động
     cleanupExpiredTrash();
+    // Chạy kiểm tra quá hạn 1 lần ngay khi khởi động (Hữu ích cho môi trường DEV khi backend không mở liên tục)
+    checkOverdueTasks();
 
     // 1. Dọn dẹp thùng rác: Chạy vào 00:00 hàng ngày
     cron.schedule("0 0 * * *", () => {
@@ -244,6 +307,11 @@ export const startCronService = () => {
     cron.schedule("55 23 * * *", () => {
         saveDailySnapshotsForAllWorkspaces();
         saveDailySnapshotsForAllProjects();
+    });
+
+    // 3.1. Kiểm tra task quá hạn: Chạy hàng giờ (phút thứ 0)
+    cron.schedule("0 * * * *", () => {
+        checkOverdueTasks();
     });
 
     // 4. Daily Digest: Chạy vào 08:00 hàng ngày (Giờ Việt Nam)

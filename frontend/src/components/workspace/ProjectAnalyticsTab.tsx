@@ -1043,7 +1043,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                 </div>
 
                 {/* Task Table Container */}
-                <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-[32px] overflow-hidden shadow-sm">
+                <div className="bg-white dark:bg-slate-900/40 dark:backdrop-blur-xl border border-slate-100/80 dark:border-white/5 rounded-[32px] overflow-hidden shadow-sm">
                    <div className="max-h-[460px] overflow-y-auto custom-scrollbar">
                       <Table>
                          <TableHeader className="bg-slate-50/80 dark:bg-white/5 sticky top-0 z-20 backdrop-blur-md">
@@ -1065,7 +1065,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                                     className="group hover:bg-slate-50/50 dark:hover:bg-white/5 border-slate-100 dark:border-white/5 transition-all duration-200 cursor-pointer" 
                                     onClick={() => onTaskClick?.(task)}
                                   >
-                                     <TableCell className="px-6 py-4">
+                                     <TableCell className="px-6 py-5">
                                         <div className="space-y-1.5">
                                            <div className="font-bold text-sm text-slate-700 dark:text-slate-200 group-hover:text-teal-600 transition-colors">
                                               {task.title}
@@ -1096,12 +1096,8 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                                             <StatusBadge status={task.status as any} />
                                          </div>
                                       </TableCell>
-                                      <TableCell className="px-6 py-4">
-                                         <div className="flex items-center justify-center">
-                                            <PriorityBadge priority={task.priority as any} />
-                                         </div>
-                                      </TableCell>
-                                     <TableCell className="px-6 py-4">
+                                     <TableCell className="px-6 py-5 text-center"><PriorityBadge priority={task.priority as any} /></TableCell>
+                                     <TableCell className="px-6 py-5">
                                         <div className="flex justify-end -space-x-2">
                                            {task.assignedTo?.map((u: any) => (
                                               <Avatar key={u._id} className="w-7 h-7 border-2 border-white dark:border-slate-950 shadow-sm hover:z-10 transition-all">
@@ -1133,7 +1129,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                 </div>
 
                 {/* Explorer Footer */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-white/5">
                    <div className="flex items-center gap-2">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                          Hiển thị <span className="text-slate-800 dark:text-white">{filteredTasks.length}</span> kết quả công việc

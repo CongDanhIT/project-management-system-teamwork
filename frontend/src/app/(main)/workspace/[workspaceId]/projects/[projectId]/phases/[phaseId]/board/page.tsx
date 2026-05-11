@@ -299,6 +299,7 @@ export default function ProjectBoardPage() {
         initialStatus={createModalStatus}
         workspaceId={workspaceId}
         phaseId={phaseId}
+        isAdminOrOwner={isPrivileged}
       />
     </div>
   );

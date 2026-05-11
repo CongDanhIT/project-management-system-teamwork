@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../config/env";
 import AssetFolderModel from "../models/asset-folder.model";
@@ -111,9 +111,27 @@ class AssetService {
 
         const files = await ProjectAssetModel.find(filesQuery)
             .populate("createdBy", "name profilePicture")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
-        return { folders, files };
+        // Thêm Signed URL cho mỗi file
+        const filesWithSignedUrls = await Promise.all(files.map(async (file) => {
+            const signedUrl = await this.getObjectSignedUrl(file.storageKey);
+            return { ...file, fileUrl: signedUrl };
+        }));
+
+        return { folders, files: filesWithSignedUrls };
+    }
+
+    // 2.1. Sinh Presigned URL để đọc/tải file
+    async getObjectSignedUrl(storageKey: string) {
+        const command = new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: storageKey,
+        });
+
+        // URL có thời hạn 1 giờ
+        return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
     }
 
     // 3. Sinh Presigned URL để upload trực tiếp từ Frontend

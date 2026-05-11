@@ -33,7 +33,7 @@ export function TeamWidget() {
         </span>
       </div>
       
-      <Card className="rounded-[32px] border border-white dark:border-white/10 bg-white/70 dark:bg-surface-secondary backdrop-blur-xl shadow-ambient dark:shadow-none p-6 transition-all duration-500 overflow-visible">
+      <Card className="rounded-[32px] border border-white dark:border-white/10 bg-white/70 dark:bg-surface-secondary backdrop-blur-xl shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none p-6 transition-all duration-500 overflow-visible">
         <div className="grid grid-cols-4 gap-x-4 gap-y-8">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -50,14 +50,14 @@ export function TeamWidget() {
               return (
                 <div key={member._id?.toString() || member.userId?._id?.toString() || `member-${idx}`} className="group relative flex flex-col items-center hover:z-[100]">
                   {/* Realistic Contact Shadow */}
-                  <div className="absolute bottom-1 w-8 h-1 bg-black/20 dark:bg-black/40 blur-[3px] rounded-[50%] transition-all duration-500 group-hover:scale-90 group-hover:opacity-60" />
+                  <div className="absolute bottom-[-6px] w-8 h-1.5 bg-black/15 dark:bg-black/40 blur-[4px] rounded-[50%] transition-all duration-500 group-hover:scale-110 group-hover:opacity-40" />
 
-                  <div className="relative z-10 hover:-translate-y-1.5 transition-all duration-500">
+                  <div className="relative z-10 hover:-translate-y-2 transition-all duration-500">
                     <UserAvatar
                       user={member}
                       size="sm"
-                      showShadow={false}
-                      className="w-12 h-12 cursor-pointer bg-white dark:bg-slate-800 border-2 border-white dark:border-slate-800"
+                      showShadow={true}
+                      className="w-12 h-12 cursor-pointer bg-white dark:bg-slate-800 border-2 border-white dark:border-slate-800 rounded-full shadow-lg"
                     />
                     
                     {/* Task Stats Badges */}
@@ -106,8 +106,8 @@ export function TeamWidget() {
 
           {isAdminOrOwner && (
             <div className="flex flex-col items-center justify-start group relative hover:z-[100]">
-              <div className="absolute bottom-1 w-8 h-1 bg-black/20 dark:bg-black/40 blur-[3px] rounded-[50%] transition-all duration-500 group-hover:scale-90 group-hover:opacity-60" />
-              <button className="w-12 h-12 rounded-full border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 hover:border-brand-primary hover:text-brand-primary dark:hover:text-[#C7F964] bg-white dark:bg-slate-800 transition-all duration-500 hover:-translate-y-1.5 z-10 relative">
+              <div className="absolute bottom-[-6px] w-8 h-1.5 bg-black/15 dark:bg-black/40 blur-[4px] rounded-[50%] transition-all duration-500 group-hover:scale-110 group-hover:opacity-40" />
+              <button className="w-12 h-12 rounded-full border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 hover:border-brand-primary hover:text-brand-primary dark:hover:text-[#C7F964] bg-white dark:bg-slate-800 transition-all duration-500 hover:-translate-y-2 z-10 relative shadow-sm hover:shadow-md">
                 <Plus className="w-5 h-5 transition-transform duration-500 group-hover:rotate-90" />
               </button>
             </div>

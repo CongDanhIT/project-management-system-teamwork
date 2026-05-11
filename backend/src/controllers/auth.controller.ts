@@ -5,6 +5,7 @@ import { registerService } from "../services/auth.service";
 import logger from "../utils/logger"; // Import logger để ghi lại nhật ký đăng nhập
 import { registerSchema } from "../validation/auth.validation";
 import passport, { session } from "passport";
+import { checkOverdueTasks } from "../services/cron.service";
 
 /**
  * Controller xử lý hành động sau khi xác thực thành công qua Google.
@@ -19,6 +20,10 @@ export const googleLoginCallback = asyncHandler(async (req, res, next) => {
     if (!currentWorkspaceId) {
         return res.redirect(`${env.FRONTEND_ORIGIN}/onboarding`);
     }
+
+    // [DEV-HACK] Kiểm tra quá hạn ngay khi đăng nhập để bù đắp cho việc server không chạy liên tục
+    checkOverdueTasks();
+
     return res.redirect(`${env.FRONTEND_ORIGIN}/workspace/${currentWorkspaceId}`);
 });
 
@@ -51,6 +56,10 @@ export const loginController = asyncHandler(async (req, res, next) => {
             if (err) {
                 return next(err);
             }
+
+            // [DEV-HACK] Kiểm tra quá hạn ngay khi đăng nhập để bù đắp cho việc server không chạy liên tục
+            checkOverdueTasks();
+
             return res.status(HTTP_STATUS.OK).json({
                 success: true,
                 message: "Đăng nhập thành công",

@@ -14,7 +14,7 @@ export const initSocket = (server: HttpServer) => {
             methods: ["GET", "POST"],
             credentials: true
         },
-        transports: ["polling", "websocket"]
+        transports: ["websocket"] // Đồng bộ với client để chỉ dùng websocket
     });
 
     io.on("connection", (socket) => {

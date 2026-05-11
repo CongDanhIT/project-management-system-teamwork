@@ -51,6 +51,7 @@ export const createTaskSchema = z.object({
     subtasks: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
     phaseId: z.string().nullable().optional(),
+    requiresApproval: z.boolean().optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -66,6 +67,7 @@ export const updateTaskSchema = z.object({
     loggedHours: hoursSchema,
     tags: z.array(z.string()).optional(),
     phaseId: z.string().nullable().optional(),
+    requiresApproval: z.boolean().optional(),
 }).partial();
 
 export const getTasksQuerySchema = z.object({
