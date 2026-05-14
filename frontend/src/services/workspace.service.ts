@@ -59,16 +59,26 @@ export const workspaceService = {
     return response.data.workspace as Workspace;
   },
 
-  getWorkspaceAnalytics: async (id: string, projectIds?: string[]) => {
+  getWorkspaceAnalytics: async (id: string, projectIds?: string[], timeFilters?: { year?: number, month?: number, quarter?: number }) => {
     const response = await api.get(`/workspace/analytics/${id}`, {
-      params: { projectIds: projectIds?.join(',') }
+      params: { 
+        projectIds: projectIds?.join(','),
+        year: timeFilters?.year,
+        month: timeFilters?.month,
+        quarter: timeFilters?.quarter
+      }
     });
     return response.data.analytics as WorkspaceAnalytics;
   },
 
-  getWorkspaceAnalyticsHistory: async (id: string, projectIds?: string[]) => {
+  getWorkspaceAnalyticsHistory: async (id: string, projectIds?: string[], timeFilters?: { year?: number, month?: number, quarter?: number }) => {
     const response = await api.get(`/workspace/analytics/history/${id}`, {
-      params: { projectIds: projectIds?.join(',') }
+      params: { 
+        projectIds: projectIds?.join(','),
+        year: timeFilters?.year,
+        month: timeFilters?.month,
+        quarter: timeFilters?.quarter
+      }
     });
     return response.data.history as WorkspaceAnalyticsSnapshot[];
   },
@@ -96,11 +106,16 @@ export const workspaceService = {
     return response.data;
   },
 
-  getMembers: async (workspaceId: string, projectId?: string) => {
+  getMembers: async (workspaceId: string, projectIds?: string[], timeFilters?: { year?: number, month?: number, quarter?: number }) => {
     const response = await api.get(`/workspace/member/${workspaceId}`, {
-      params: { projectId }
+      params: { 
+        projectIds: projectIds?.join(','),
+        year: timeFilters?.year,
+        month: timeFilters?.month,
+        quarter: timeFilters?.quarter
+      }
     });
-    return response.data as { members: any[]; roles: any[] };
+    return response.data;
   },
 
   changeMemberRole: async (workspaceId: string, memberId: string, roleId: string) => {

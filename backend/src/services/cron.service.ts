@@ -287,6 +287,11 @@ export const startCronService = () => {
     cleanupExpiredTrash();
     // Chạy kiểm tra quá hạn 1 lần ngay khi khởi động (Hữu ích cho môi trường DEV khi backend không mở liên tục)
     checkOverdueTasks();
+    
+    // [FIX] Chạy lưu snapshot ngay khi khởi động để tránh mất dữ liệu nếu server bị tắt vào ban đêm
+    // Điều này giúp Dashboard có mốc so sánh chính xác cho ngày hôm nay.
+    saveDailySnapshotsForAllWorkspaces();
+    saveDailySnapshotsForAllProjects();
 
     // 1. Dọn dẹp thùng rác: Chạy vào 00:00 hàng ngày
     cron.schedule("0 0 * * *", () => {
@@ -307,6 +312,8 @@ export const startCronService = () => {
     cron.schedule("55 23 * * *", () => {
         saveDailySnapshotsForAllWorkspaces();
         saveDailySnapshotsForAllProjects();
+    }, {
+        timezone: "Asia/Ho_Chi_Minh"
     });
 
     // 3.1. Kiểm tra task quá hạn: Chạy hàng giờ (phút thứ 0)

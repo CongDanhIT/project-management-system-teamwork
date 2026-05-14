@@ -18,6 +18,7 @@ import { logActivity } from "./activity.service";
 import ActivityLogModel, { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
 import PhaseModel from "../models/phase.model";
 import TaskCommentModel from "../models/task-comment.model";
+import { getDashboardTimeFilterMatch } from "../utils/date";
 import ProjectAssetModel from "../models/project-asset.model";
 import AssetFolderModel from "../models/asset-folder.model";
 import AssetService from "./asset.service";
@@ -110,8 +111,14 @@ export const getWorkspaceByIdService = async (workspaceId: string, userId: strin
     };
     return WorkspaceWithMember;
 };
+
+
 // lấy tất cả member trong workspace kèm thống kê công việc
-export const getWorkspaceMemberService = async (workspaceId: string, projectId?: string) => {
+export const getWorkspaceMemberService = async (
+    workspaceId: string, 
+    projectIds?: string[],
+    timeFilters?: { year?: number, month?: number, quarter?: number }
+) => {
     // 1. Lấy danh sách thành viên và populate thông tin User + Role
     const members = await MemberModel.find({ workspaceId: workspaceId })
         .populate("userId", "name email profilePicture") // Chỉ lấy các trường cần thiết của User
@@ -125,15 +132,19 @@ export const getWorkspaceMemberService = async (workspaceId: string, projectId?:
         deletedAt: null 
     };
     
-    if (projectId) {
-        matchQuery.projectId = new mongoose.Types.ObjectId(projectId);
+    if (projectIds && projectIds.length > 0) {
+        matchQuery.projectId = { $in: projectIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
+
+    // Áp dụng bộ lọc thời gian
+    const timeMatch = getDashboardTimeFilterMatch(timeFilters);
+    Object.assign(matchQuery, timeMatch);
 
     const taskStats = await TaskModel.aggregate([
         { 
             $match: matchQuery 
         },
-        { $unwind: "$assignedTo" },
+        { $unwind: { path: "$assignedTo", preserveNullAndEmptyArrays: false } },
         {
             $group: {
                 _id: { $toString: "$assignedTo" },
@@ -234,7 +245,11 @@ export const getWorkspaceMemberService = async (workspaceId: string, projectId?:
     return { members: membersWithStats, roles };
 };
 // lấy thông tin analytics trong workspace (có hỗ trợ lọc theo danh sách dự án)
-export const getWorkspaceAnalyticsService = async (workspaceId: string, projectIds?: string[]) => {
+export const getWorkspaceAnalyticsService = async (
+    workspaceId: string, 
+    projectIds?: string[],
+    timeFilters?: { year?: number, month?: number, quarter?: number }
+) => {
     const currentDate = new Date();
     const twentyFourHoursLater = new Date(currentDate.getTime() + (24 * 60 * 60 * 1000));
 
@@ -245,6 +260,10 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string, projectI
         const pIds = projectIds.map(id => new mongoose.Types.ObjectId(id));
         baseMatch.projectId = { $in: pIds };
     }
+
+    // Áp dụng bộ lọc thời gian
+    const timeMatch = getDashboardTimeFilterMatch(timeFilters);
+    Object.assign(baseMatch, timeMatch);
 
     // Dùng Promise.all để chạy các truy vấn song song
     const [totalTasks, overdueTasks, completedTasks, inProgressTasks, nearDueDateTasks] = await Promise.all([
@@ -358,10 +377,10 @@ export const getWorkspaceAnalyticsService = async (workspaceId: string, projectI
 export const saveDailySnapshotsForAllWorkspaces = async () => {
     try {
         const workspaces = await WorkspaceModel.find({}).select("_id");
-        logger.info(`[SNAPSHOT] Bắt đầu lưu snapshot cho ${workspaces.length} workspace...`);
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        logger.info(`[SNAPSHOT-WORKSPACE] Bắt đầu lưu snapshot cho ${workspaces.length} workspace (Ngày: ${today.toLocaleDateString()})...`);
 
         for (const workspace of workspaces) {
             const workspaceId = (workspace._id as mongoose.Types.ObjectId).toString();
@@ -664,14 +683,14 @@ export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string, p
                 overdueTasks: 1
             }},
             { $sort: { date: -1 } },
-            { $limit: 14 }
+            { $limit: 90 }
         ]);
     } else {
         history = await WorkspaceAnalyticsSnapshotModel.find({
             workspaceId: workspaceId
         })
         .sort({ date: -1 })
-        .limit(14)
+        .limit(90)
         .lean();
     }
 

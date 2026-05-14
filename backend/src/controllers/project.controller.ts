@@ -53,12 +53,18 @@ export const getAllProjectsInWorkspaceController = asyncHandler(
 
         const role = await getMemberRoleInWorkspace(workspaceId, userId);
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
-        const pageSize = parseInt(req.query.pageSize as string || "10");
-        const pageNumber = parseInt(req.query.pageNumber as string || "1");
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+        const quarter = req.query.quarter ? parseInt(req.query.quarter as string) : undefined;
+
+        const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
+        const pageNumber = req.query.pageNumber ? parseInt(req.query.pageNumber as string) : 1;
+
         const { projects, totalCount, totalPages, skip } = await getProjectsInWorkspaceService(
             workspaceId,
             pageSize,
-            pageNumber
+            pageNumber,
+            { year, month, quarter }
         );
         return res.status(HTTP_STATUS.OK).json({
             success: true,

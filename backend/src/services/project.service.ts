@@ -3,6 +3,7 @@ import ProjectModel from "../models/project.model";
 import TaskModel from "../models/task.model";
 import { TaskStatusEnum } from "../enums/task.enum";
 import { ProjectStatusEnum, ProjectStatusEnumType } from "../enums/projectStatus.enum";
+import { getDashboardTimeFilterMatch } from "../utils/date";
 import ProjectAnalyticsSnapshotModel from "../models/project-analytics-snapshot.model";
 import logger from "../utils/logger";
 import { logActivity } from "./activity.service";
@@ -50,7 +51,12 @@ export const createProjectService = async (workspaceId: string, body: {
 };
 
 
-export const getProjectsInWorkspaceService = async (workspaceId: string, pageSize: number, pageNumber: number) => {
+export const getProjectsInWorkspaceService = async (
+    workspaceId: string, 
+    pageSize: number, 
+    pageNumber: number,
+    timeFilters?: { year?: number, month?: number, quarter?: number }
+) => {
     const skip = (pageNumber - 1) * pageSize;
     const workspaceIdObj = new mongoose.Types.ObjectId(workspaceId);
 
@@ -80,7 +86,9 @@ export const getProjectsInWorkspaceService = async (workspaceId: string, pageSiz
                                 ]
                             }
                         }
-                    }
+                    },
+                    // Lọc task theo thời gian
+                    ...(timeFilters?.year ? [{ $match: getDashboardTimeFilterMatch(timeFilters) }] : [])
                 ],
                 as: "tasks"
             }
@@ -127,6 +135,30 @@ export const getProjectsInWorkspaceService = async (workspaceId: string, pageSiz
                                 $or: [
                                     { $eq: ["$$task.status", TaskStatusEnum.DONE] },
                                     { $eq: ["$$task.status", TaskStatusEnum.COMPLETED] }
+                                ]
+                            }
+                        }
+                    }
+                },
+                inProgressTasks: {
+                    $size: {
+                        $filter: {
+                            input: "$tasks",
+                            as: "task",
+                            cond: { $eq: ["$$task.status", TaskStatusEnum.IN_PROGRESS] }
+                        }
+                    }
+                },
+                overdueTasks: {
+                    $size: {
+                        $filter: {
+                            input: "$tasks",
+                            as: "task",
+                            cond: {
+                                $and: [
+                                    { $ne: ["$$task.dueDate", null] },
+                                    { $lt: ["$$task.dueDate", "$$NOW"] },
+                                    { $not: { $in: ["$$task.status", [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED]] } }
                                 ]
                             }
                         }
@@ -877,10 +909,10 @@ export const saveDailySnapshotsForAllProjects = async () => {
             status: { $nin: [ProjectStatusEnum.PLANNING, ProjectStatusEnum.COMPLETED, ProjectStatusEnum.FROZEN] }
         }).select("_id workspaceId");
 
-        logger.info(`[SNAPSHOT-PROJECT] Bắt đầu lưu snapshot cho ${projects.length} dự án đang hoạt động...`);
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        logger.info(`[SNAPSHOT-PROJECT] Bắt đầu lưu snapshot cho ${projects.length} dự án (Ngày: ${today.toLocaleDateString()})...`);
 
         for (const project of projects) {
             const projectId = (project._id as mongoose.Types.ObjectId).toString();

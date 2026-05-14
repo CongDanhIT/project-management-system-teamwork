@@ -46,10 +46,10 @@ import { vi } from 'date-fns/locale';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2, Download, Table as TableIcon } from 'lucide-react';
+import { FileText, Loader2, Download, Table as TableIcon, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { taskService } from '@/services/task.service';
-import { ExcelService, SummaryItem } from '@/services/excel.service';
+import { exportProjectTasksToExcel } from '@/utils/export-utils';
 import { AdvancedInsightsDrawer } from '@/components/analytics/AdvancedInsightsDrawer';
 import { PhaseService } from '@/services/phase.service';
 import { Sparkles, RotateCcw, Filter } from 'lucide-react';
@@ -192,7 +192,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
 
   const { data: membersData } = useQuery({
     queryKey: ['workspace-members', workspaceId, selectedProjectId],
-    queryFn: () => workspaceService.getMembers(workspaceId, selectedProjectId),
+    queryFn: () => workspaceService.getMembers(workspaceId, [selectedProjectId]),
     enabled: !!workspaceId && !!selectedProjectId,
   });
 
@@ -304,98 +304,10 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     setIsExportingExcel(true);
     try {
       const response = await taskService.getProjectTasks(workspaceId, selectedProjectId, { pageSize: 1000 });
-      const tasks = response.tasks;
-
-      // Tính toán các thông tin Dashboard
-      const now = new Date();
-      const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
       
-      const totalTasks = tasks.length;
-      const doneTasks = tasks.filter((t: any) => t.status === 'DONE').length;
-      const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-      
-      const overdueTasks = tasks.filter((t: any) => 
-        t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) < now
-      );
-      
-      const upcomingTasks = tasks.filter((t: any) => 
-        t.status !== 'DONE' && t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= nextWeek
-      );
-
-      // Xác định hiệu suất dựa trên tỷ lệ hoàn thành
-      let performanceLabel = 'Trung bình';
-      let performanceColor = 'FF718096'; // Gray
-      if (completionRate >= 80) {
-        performanceLabel = 'Xuất sắc';
-        performanceColor = 'FF38A169'; // Green
-      } else if (completionRate >= 50) {
-        performanceLabel = 'Tốt';
-        performanceColor = 'FF3182CE'; // Blue
-      } else if (completionRate < 30 && totalTasks > 5) {
-        performanceLabel = 'Cần cải thiện';
-        performanceColor = 'FFE53E3E'; // Red
-      }
-
-      const summary: SummaryItem[] = [
-        { label: 'Tỷ lệ hoàn thành', value: `${completionRate}%`, color: completionRate > 70 ? 'FF38A169' : 'FFDD6B20' },
-        { label: 'Hiệu suất dự án', value: performanceLabel, color: performanceColor },
-        { label: 'Tổng số Task', value: totalTasks },
-        { label: 'Task đã hoàn thành', value: doneTasks },
-        { label: 'Task quá hạn (Số lượng)', value: overdueTasks.length, color: overdueTasks.length > 0 ? 'FFE53E3E' : 'FF38A169' },
-        { label: 'Task sắp hết hạn (7 ngày tới)', value: upcomingTasks.length, color: upcomingTasks.length > 0 ? 'FFD69E2E' : 'FF38A169' },
-      ];
-
-      // Nếu có task quá hạn, thêm thông tin chi tiết vào summary
-      if (overdueTasks.length > 0) {
-        summary.push({ label: '---', value: '---' }); // Spacer
-        summary.push({ label: 'CẢNH BÁO QUÁ HẠN', value: `Có ${overdueTasks.length} task trễ hạn!`, color: 'FFE53E3E' });
-        
-        overdueTasks.slice(0, 5).forEach((t: any) => {
-          const delayDays = Math.floor((now.getTime() - new Date(t.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-          summary.push({ label: `! ${t.title}`, value: `Trễ ${delayDays} ngày`, color: 'FFE53E3E' });
-        });
-        
-        if (overdueTasks.length > 5) {
-          summary.push({ label: '...', value: `Và ${overdueTasks.length - 5} task khác` });
-        }
-      }
-
-      // Sắp xếp task theo Giai đoạn (Phase) để các task cùng phase nằm cạnh nhau
-      const sortedTasks = [...tasks].sort((a: any, b: any) => {
-        const phaseA = a.phaseId?.name || 'Z_NONE'; 
-        const phaseB = b.phaseId?.name || 'Z_NONE';
-        return phaseA.localeCompare(phaseB);
-      });
-      
-      const columns = [
-        { header: 'Giai đoạn', key: 'phase', width: 25 },
-        { header: 'Mã Task', key: 'taskCode', width: 15 },
-        { header: 'Tên công việc', key: 'title', width: 45 },
-        { header: 'Trạng thái', key: 'status', width: 18 },
-        { header: 'Mức ưu tiên', key: 'priority', width: 15 },
-        { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
-        { header: 'Hạn chót', key: 'dueDate', width: 15 },
-        { header: 'Người thực hiện', key: 'assignees', width: 35 },
-      ];
-
-      const data = sortedTasks.map((t: any) => ({
-        phase: t.phaseId?.name || '---',
-        taskCode: t.taskCode,
-        title: t.title,
-        status: STATUS_LABELS[t.status] || t.status,
-        priority: t.priority,
-        startDate: t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : '',
-        dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '',
-        assignees: t.assignedTo?.map((u: any) => u.name).join(', ') || 'Chưa gán',
-      }));
-
-      await ExcelService.exportToExcel({
-        filename: `Project_${project.name}_Tasks`,
-        sheetName: 'Danh sách công việc',
-        columns,
-        data,
-        title: `BÁO CÁO CÔNG VIỆC DỰ ÁN: ${project.name.toUpperCase()}`,
-        summary
+      await exportProjectTasksToExcel({
+        projectName: project.name,
+        tasks: response.tasks,
       });
 
       toast.success('Xuất file Excel cao cấp thành công');
@@ -562,7 +474,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
           disabled={isExportingExcel}
           className="h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200/60 dark:border-emerald-500/20 shadow-sm whitespace-nowrap text-emerald-600 dark:text-emerald-400"
         >
-          {isExportingExcel ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Table className="w-4 h-4 mr-2" />}
+          {isExportingExcel ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
           <span className="font-bold">Xuất Excel</span>
         </Button>
 

@@ -35,9 +35,15 @@ export interface Project {
 }
 
 export const projectService = {
-  getProjectsByWorkspace: async (workspaceId: string, page = 1, limit = 10) => {
+  getProjectsByWorkspace: async (workspaceId: string, page = 1, limit = 10, timeFilters?: { year?: number, month?: number, quarter?: number }) => {
     const response = await api.get(`/project/workspace/${workspaceId}/all`, {
-      params: { pageNumber: page, pageSize: limit },
+      params: { 
+        pageNumber: page, 
+        pageSize: limit,
+        year: timeFilters?.year,
+        month: timeFilters?.month,
+        quarter: timeFilters?.quarter
+      },
     });
     return response.data;
   },

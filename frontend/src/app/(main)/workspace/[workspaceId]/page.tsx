@@ -67,7 +67,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import ProjectAnalyticsTab from '@/components/workspace/ProjectAnalyticsTab';
 import WorkspaceActivityTab from '@/components/workspace/WorkspaceActivityTab';
 import { ActivityHeatmap } from '@/components/workspace/ActivityHeatmap';
+import { WorkspaceStatusOverview } from '@/components/workspace/WorkspaceStatusOverview';
 import { DashboardMacroFilter, FilterState } from '@/components/workspace/DashboardMacroFilter';
+import MemberPerformanceEvaluation from '@/components/workspace/MemberPerformanceEvaluation';
+import ProjectOverviewTable from "@/components/workspace/ProjectOverviewTable";
 import { isSameMonth, isSameQuarter, isSameYear, parseISO, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, subMonths, subQuarters } from 'date-fns';
 
 
@@ -112,7 +115,21 @@ export default function WorkspaceDashboardPage() {
     healthStatus: 'all'
   });
 
+  // Chế độ "All" (year === 0): không lọc theo thời gian
+  const isAllMode = filters.year === 0;
+
+  // Tạo time params dùng chung cho tất cả query
+  const timeParams = React.useMemo(() => {
+    if (isAllMode) return {}; // All mode: không gửi bộ lọc thời gian
+    return {
+      year: filters.year,
+      month: filters.periodType === 'month' ? filters.periodValue : undefined,
+      quarter: filters.periodType === 'quarter' ? filters.periodValue : undefined
+    };
+  }, [isAllMode, filters.year, filters.periodType, filters.periodValue]);
+
   const isReportMode = React.useMemo(() => {
+    if (isAllMode) return false; // All mode: không phải report mode
     const now = new Date();
     if (filters.year < now.getFullYear()) return true;
     if (filters.periodType === 'month') {
@@ -123,10 +140,11 @@ export default function WorkspaceDashboardPage() {
       if (filters.periodValue < Math.ceil((now.getMonth() + 1) / 3)) return true;
     }
     return false;
-  }, [filters]);
+  }, [filters, isAllMode]);
 
   // Kiểm tra xem kỳ được chọn có phải là tương lai không
   const isFutureMode = React.useMemo(() => {
+    if (isAllMode) return false; // All mode: không phải future mode
     const now = new Date();
     if (filters.year > now.getFullYear()) return true;
     if (filters.year < now.getFullYear()) return false;
@@ -139,21 +157,20 @@ export default function WorkspaceDashboardPage() {
       return filters.periodValue > Math.ceil((now.getMonth() + 1) / 3);
     }
     return false;
-  }, [filters]);
+  }, [filters, isAllMode]);
 
   // Fetch Analytics
   const { data: analytics, isLoading: isAnalyticsLoading } = useQuery({
-    queryKey: ['workspace-analytics', workspaceId, filters.projectIds],
-    queryFn: () => workspaceService.getWorkspaceAnalytics(workspaceId, filters.projectIds),
+    queryKey: ['workspace-analytics', workspaceId, filters.projectIds, filters.year, filters.periodType, filters.periodValue],
+    queryFn: () => workspaceService.getWorkspaceAnalytics(workspaceId, filters.projectIds, timeParams),
     enabled: !!workspaceId,
   });
 
   const { data: analyticsHistory } = useQuery({
-    queryKey: ['workspace-analytics-history', workspaceId, filters.projectIds],
-    queryFn: () => workspaceService.getWorkspaceAnalyticsHistory(workspaceId, filters.projectIds),
+    queryKey: ['workspace-analytics-history', workspaceId, filters.projectIds, filters.year, filters.periodType, filters.periodValue],
+    queryFn: () => workspaceService.getWorkspaceAnalyticsHistory(workspaceId, filters.projectIds, timeParams),
     enabled: !!workspaceId,
   });
-
 
   // Fetch Projects - Giới hạn 4 dự án trọng tâm cho Dashboard
   const { data: projectsData, isLoading: isProjectsLoading } = useQuery({
@@ -162,10 +179,10 @@ export default function WorkspaceDashboardPage() {
     enabled: !!workspaceId,
   });
 
-  // Fetch all projects for analytics selector
-  const { data: allProjectsData } = useQuery({
-    queryKey: ['workspace-projects-all', workspaceId],
-    queryFn: () => projectService.getProjectsByWorkspace(workspaceId, 1, 100),
+  // Fetch All Projects for Analytics & Table - Cần lọc theo thời gian
+  const { data: allProjectsData, isLoading: isAllProjectsLoading } = useQuery({
+    queryKey: ['workspace-projects-all', workspaceId, filters.year, filters.periodType, filters.periodValue],
+    queryFn: () => projectService.getProjectsByWorkspace(workspaceId, 1, 100, isAllMode ? undefined : timeParams),
     enabled: !!workspaceId,
   });
 
@@ -176,12 +193,18 @@ export default function WorkspaceDashboardPage() {
     enabled: !!workspaceId,
   });
 
-  // Fetch Members for TaskDetail
+  // Fetch Members for TaskDetail & Analytics
   const { data: membersData } = useQuery({
-    queryKey: ['workspace-members', workspaceId],
-    queryFn: () => workspaceService.getMembers(workspaceId),
+    queryKey: ['workspace-members', workspaceId, filters.projectIds, filters.year, filters.periodType, filters.periodValue],
+    queryFn: () => workspaceService.getMembers(workspaceId, filters.projectIds, isAllMode ? undefined : timeParams),
     enabled: !!workspaceId,
   });
+
+  React.useEffect(() => {
+    if (membersData) {
+      console.log("Dashboard: Members Data Loaded", membersData?.members?.length, "members found");
+    }
+  }, [membersData]);
 
   // Sort tasks by priority (HIGH > MEDIUM > LOW) and filter by selected projects
   const priorityWeight: Record<string, number> = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
@@ -728,6 +751,26 @@ export default function WorkspaceDashboardPage() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
               <ActivityHeatmap workspaceId={workspaceId} />
             </div>
+
+            {/* Vùng 1: Tổng quan công việc (Mới thêm) */}
+            <WorkspaceStatusOverview 
+              analytics={analytics}
+              analyticsHistory={analyticsHistory || []}
+              projects={allProjectsData?.projects || []}
+              filters={filters}
+            />
+
+            {/* Vùng 2: Đánh giá và so sánh thành viên (Mới thêm) */}
+            <MemberPerformanceEvaluation 
+              members={membersData?.members || []}
+            />
+
+            {/* Vùng 3: Tổng quan theo dự án (Mới thêm) */}
+            <ProjectOverviewTable 
+              projects={(allProjectsData?.projects || []).filter((p: any) => 
+                filters.projectIds.length === 0 || filters.projectIds.includes(String(p._id))
+              )}
+            />
 
           </div>
 

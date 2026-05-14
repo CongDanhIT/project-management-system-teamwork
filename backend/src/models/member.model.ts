@@ -7,9 +7,9 @@ export interface MemberDocument extends mongoose.Document {
     joinedAt: Date;
 }
 const memberSchema = new Schema<MemberDocument>({
-    userId: { type: mongoose.Types.ObjectId, ref: "User", required: true },
-    workspaceId: { type: mongoose.Types.ObjectId, ref: "Workspace", required: true },
-    role: { type: mongoose.Types.ObjectId, ref: "Role", required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    workspaceId: { type: Schema.Types.ObjectId, ref: "Workspace", required: true },
+    role: { type: Schema.Types.ObjectId, ref: "Role", required: true },
     joinedAt: { type: Date, default: Date.now }
 }, {
     timestamps: true

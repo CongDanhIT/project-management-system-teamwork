@@ -69,7 +69,9 @@ export default function NewsfeedPage() {
         
         {/* Header (Simplified in Obsidian Flow) */}
         <div className="mb-10">
-          <h1 className="text-[32px] font-black tracking-tight text-slate-900 dark:text-white">Workspace Feed</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight">
+            Workspace Feed
+          </h1>
           <p className="text-[14px] text-slate-500 mt-2 font-medium">Bảng tin cập nhật, cột mốc và thảo luận của đội nhóm.</p>
         </div>
 

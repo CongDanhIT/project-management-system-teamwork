@@ -186,7 +186,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   };
 
   const currentTags = availableTags.filter(tag => selectedTagIds.includes(tag._id));
-  const currentAssignees = availableMembers.filter(m => selectedAssigneeIds.includes(m.userId?._id || m.userId?.id));
+  const currentAssignees = availableMembers.filter((m: any) => selectedAssigneeIds.includes(m.userId?._id || m.userId?.id));
 
   // Set default project when list changes
   React.useEffect(() => {
@@ -454,7 +454,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 </label>
                 <div className="flex items-center p-2 bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 rounded-2xl h-14 group/assignee-container relative">
                   <div className="flex -space-x-2 overflow-hidden ml-2">
-                    {currentAssignees.map((member) => (
+                    {currentAssignees.map((member: any) => (
                       <Avatar key={member.userId?._id || member.userId?.id} className="w-8 h-8 border-2 border-white dark:border-slate-900 shadow-sm transition-transform hover:scale-110 hover:z-10">
                         <AvatarImage src={member.userId?.profilePicture} className="object-cover" />
                         <AvatarFallback className={cn(

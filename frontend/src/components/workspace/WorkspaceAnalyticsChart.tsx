@@ -43,7 +43,7 @@ const WorkspaceAnalyticsChart = ({ data, macroFilters }: WorkspaceAnalyticsChart
 
   // Xác định chế độ báo cáo từ macroFilters
   const isReportMode = useMemo(() => {
-    if (!macroFilters) return false;
+    if (!macroFilters || macroFilters.year === 0) return false;
     const now = new Date();
     if (macroFilters.year < now.getFullYear()) return true;
     if (macroFilters.periodType === 'month') {
@@ -58,7 +58,7 @@ const WorkspaceAnalyticsChart = ({ data, macroFilters }: WorkspaceAnalyticsChart
 
   // Kiểm tra tương lai
   const isFutureMode = useMemo(() => {
-    if (!macroFilters) return false;
+    if (!macroFilters || macroFilters.year === 0) return false;
     const now = new Date();
     if (macroFilters.year > now.getFullYear()) return true;
     if (macroFilters.year < now.getFullYear()) return false;

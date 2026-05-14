@@ -12,12 +12,14 @@ import {
     getWorkspaceAnalyticsHistoryService,
     getWorkspaceByIdService,
     getWorkspaceMemberService,
+
     updateWorkspaceByIdService,
     resetInviteCodeService,
     removeMemberFromWorkspaceService,
     triggerSlackTestService,
     triggerEmailTestService,
 } from "../services/workspace.service";
+import { getDashboardTimeFilterMatch } from "../utils/date";
 import { roleGuard } from "../utils/roleGuard";
 import { changeWorkSpaceMemberRoleSchema, createWorkspaceSchema, updateWorkspaceSchema, WorkSpaceIdSchema } from "../validation/workspace.validation";
 import { Permissions } from "../enums/role.enum";
@@ -77,8 +79,19 @@ export const getWorkspaceMemberController = asyncHandler(
 
         // Chạy Guard kiểm tra quyền
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
-        const projectId = req.query.projectId as string;
-        const { members, roles } = await getWorkspaceMemberService(workspaceId, projectId);
+        const rawProjectIds = req.query.projectIds || req.query.projectId; // Hỗ trợ cả 2 tên param để tương thích ngược
+        const projectIds = rawProjectIds 
+            ? (Array.isArray(rawProjectIds) 
+                ? (rawProjectIds as string[]) 
+                : (rawProjectIds as string).split(',')
+              ).map(id => id.trim()).filter(id => id !== "") 
+            : undefined;
+
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+        const quarter = req.query.quarter ? parseInt(req.query.quarter as string) : undefined;
+
+        const { members, roles } = await getWorkspaceMemberService(workspaceId, projectIds, { year, month, quarter });
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -108,7 +121,11 @@ export const getWorkspaceAnalyticsController = asyncHandler(
               ).map(id => id.trim()).filter(id => id !== "") 
             : undefined;
         
-        const analytics = await getWorkspaceAnalyticsService(workspaceId, projectIds);
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+        const quarter = req.query.quarter ? parseInt(req.query.quarter as string) : undefined;
+        
+        const analytics = await getWorkspaceAnalyticsService(workspaceId, projectIds, { year, month, quarter });
         // Trả về dữ liệu tạm thời
         return res.status(HTTP_STATUS.OK).json({
             success: true,

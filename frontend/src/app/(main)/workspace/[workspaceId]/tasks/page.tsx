@@ -37,6 +37,7 @@ export default function TaskListPage() {
     projectId: string;
     assigneeIds: string[];
     parentId: string;
+    phaseId: string;
   }>({
     search: '',
     status: 'all',

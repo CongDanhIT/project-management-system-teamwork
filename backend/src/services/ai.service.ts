@@ -619,6 +619,8 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
 export const AdvancedInsightsSchema = z.object({
     bottlenecks: z.array(z.string()).describe("Danh sách các điểm nghẽn hoặc vấn đề phát hiện được từ log"),
     velocity_analysis: z.string().describe("Nhận định chung về tốc độ làm việc của team"),
+    team_performance: z.array(z.string()).describe("Phân tích chi tiết về đóng góp và hiệu suất của từng thành viên"),
+    risk_forecast: z.string().describe("Dự báo các rủi ro tiềm ẩn dựa trên xu hướng hiện tại"),
     recommendations: z.array(z.string()).describe("Các đề xuất hành động cụ thể để cải thiện tình hình")
 });
 
@@ -632,6 +634,8 @@ export const generateAdvancedInsightsService = async (logsData: any[]): Promise<
             return {
                 bottlenecks: ["Không có đủ dữ liệu log để phân tích điểm nghẽn."],
                 velocity_analysis: "Dự án mới hoặc chưa có hoạt động nào được ghi nhận.",
+                team_performance: ["Chưa có dữ liệu thành viên để đánh giá."],
+                risk_forecast: "Dự án hiện tại ổn định do chưa có hoạt động rủi ro nào phát sinh.",
                 recommendations: ["Hãy bắt đầu tạo công việc và cập nhật tiến độ để AI có thể theo dõi."]
             };
         }
@@ -641,29 +645,40 @@ export const generateAdvancedInsightsService = async (logsData: any[]): Promise<
         const { text } = await generateText({
             model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B),
             prompt: `
-Bạn là một Chuyên gia Phân tích Dữ liệu Dự án (Lead Project Data Analyst).
-Nhiệm vụ: Dựa vào lịch sử hoạt động (Activity Logs) của một dự án dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) và đưa ra "Báo cáo phân tích chuyên sâu".
+Bạn là một Chuyên gia Phân tích Dữ liệu Dự án Cao cấp (Senior Project Data Consultant).
+Nhiệm vụ: Dựa vào lịch sử hoạt động (Activity Logs) của dự án dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) toàn diện và đưa ra một "Báo cáo phân tích chuyên sâu" cực kỳ chi tiết.
 
 Dữ liệu log:
 ${promptStr}
 
-YÊU CẦU VỀ NỘI DUNG:
-1. **Tính cụ thể**: Không đưa ra những nhận xét chung chung. Phải chỉ rõ ĐÂU là vấn đề, AI là người liên quan, hoặc MÃ CÔNG VIỆC nào đang gây chú ý (nếu có trong log).
-2. **Dẫn chứng**: Mỗi nhận định về điểm nghẽn hoặc tốc độ phải đi kèm với bằng chứng từ log (ví dụ: "Task X bị đổi trạng thái 5 lần", "User A không có hoạt động nào trong 3 ngày qua").
-3. **Phân tích sâu**: Giải thích TẠI SAO vấn đề đó xảy ra dựa trên dữ liệu.
-4. **Khuyến nghị**: Phải mang tính thực thi cao, không sáo rỗng.
+YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
+1. **Tính cụ thể & Chi tiết**: Không đưa ra những nhận xét chung chung. Mỗi ý phân tích phải là một đoạn văn từ 2-4 câu, giải thích rõ bối cảnh, bằng chứng từ log và hệ quả.
+2. **Dẫn chứng**: Chỉ rõ ĐÂU là vấn đề, AI là người liên quan, hoặc MÃ CÔNG VIỆC nào đang bị đình trệ. Ví dụ: thay vì nói "Team làm chậm", hãy nói "Công việc PRO-12 đã bị đổi trạng thái 4 lần trong 2 ngày qua bởi User A, cho thấy sự lúng túng trong khâu thực thi".
+3. **Phân tích hiệu suất**: Soi kỹ hoạt động của từng người. Ai đang gánh vác nhiều nhất? Ai đang ít tương tác?
+4. **Dự báo rủi ro**: Dựa trên nhịp độ hiện tại, dự án có khả năng trễ hạn không? Có rủi ro về chất lượng hay sự thiếu hụt nhân sự không?
 
 QUY TẮC TRẢ VỀ:
 - CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ.
 - KHÔNG giải thích ngoài lề.
-- Cấu trúc JSON:
+- Cấu trúc JSON bắt buộc:
 {
-  "bottlenecks": [ "Phân tích điểm nghẽn kèm dẫn chứng cụ thể 1", "Phân tích điểm nghẽn kèm dẫn chứng cụ thể 2" ],
-  "velocity_analysis": "Phân tích chi tiết về nhịp độ làm việc, hiệu suất của các thành viên và xu hướng tiến độ dự án hiện tại.",
-  "recommendations": [ "Đề xuất hành động 1 (kèm lý do)", "Đề xuất hành động 2 (kèm lý do)" ]
+  "bottlenecks": [ 
+    "Đoạn văn phân tích chi tiết điểm nghẽn 1 kèm dẫn chứng và hệ quả...", 
+    "Đoạn văn phân tích chi tiết điểm nghẽn 2 kèm dẫn chứng và hệ quả..." 
+  ],
+  "velocity_analysis": "Đoạn văn dài phân tích chi tiết về nhịp độ làm việc toàn đội, so sánh với các kỳ trước (nếu có) và xu hướng tiến độ.",
+  "team_performance": [
+    "Phân tích chi tiết về đóng góp của thành viên A...",
+    "Phân tích chi tiết về đóng góp của thành viên B..."
+  ],
+  "risk_forecast": "Đoạn văn dài dự báo các rủi ro tiềm ẩn trong tương lai và cảnh báo sớm.",
+  "recommendations": [ 
+    "Đề xuất hành động 1 (giải thích rõ lý do tại sao cần làm vậy)", 
+    "Đề xuất hành động 2 (giải thích rõ lý do tại sao cần làm vậy)" 
+  ]
 }
 
-Ngôn ngữ: Tiếng Việt, văn phong chuyên nghiệp, sắc bén như một cố vấn cấp cao.
+Ngôn ngữ: Tiếng Việt chuyên nghiệp, sắc bén, mang tính xây dựng cao.
 `,
         });
 

@@ -69,5 +69,24 @@ Dự án sử dụng chuyển động Kinetic để tạo cảm giác sống đ�
   - **Màu sắc:** Primary Teal (#035D5B) trong Light Mode và Neon Lime (#C7F964) trong Dark Mode.
   - **Kỹ thuật:** Sử dụng CSS Animation thuần túy để tối ưu hiệu năng.
 
+## 7. Hệ thống Báo cáo Thông minh (Reporting Design System)
+Để đảm bảo tính nhất quán giữa ứng dụng và tài liệu xuất bản, hệ thống báo cáo (Word/PDF) tuân thủ các quy tắc sau:
+
+### 7.1. Nhận diện Thương hiệu (Branding)
+- **Logo Text:** Sử dụng "TEAMFLOW" in hoa, font Inter/Calibri Bold, khoảng cách ký tự (character spacing) là 40-50 để tạo cảm giác sang trọng.
+- **Watermark:** Mọi báo cáo AI phải có dòng xác nhận "TeamFlow Intelligence Report" ở Footer kèm timestamp.
+
+### 7.2. Bảng màu & Phân cấp (Color & Hierarchy)
+- **Accent:** Primary Teal (#0D9488) dùng cho Số thứ tự mục (ví dụ: 01, 02) và các đường kẻ phân cách (Borders).
+- **Typography:** 
+  - Tiêu đề mục: Size 14pt, Bold, màu Deep Slate (#0F172A).
+  - Nội dung chính: Size 11pt, màu Deep Slate, Line spacing 1.5.
+  - Thông tin bổ trợ: Size 9pt, màu Slate Gray (#64748B), Italics.
+
+### 7.3. Cấu trúc Tài liệu (Structure Patterns)
+- **Metadata Box:** Thông tin dự án/người xuất được trình bày trong bảng có shading nhẹ (#F8FAFC) và Border trái 3pt màu Teal.
+- **Action Cards:** Các khuyến nghị từ AI được bọc trong vùng shading #F1F5F9 để phân biệt với phần phân tích dữ liệu thô.
+- **Phân trang:** Tiêu đề lớn luôn bắt đầu ở trang mới nếu không đủ 30% diện tích trang hiện tại.
+
 ---
 *Tài liệu này được cập nhật tự động bởi Antigravity dựa trên các quyết định thiết kế mới nhất.*
