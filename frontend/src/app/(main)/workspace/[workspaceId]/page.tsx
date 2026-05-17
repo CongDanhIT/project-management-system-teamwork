@@ -21,9 +21,10 @@ import {
   Users,
   Activity,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Download
 } from 'lucide-react';
-import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -72,6 +73,7 @@ import { DashboardMacroFilter, FilterState } from '@/components/workspace/Dashbo
 import MemberPerformanceEvaluation from '@/components/workspace/MemberPerformanceEvaluation';
 import ProjectOverviewTable from "@/components/workspace/ProjectOverviewTable";
 import { isSameMonth, isSameQuarter, isSameYear, parseISO, endOfMonth, endOfQuarter, startOfMonth, startOfQuarter, subMonths, subQuarters } from 'date-fns';
+import { exportWorkspaceOverviewToWord } from '@/utils/export-utils';
 
 
 
@@ -98,6 +100,8 @@ export default function WorkspaceDashboardPage() {
   const queryClient = useQueryClient();
   const workspaceId = params.workspaceId as string;
   const { isAdminOrOwner } = useWorkspaceRole();
+  const { user } = useAuthStore();
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
@@ -225,6 +229,34 @@ export default function WorkspaceDashboardPage() {
     });
 
 
+
+  // 3. Dữ liệu cho Line Chart (Vận tốc làm việc / Velocity) dùng để xuất báo cáo
+  const velocityData = React.useMemo(() => {
+    if (!analyticsHistory) return [];
+    
+    // Lọc theo bộ lọc thời gian nếu có chọn kỳ cụ thể
+    let filtered = analyticsHistory;
+    if (filters && filters.year !== 0) {
+      filtered = analyticsHistory.filter(item => {
+        const d = parseISO(item.date);
+        if (d.getFullYear() !== filters.year) return false;
+        if (filters.periodType === 'month') {
+          if (filters.periodValue === 0) return true; // Cả năm
+          return (d.getMonth() + 1) === filters.periodValue;
+        }
+        return Math.ceil((d.getMonth() + 1) / 3) === filters.periodValue;
+      });
+    }
+    
+    // Sắp xếp theo thứ tự thời gian tăng dần
+    const sorted = [...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Lấy tối đa 7 ngày gần nhất trong kỳ đã lọc
+    return sorted.slice(-7).map(item => ({
+      date: format(parseISO(item.date), 'dd/MM', { locale: vi }),
+      completed: item.completedTasks || 0
+    }));
+  }, [analyticsHistory, filters]);
 
   // Tính toán Stats dựa trên bộ lọc
   const computedStats = React.useMemo(() => {
@@ -398,6 +430,81 @@ export default function WorkspaceDashboardPage() {
     ];
   }, [analytics, analyticsHistory, filters, isReportMode]);
 
+  const handleExportReport = async () => {
+    try {
+      setIsExporting(true);
+      toast.info("Đang khởi tạo tài liệu báo cáo chiến lược...");
+
+      const workspaceName = allProjectsData?.projects?.[0]?.workspaceId?.name || "Workspace TeamFlow";
+      const reporterName = user?.name || "Thành viên TeamFlow";
+
+      const projectName = filters.projectIds.length === 0
+        ? "Tất cả dự án"
+        : filters.projectIds
+            .map(id => {
+              const proj = allProjectsData?.projects?.find((p: any) => String(p._id) === id);
+              return proj?.name || id;
+            })
+            .join(", ");
+
+      const activeFilters = {
+        year: filters.year,
+        periodType: filters.periodType as 'month' | 'quarter',
+        periodValue: filters.periodValue,
+        projectName,
+        healthStatus: filters.healthStatus
+      };
+
+      const totalTasks = computedStats.find(s => s.label === 'Tổng công việc')?.value || 0;
+      const inProgressTasks = computedStats.find(s => s.label === 'Đang thực hiện')?.value || 0;
+      const completedTasks = computedStats.find(s => s.label === 'Đã hoàn thành')?.value || 0;
+      const overdueTasks = computedStats.find(s => s.label === 'Quá hạn')?.value || 0;
+      const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      const stats = {
+        totalTasks,
+        inProgressTasks,
+        completedTasks,
+        overdueTasks,
+        completionRate
+      };
+
+      const members = (membersData?.members || []).map((m: any) => {
+        const total = m.taskStats?.totalTasks || 0;
+        const completed = m.taskStats?.completedTasks || 0;
+        const overdue = m.taskStats?.overdueTasks || 0;
+        const inProgress = Math.max(0, total - completed - overdue);
+        const rawRole = m.role || "MEMBER";
+        const role = rawRole === "OWNER" ? "Chủ sở hữu" : rawRole === "ADMIN" ? "Quản trị viên" : "Thành viên";
+        return {
+          name: m.userId?.name || m.name || "Ẩn danh",
+          email: m.userId?.email || m.email || "",
+          role,
+          totalTasks: total,
+          completedTasks: completed,
+          inProgressTasks: inProgress,
+          overdueTasks: overdue
+        };
+      });
+
+      await exportWorkspaceOverviewToWord({
+        workspaceName,
+        reporterName,
+        activeFilters,
+        stats,
+        velocityData,
+        members
+      });
+
+      toast.success("Xuất báo cáo thành công! Tải xuống tài liệu bắt đầu.");
+    } catch (error) {
+      console.error("Lỗi xuất báo cáo Word:", error);
+      toast.error("Không thể xuất báo cáo Word. Vui lòng thử lại!");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   const isLoading = isAnalyticsLoading || isProjectsLoading || isTasksLoading;
 
@@ -463,8 +570,6 @@ export default function WorkspaceDashboardPage() {
       toast.error("Không thể cập nhật trạng thái yêu thích");
     }
   });
-
-  const { user } = useAuthStore();
   const currentUserId = user?.id;
 
   const handleEditProject = (p: Project) => {
@@ -662,12 +767,33 @@ export default function WorkspaceDashboardPage() {
         {/* Tab 1: Overview */}
         <TabsContent value="overview" className="mt-0 space-y-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <div className="space-y-12">
-            {/* Macro Filter Bar */}
-            <DashboardMacroFilter 
-              filters={filters} 
-              setFilters={setFilters} 
-              projects={allProjectsData?.projects || []} 
-            />
+            {/* Macro Filter Bar & Export Button */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 bg-slate-50/50 dark:bg-slate-800/10 p-4 rounded-[32px] border border-slate-200/50 dark:border-white/5 backdrop-blur-md">
+              <div className="flex-1">
+                <DashboardMacroFilter 
+                  filters={filters} 
+                  setFilters={setFilters} 
+                  projects={allProjectsData?.projects || []} 
+                />
+              </div>
+              <Button
+                onClick={handleExportReport}
+                disabled={isExporting}
+                className="h-14 px-8 rounded-2xl font-black text-xs uppercase tracking-widest bg-[#035D5B] dark:bg-[#C7F964] text-white dark:text-[#035D5B] hover:scale-105 transition-all shadow-glow-sm border border-transparent active:scale-95 flex items-center justify-center gap-2 group shrink-0"
+              >
+                {isExporting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent animate-spin rounded-full" />
+                    Đang xuất...
+                  </span>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 transition-transform group-hover:translate-y-0.5" />
+                    Xuất Báo Cáo
+                  </>
+                )}
+              </Button>
+            </div>
 
             {/* Stats Bento Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

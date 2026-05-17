@@ -751,3 +751,568 @@ export const exportAIInsightsToWord = async ({
   const fileName = `Bao_cao_AI_${projectName.replace(/\s+/g, '_')}_${new Date().getTime()}.docx`;
   saveAs(blob, fileName);
 };
+
+export interface WorkspaceOverviewWordParams {
+  workspaceName: string;
+  reporterName: string;
+  activeFilters: {
+    year: number;
+    periodType: 'month' | 'quarter';
+    periodValue: number;
+    projectName: string;
+    healthStatus: string;
+  };
+  stats: {
+    totalTasks: number;
+    inProgressTasks: number;
+    completedTasks: number;
+    overdueTasks: number;
+    completionRate: number;
+  };
+  velocityData: Array<{ date: string; completed: number }>;
+  members: any[];
+}
+
+export const exportWorkspaceOverviewToWord = async ({
+  workspaceName,
+  reporterName = "Thành viên TeamFlow",
+  activeFilters,
+  stats,
+  velocityData = [],
+  members = []
+}: WorkspaceOverviewWordParams) => {
+  const periodLabel = activeFilters.year === 0
+    ? "Toàn bộ thời gian (All-time)"
+    : activeFilters.periodType === 'month'
+      ? (activeFilters.periodValue === 0 ? `Năm ${activeFilters.year} (Cả năm)` : `Tháng ${activeFilters.periodValue}/${activeFilters.year}`)
+      : `Quý ${activeFilters.periodValue}/${activeFilters.year}`;
+
+  const processedMembers = (members || []).map((m: any) => {
+    const name = m.name || m.userId?.name || "Thành viên";
+    const total = m.totalTasks ?? m.total ?? m.taskStats?.totalTasks ?? 0;
+    const completed = m.completedTasks ?? m.completed ?? m.taskStats?.completedTasks ?? 0;
+    const overdue = m.overdueTasks ?? m.overdue ?? m.taskStats?.overdueTasks ?? 0;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { name, total, completed, overdue, rate };
+  });
+
+  // Tìm Top Performer
+  let topPerformer = "Chưa ghi nhận";
+  const highPerformers = [...processedMembers]
+    .filter(m => m.completed > 0)
+    .sort((a, b) => b.rate - a.rate || b.completed - a.completed);
+  if (highPerformers.length > 0) {
+    topPerformer = `${highPerformers[0].name} (${highPerformers[0].rate}% hoàn thành, ${highPerformers[0].completed} task)`;
+  }
+
+  // Tìm Workload Champion
+  let workloadChampion = "Chưa ghi nhận";
+  const busyMembers = [...processedMembers].sort((a, b) => b.total - a.total);
+  if (busyMembers.length > 0 && busyMembers[0].total > 0) {
+    workloadChampion = `${busyMembers[0].name} (Gánh vác ${busyMembers[0].total} task)`;
+  }
+
+  // Tìm Overdue Warning
+  let overdueWarning = "Không có thành viên trễ hạn";
+  const strugglingMembers = [...processedMembers]
+    .filter(m => m.overdue > 0)
+    .sort((a, b) => b.overdue - a.overdue);
+  if (strugglingMembers.length > 0) {
+    overdueWarning = `${strugglingMembers[0].name} (Trễ hạn ${strugglingMembers[0].overdue} task)`;
+  }
+
+  // Tiêu đề bảng thành viên
+  const tableHeaderRow = new TableRow({
+    children: [
+      new TableCell({
+        shading: { fill: SLATE_COLOR },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          right: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+        },
+        children: [new Paragraph({ children: [new TextRun({ text: "Thành viên", bold: true, color: "FFFFFF" })] })]
+      }),
+      new TableCell({
+        shading: { fill: SLATE_COLOR },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          right: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+        },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tổng việc giao", bold: true, color: "FFFFFF" })] })]
+      }),
+      new TableCell({
+        shading: { fill: SLATE_COLOR },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          right: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+        },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Đã hoàn thành", bold: true, color: "FFFFFF" })] })]
+      }),
+      new TableCell({
+        shading: { fill: SLATE_COLOR },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          right: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+        },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Quá hạn", bold: true, color: "FFFFFF" })] })]
+      }),
+      new TableCell({
+        shading: { fill: SLATE_COLOR },
+        margins: { top: 120, bottom: 120, left: 120, right: 120 },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          left: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+          right: { style: BorderStyle.SINGLE, size: 1, color: BRAND_COLOR },
+        },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Hiệu suất", bold: true, color: "FFFFFF" })] })]
+      })
+    ]
+  });
+
+  const memberRows = processedMembers.length === 0
+    ? [new TableRow({
+        children: [
+          new TableCell({
+            margins: { top: 100, bottom: 100, left: 120, right: 120 },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+            },
+            columnSpan: 5,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Chưa ghi nhận dữ liệu nhân sự trong kỳ này", italics: true, color: TEXT_SECONDARY })] })]
+          })
+        ]
+      })]
+    : processedMembers.map((m, index) => {
+        const rowBg = index % 2 === 1 ? "F8FAFC" : "FFFFFF";
+        return new TableRow({
+          children: [
+            new TableCell({
+              shading: { fill: rowBg },
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              },
+              children: [new Paragraph({ children: [new TextRun({ text: m.name, bold: true, color: SLATE_COLOR })] })]
+            }),
+            new TableCell({
+              shading: { fill: rowBg },
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(m.total), color: SLATE_COLOR })] })]
+            }),
+            new TableCell({
+              shading: { fill: rowBg },
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(m.completed), color: "10B981", bold: m.completed > 0 })] })]
+            }),
+            new TableCell({
+              shading: { fill: rowBg },
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(m.overdue), color: m.overdue > 0 ? "EF4444" : SLATE_COLOR, bold: m.overdue > 0 })] })]
+            }),
+            new TableCell({
+              shading: { fill: rowBg },
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+              },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${m.rate}%`, bold: true, color: BRAND_COLOR })] })]
+            })
+          ]
+        });
+      });
+
+  // Tạo bảng chỉ số thống kê
+  const statsTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({ shading: { fill: SLATE_COLOR }, margins: { top: 100, bottom: 100, left: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "Chỉ số", bold: true, color: "FFFFFF" })] })] }),
+          new TableCell({ shading: { fill: SLATE_COLOR }, margins: { top: 100, bottom: 100, left: 120 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Giá trị thực tế", bold: true, color: "FFFFFF" })] })] }),
+        ]
+      }),
+      new TableRow({
+        children: [
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ children: [new TextRun({ text: "Tổng số công việc giao", bold: true, color: SLATE_COLOR })] })] }),
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(stats.totalTasks), bold: true, color: SLATE_COLOR })] })] }),
+        ]
+      }),
+      new TableRow({
+        children: [
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ children: [new TextRun({ text: "Đã hoàn thành", bold: true, color: SLATE_COLOR })] })] }),
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(stats.completedTasks), bold: true, color: "10B981" })] })] }),
+        ]
+      }),
+      new TableRow({
+        children: [
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ children: [new TextRun({ text: "Đang thực hiện", bold: true, color: SLATE_COLOR })] })] }),
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(stats.inProgressTasks), bold: true, color: "F59E0B" })] })] }),
+        ]
+      }),
+      new TableRow({
+        children: [
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ children: [new TextRun({ text: "Cảnh báo quá hạn", bold: true, color: SLATE_COLOR })] })] }),
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(stats.overdueTasks), bold: true, color: stats.overdueTasks > 0 ? "EF4444" : "10B981" })] })] }),
+        ]
+      }),
+      new TableRow({
+        children: [
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ children: [new TextRun({ text: "Tỷ lệ hoàn thành công việc", bold: true, color: SLATE_COLOR })] })] }),
+          new TableCell({ margins: { top: 100, bottom: 100, left: 120 }, borders: { bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR } }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${stats.completionRate}%`, bold: true, color: BRAND_COLOR })] })] }),
+        ]
+      })
+    ]
+  });
+
+  // Tạo bảng nhịp độ / vận tốc
+  const velocityRows = velocityData.length === 0
+    ? [new TableRow({
+        children: [
+          new TableCell({
+            margins: { top: 100, bottom: 100, left: 120 },
+            columnSpan: 2,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Chưa ghi nhận dữ liệu hoàn thành công việc", italics: true, color: TEXT_SECONDARY })] })]
+          })
+        ]
+      })]
+    : velocityData.map((item, index) => {
+        const rowBg = index % 2 === 1 ? "F8FAFC" : "FFFFFF";
+        return new TableRow({
+          children: [
+            new TableCell({ shading: { fill: rowBg }, margins: { top: 80, bottom: 80, left: 120 }, children: [new Paragraph({ children: [new TextRun({ text: item.date, color: SLATE_COLOR })] })] }),
+            new TableCell({ shading: { fill: rowBg }, margins: { top: 80, bottom: 80, left: 120 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.completed} task`, bold: true, color: BRAND_COLOR })] })] }),
+          ]
+        });
+      });
+
+  const velocityTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({ shading: { fill: SLATE_COLOR }, margins: { top: 100, bottom: 100, left: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "Mốc thời gian", bold: true, color: "FFFFFF" })] })] }),
+          new TableCell({ shading: { fill: SLATE_COLOR }, margins: { top: 100, bottom: 100, left: 120 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Số lượng hoàn thành", bold: true, color: "FFFFFF" })] })] }),
+        ]
+      }),
+      ...velocityRows
+    ]
+  });
+
+  const doc = new Document({
+    styles: {
+      paragraphStyles: [
+        {
+          id: "normal",
+          name: "Normal",
+          run: {
+            size: 22,
+            font: "Inter, Calibri",
+          },
+          paragraph: {
+            spacing: { line: 360, before: 120, after: 120 },
+          },
+        },
+      ],
+    },
+    sections: [
+      {
+        children: [
+          // Branding Header
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "TEAMFLOW",
+                bold: true,
+                size: 28,
+                color: BRAND_COLOR,
+                characterSpacing: 40,
+              }),
+              new TextRun({
+                text: " | EXECUTIVE WORKSPACE REPORT",
+                size: 20,
+                color: TEXT_SECONDARY,
+              }),
+            ],
+            spacing: { after: 400 },
+          }),
+
+          // Main Title
+          new Paragraph({
+            text: "BÁO CÁO CHIẾN LƯỢC TOÀN CẢNH WORKSPACE",
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.LEFT,
+            spacing: { after: 200 },
+          }),
+
+          // Meta box Table
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    shading: { fill: "F8FAFC" },
+                    margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                    borders: {
+                      top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                      bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                      left: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                      right: { style: BorderStyle.NONE },
+                    },
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "WORKSPACE: ", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: workspaceName.toUpperCase(), bold: true, size: 22, color: SLATE_COLOR }),
+                        ],
+                      }),
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: "KỲ BÁO CÁO: ", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: periodLabel, size: 20, bold: true, color: BRAND_COLOR }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    shading: { fill: "F8FAFC" },
+                    margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                    borders: {
+                      top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                      bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                      left: { style: BorderStyle.NONE },
+                      right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                    },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.RIGHT,
+                        children: [
+                          new TextRun({ text: "NGƯỜI XUẤT BÁO CÁO: ", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: reporterName, size: 20, bold: true }),
+                        ],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.RIGHT,
+                        children: [
+                          new TextRun({ text: "TRẠNG THÁI SỨC KHỎE: ", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: activeFilters.healthStatus === 'all' ? "Tất cả" : activeFilters.healthStatus.toUpperCase(), size: 20 }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+
+          new Paragraph({ spacing: { after: 300 } }),
+
+          // 01. Chỉ số Thống kê Chiến lược
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "01. CHỈ SỐ THỐNG KÊ CHIẾN LƯỢC",
+                bold: true,
+                size: 26,
+                color: BRAND_COLOR,
+              }),
+            ],
+            spacing: { before: 200, after: 150 },
+          }),
+          statsTable,
+
+          new Paragraph({ spacing: { after: 300 } }),
+
+          // 02. Biểu đồ & Nhịp độ Hoàn thành
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "02. BIỂU ĐỒ & NHỊP ĐỘ HOÀN THÀNH CÔNG VIỆC (VELOCITY)",
+                bold: true,
+                size: 26,
+                color: BRAND_COLOR,
+              }),
+            ],
+            spacing: { before: 200, after: 150 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Vận tốc hoàn thành công việc là chỉ số quan trọng phản ánh năng lực sản xuất của toàn bộ Workspace qua các mốc thời gian cụ thể trong kỳ báo cáo:",
+                italics: true,
+                color: TEXT_SECONDARY
+              }),
+            ],
+            spacing: { after: 150 },
+          }),
+          velocityTable,
+
+          new Paragraph({ spacing: { after: 300 } }),
+
+          // 03. Đánh giá & So sánh Hiệu suất Thành viên
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "03. ĐÁNH GIÁ & SO SÀNH HIỆU SUẤT THÀNH VIÊN",
+                bold: true,
+                size: 26,
+                color: BRAND_COLOR,
+              }),
+            ],
+            spacing: { before: 200, after: 150 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Dưới đây là bảng xếp hạng hiệu suất làm việc chi tiết của từng nhân sự tham gia Workspace trong kỳ báo cáo vừa qua:",
+                italics: true,
+                color: TEXT_SECONDARY
+              }),
+            ],
+            spacing: { after: 150 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              tableHeaderRow,
+              ...memberRows
+            ]
+          }),
+
+          new Paragraph({ spacing: { before: 250, after: 150 } }),
+
+          // Hộp Tiêu điểm nhân sự (Performance Spotlight Box)
+          new Paragraph({
+            text: "🏆 TIÊU ĐIỂM HIỆU SUẤT NHÂN SỰ TRONG KỲ",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 100, after: 100 }
+          }),
+          new Paragraph({
+            shading: { fill: "F1F5F9" },
+            indent: { left: 200 },
+            children: [
+              new TextRun({ text: "• Gương mặt vàng (Top Performer): ", bold: true, color: SLATE_COLOR }),
+              new TextRun({ text: topPerformer, color: "10B981", bold: true }),
+              new TextRun({ text: "• Gánh vác nhiều nhất (Workload Champion): ", bold: true, color: SLATE_COLOR, break: 1 }),
+              new TextRun({ text: workloadChampion, color: BRAND_COLOR }),
+              new TextRun({ text: "• Cần hỗ trợ khẩn cấp (Overdue Warning): ", bold: true, color: SLATE_COLOR, break: 1 }),
+              new TextRun({ text: overdueWarning, color: strugglingMembers.length > 0 ? "EF4444" : "10B981", bold: strugglingMembers.length > 0 }),
+            ],
+            spacing: { before: 150, after: 150 }
+          }),
+
+          new Paragraph({ spacing: { after: 300 } }),
+
+          // 04. Khuyến nghị & Đề xuất Hành động
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "04. KHUYẾN NGHỊ & ĐỀ XUẤT HÀNH ĐỘNG CHIẾN LƯỢC",
+                bold: true,
+                size: 26,
+                color: BRAND_COLOR,
+              }),
+            ],
+            spacing: { before: 200, after: 150 },
+          }),
+          new Paragraph({
+            bullet: { level: 0 },
+            children: [
+              new TextRun({
+                text: stats.overdueTasks > 0
+                  ? `Cần ưu tiên tập trung xử lý dứt điểm ${stats.overdueTasks} công việc đang bị trễ hạn để bảo vệ tiến độ chung của Workspace.`
+                  : "Tiến độ Workspace cực kỳ xuất sắc, không ghi nhận công việc trễ hạn nào. Hãy tiếp tục duy trì đà làm việc này."
+              })
+            ]
+          }),
+          new Paragraph({
+            bullet: { level: 0 },
+            children: [
+              new TextRun({
+                text: stats.completionRate < 50
+                  ? `Tỷ lệ hoàn thành công việc hiện tại là ${stats.completionRate}% (ở mức trung bình thấp). Đề xuất tổ chức họp kiểm điểm để tối ưu quy trình.`
+                  : `Tỷ lệ hoàn thành công việc rất khả quan (${stats.completionRate}%). Khuyến khích tuyên dương các thành viên có đóng góp tích cực.`
+              })
+            ]
+          }),
+          new Paragraph({
+            bullet: { level: 0 },
+            children: [
+              new TextRun({
+                text: strugglingMembers.length > 0
+                  ? "Phân bổ lại tài nguyên nhân lực một cách hợp lý, giảm bớt tải cho các thành viên đang quá tải hoặc có tỷ lệ trễ hạn cao."
+                  : "Duy trì cơ cấu phân chia công việc hiện tại để bảo toàn hiệu năng tối ưu của cả đội ngũ."
+              })
+            ]
+          }),
+
+          // Footer info
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            border: {
+              top: { color: BORDER_COLOR, space: 1, style: BorderStyle.SINGLE, size: 1 },
+            },
+            children: [
+              new TextRun({
+                text: "\nBáo cáo này được bảo mật và tạo ra bởi trí tuệ nhân tạo TeamFlow Intelligence.",
+                size: 18,
+                color: TEXT_SECONDARY,
+                italics: true,
+              }),
+              new TextRun({
+                text: `\nNgày tạo: ${new Date().toLocaleDateString('vi-VN')} | Người xuất: ${reporterName}`,
+                size: 16,
+                color: TEXT_SECONDARY,
+              }),
+            ],
+            spacing: { before: 1000 },
+          }),
+        ]
+      }
+    ]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const fileName = `Bao_cao_tong_quan_Workspace_${new Date().getTime()}.docx`;
+  saveAs(blob, fileName);
+};
