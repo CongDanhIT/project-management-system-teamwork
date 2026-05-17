@@ -655,7 +655,102 @@ export const removeMemberFromWorkspaceService = async (
  * Dùng cho biểu đồ xu hướng (Activity Pulse)
  * Đã cập nhật: Tự động gộp dữ liệu real-time của ngày hôm nay vào điểm cuối
  */
-export const getWorkspaceAnalyticsHistoryService = async (workspaceId: string, projectIds?: string[]) => {
+export const getWorkspaceAnalyticsHistoryService = async (
+    workspaceId: string,
+    projectIds?: string[],
+    timeFilters?: { year?: number, month?: number, quarter?: number }
+) => {
+    const { year, month, quarter } = timeFilters || {};
+
+    if (year && year !== 0) {
+        // Lấy startDate và endDate của kỳ lọc
+        let startDate: Date;
+        let endDate: Date;
+
+        if (month) {
+            startDate = new Date(year, month - 1, 1);
+            endDate = new Date(year, month, 0, 23, 59, 59, 999);
+        } else if (quarter) {
+            const startMonth = (quarter - 1) * 3;
+            startDate = new Date(year, startMonth, 1);
+            endDate = new Date(year, startMonth + 3, 0, 23, 59, 59, 999);
+        } else {
+            startDate = new Date(year, 0, 1);
+            endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Giới hạn ngày cuối cùng trong quá khứ/hiện tại
+        const periodEndDate = endDate < today ? endDate : today;
+
+        const pIds = projectIds && projectIds.length > 0
+            ? projectIds.map(id => new mongoose.Types.ObjectId(id))
+            : undefined;
+
+        // Lấy các task có ngày tạo trong kỳ lọc
+        const tasks = await TaskModel.find({
+            workspaceId,
+            deletedAt: null,
+            ...(pIds ? { projectId: { $in: pIds } } : {}),
+            createdAt: { $gte: startDate, $lte: endDate }
+        }).lean();
+
+        const historyData: any[] = [];
+        const currentDay = new Date(startDate);
+        currentDay.setHours(0, 0, 0, 0);
+
+        while (currentDay <= periodEndDate) {
+            const dayEnd = new Date(currentDay);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            let totalTasks = 0;
+            let completedTasks = 0;
+            let inProgressTasks = 0;
+            let overdueTasks = 0;
+
+            for (const task of tasks) {
+                const taskCreatedAt = new Date(task.createdAt);
+                if (taskCreatedAt > dayEnd) continue;
+
+                totalTasks++;
+
+                const isCompleted = task.status === TaskStatusEnum.DONE || task.status === TaskStatusEnum.COMPLETED;
+                const completedTime = task.completedAt 
+                    ? new Date(task.completedAt) 
+                    : (isCompleted ? new Date((task as any).updatedAt || task.createdAt) : null);
+
+                if (isCompleted && completedTime && completedTime <= dayEnd) {
+                    completedTasks++;
+                } else {
+                    inProgressTasks++;
+
+                    if (task.dueDate) {
+                        const taskDueDate = new Date(task.dueDate);
+                        if (taskDueDate < dayEnd) {
+                            overdueTasks++;
+                        }
+                    }
+                }
+            }
+
+            historyData.push({
+                workspaceId: new mongoose.Types.ObjectId(workspaceId),
+                date: new Date(currentDay),
+                totalTasks,
+                completedTasks,
+                inProgressTasks,
+                overdueTasks,
+                isRealTime: currentDay.toDateString() === today.toDateString()
+            });
+
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        return historyData;
+    }
+
     // 1. Lấy dữ liệu analytics thực tế hiện tại
     const currentData = await getWorkspaceAnalyticsService(workspaceId, projectIds);
 

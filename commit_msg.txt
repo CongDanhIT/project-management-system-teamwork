@@ -1,0 +1,7 @@
+fix(analytics): sửa lỗi biểu đồ nhịp độ khi lọc theo tháng
+
+- Sửa lỗi Controller trích xuất query parameters (year, month, quarter) và truyền xuống Service.
+- Nâng cấp getWorkspaceAnalyticsHistoryService để tính toán động dữ liệu analytics hàng ngày dựa trên các task được tạo trong kỳ lọc.
+- Thiết lập cơ chế fallback về ngày hôm nay nếu kỳ lọc chứa ngày hiện tại/tương lai, đảm bảo dữ liệu khớp tuyệt đối với các thẻ thống kê.
+- Viết test thủ công workspace.test.ts để kiểm chứng độ chính xác của logic tính toán động và tích lũy snapshot.
+- Toàn bộ 11/11 test cases đã pass thành công với exit code 0.

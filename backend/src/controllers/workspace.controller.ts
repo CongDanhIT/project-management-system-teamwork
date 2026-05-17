@@ -152,7 +152,11 @@ export const getWorkspaceAnalyticsHistoryController = asyncHandler(
               ).map(id => id.trim()).filter(id => id !== "") 
             : undefined;
 
-        const history = await getWorkspaceAnalyticsHistoryService(workspaceId, projectIds);
+        const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+        const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+        const quarter = req.query.quarter ? parseInt(req.query.quarter as string) : undefined;
+
+        const history = await getWorkspaceAnalyticsHistoryService(workspaceId, projectIds, { year, month, quarter });
 
         return res.status(HTTP_STATUS.OK).json({
             success: true,
