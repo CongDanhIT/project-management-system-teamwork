@@ -89,12 +89,15 @@ const WorkspaceAnalyticsChart = ({ data, macroFilters }: WorkspaceAnalyticsChart
   const filteredData = useMemo(() => {
     if (sortedData.length === 0 || isFutureMode) return [];
 
-    // Nếu đang ở chế độ báo cáo, lọc theo Tháng/Quý của Macro Filter
-    if (isReportMode && macroFilters) {
+    // Nếu chọn một năm cụ thể (năm khác 0), lọc theo Tháng/Quý của Macro Filter
+    if (macroFilters && macroFilters.year !== 0) {
       return sortedData.filter(item => {
         const d = parseISO(item.date);
         if (d.getFullYear() !== macroFilters.year) return false;
-        if (macroFilters.periodType === 'month') return (d.getMonth() + 1) === macroFilters.periodValue;
+        if (macroFilters.periodType === 'month') {
+          if (macroFilters.periodValue === 0) return true; // Cả năm
+          return (d.getMonth() + 1) === macroFilters.periodValue;
+        }
         return Math.ceil((d.getMonth() + 1) / 3) === macroFilters.periodValue;
       });
     }
@@ -102,7 +105,7 @@ const WorkspaceAnalyticsChart = ({ data, macroFilters }: WorkspaceAnalyticsChart
     const daysToKeep = rangeMap[range];
     if (daysToKeep >= sortedData.length) return sortedData;
     return sortedData.slice(-daysToKeep);
-  }, [sortedData, range, isReportMode, macroFilters]);
+  }, [sortedData, range, macroFilters, isFutureMode]);
 
   const chartData = useMemo(() => {
     return filteredData.map((item) => ({
@@ -246,7 +249,7 @@ const WorkspaceAnalyticsChart = ({ data, macroFilters }: WorkspaceAnalyticsChart
           </ResponsiveContainer>
         </div>
 
-        {!isReportMode && (
+        {(macroFilters?.year === 0) && (
           <div className="mt-6 flex items-center justify-center gap-3 relative z-10 border-t border-zinc-100 dark:border-white/5 pt-5">
             <FilterButton value="7d" label="7 ngày" days={7} />
             <FilterButton value="30d" label="1 tháng" days={30} />

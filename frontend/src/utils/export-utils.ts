@@ -98,14 +98,10 @@ export const exportProjectTasksToExcel = async ({ projectName, phaseName, tasks 
     summary.push({ label: '---', value: '---' }); // Spacer
     summary.push({ label: 'CẢNH BÁO QUÁ HẠN', value: `Có ${overdueTasks.length} task trễ hạn!`, color: 'FFE53E3E' });
     
-    overdueTasks.slice(0, 5).forEach((t: any) => {
+    overdueTasks.forEach((t: any) => {
       const delayDays = Math.floor((now.getTime() - new Date(t.dueDate).getTime()) / (1000 * 60 * 60 * 24));
       summary.push({ label: `! ${t.title}`, value: `Trễ ${delayDays} ngày`, color: 'FFE53E3E' });
     });
-    
-    if (overdueTasks.length > 5) {
-      summary.push({ label: '...', value: `Và ${overdueTasks.length - 5} task khác` });
-    }
   }
 
   const sortedTasks = [...tasks].sort((a: any, b: any) => {
@@ -230,7 +226,7 @@ export const exportProjectTasksToExcel = async ({ projectName, phaseName, tasks 
       }
 
       // Đặc tả cảnh báo đứng 1 mình 1 dòng
-      if (item.label.includes('Cảnh báo')) {
+      if (item.label.includes('Cảnh báo') || item.label.includes('CẢNH BÁO')) {
         flushSummaryRow();
         const row = worksheet.getRow(currentRow);
         
@@ -304,8 +300,13 @@ export const exportProjectTasksToExcel = async ({ projectName, phaseName, tasks 
       
       cell.font = { name: 'Arial', size: 11, color: { argb: 'FF' + SLATE_COLOR } };
       cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 2 };
+      
+      // THÊM ĐẦY ĐỦ VIỀN (GRIDLINES) CHO TẤT CẢ CÁC Ô
       cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
         bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, // Slate 300 rõ nét hơn
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
       };
       
       if (index % 2 === 1) {

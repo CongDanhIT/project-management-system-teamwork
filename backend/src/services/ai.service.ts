@@ -440,29 +440,29 @@ export const streamAgentChatService = async ({
     logger.debug("[AI-Agent] Kiểm tra messages", { count: messages?.length, lastMessage: messages?.[messages.length - 1] });
 
     // 1. Khởi tạo System Prompt cực kỳ chi tiết để AI hiểu vai trò và các Tool hiện có
-    const systemPrompt = `BẠN LÀ MỘT AI PROJECT MANAGEMENT AGENT (HỆ THỐNG TEAMFLOW).
-Nhiệm vụ: Hỗ trợ người dùng quản lý công việc, dự án, thành viên và các giai đoạn dự án.
+    const systemPrompt = `BẠN LÀ MỘT AI PROJECT MANAGEMENT AGENT (HỆ THỐNG TEAMFLOW) PHIÊN BẢN V2.
+
+🌟 LỜI MỞ ĐẦU (GREETING & CAPABILITIES):
+Nếu đây là lần đầu người dùng trò chuyện hoặc khi được hỏi về chức năng, hãy chào họ một cách chuyên nghiệp và giới thiệu các khả năng sau:
+- 📂 **Quản lý Dự án**: Liệt kê và tra cứu các dự án trong Workspace.
+- 🏗️ **Cấu trúc Giai đoạn**: Xem danh sách các Phase để nắm bắt lộ trình.
+- 👥 **Quản lý Thành viên**: Tra cứu thông tin người dùng để gán việc.
+- 📋 **Quản lý Công việc**: Liệt kê (lọc theo trạng thái, giai đoạn, THÀNH VIÊN), Tạo mới và Cập nhật task trực tiếp.
 
 BỐI CẢNH HIỆN TẠI:
 - User ID: ${userId}
 - Workspace ID: ${workspaceId || "Chưa xác định"}
 - Project ID: ${projectId || "Chưa chọn dự án cụ thể"}
 
-QUY TẮC VẬN HÀNH QUAN TRỌNG:
-1. Bạn có quyền truy cập vào các công cụ (tools) để đọc và ghi dữ liệu vào database.
-2. LUÔN LUÔN gọi tool "getProjectPhases" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể hoặc nếu bạn muốn biết cấu trúc dự án.
-3. Nếu người dùng hỏi về danh sách dự án, hãy dùng "getWorkspaceProjects".
-4. Khi tạo task ("createTask"), bạn BẮT BUỘC phải cung cấp "phaseId". Nếu chưa biết "phaseId", hãy hỏi người dùng hoặc gọi "getProjectPhases" để tìm ID phù hợp.
-5. Trả lời bằng tiếng Việt, văn phong chuyên nghiệp, ngắn gọn nhưng đầy đủ thông tin.
-6. Nếu một hành động yêu cầu ID dự án mà hiện tại chưa có, hãy yêu cầu người dùng chọn một dự án trước.
+⚠️ QUY TẮC XỬ LÝ LỖI & THIẾU THÔNG TIN (ERROR HANDLING):
+1. Nếu người dùng yêu cầu một chức năng mà bộ Tools hiện tại không hỗ trợ (ví dụ: xóa dự án, thay đổi mật khẩu): Hãy lịch sự thông báo rằng "Tính năng này hiện chưa được hỗ trợ thông qua AI Agent, vui lòng thực hiện trực tiếp trong phần cài đặt".
+2. Nếu người dùng thiếu thông tin đầu vào bắt buộc (ví dụ: yêu cầu tạo task nhưng không nói tiêu đề): Hãy yêu cầu họ cung cấp thông tin đó một cách rõ ràng.
+3. Nếu chưa có Workspace hoặc Project ID trong bối cảnh: LUÔN LUÔN nhắc người dùng "Bạn cần chọn một Dự án cụ thể trước khi thực hiện hành động này".
+4. Đối với yêu cầu thay đổi (Update) mà không rõ ID task: Hãy gọi "getTasksList" trước để tìm ID hoặc mã task (taskCode).
 
-DANH SÁCH CÔNG CỤ CỦA BẠN:
-- getWorkspaceProjects: Lấy danh sách dự án trong Workspace.
-- getProjectPhases: Lấy danh sách các giai đoạn (ID, tên) của dự án hiện tại.
-- getWorkspaceMembers: Lấy danh sách thành viên (ID, tên, email).
-- getTasksList: Lấy danh sách công việc (có thể lọc theo phase hoặc status).
-- createTask: Tạo công việc mới (yêu cầu phaseId).
-- updateTask: Cập nhật thông tin công việc.
+QUY TẮC VẬN HÀNH:
+1. LUÔN LUÔN gọi tool "getProjectPhases" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể.
+2. Trả lời bằng tiếng Việt, văn phong Senior Project Manager.
 `;
 
     // 2. Định nghĩa bộ Tool (Sử dụng raw object để tương thích tốt nhất với SDK)
@@ -507,19 +507,31 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
             }
         },
         getTasksList: {
-            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId hoặc status.",
+            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId, status hoặc người được gán (assignedTo/member).",
             parameters: z.object({ 
                 phaseId: z.string().optional().describe("ID giai đoạn để lọc."),
-                status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...).")
-            }).nullable().optional(),
-            execute: async ({ phaseId, status }: any) => {
-                logger.info("[AI-Tool] getTasksList invoked", { projectId, phaseId, status });
-                if (!projectId) return { error: "Cần có Project ID để xem danh sách task." };
+                status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...)."),
+                assignedTo: z.string().optional().describe("ID của thành viên được gán để lọc (userId - lấy từ getWorkspaceMembers).")
+            }),
+            execute: async ({ phaseId, status, assignedTo }: any) => {
+                logger.info("[AI-Tool] getTasksList invoked", { projectId, phaseId, status, assignedTo });
+                if (!projectId) return { error: "⚠️ Hiện tại bạn chưa chọn dự án cụ thể. Vui lòng chọn một dự án để tôi có thể liệt kê công việc." };
+                
                 const query: any = { projectId, deletedAt: null };
                 if (phaseId) query.phaseId = phaseId;
                 if (status) query.status = status;
-                const tasks = await TaskModel.find(query).select("title status priority dueDate taskCode").limit(30).lean();
+                if (assignedTo) query.assignedTo = assignedTo;
+                
+                const tasks = await TaskModel.find(query)
+                    .select("title status priority dueDate taskCode assignedTo")
+                    .populate("assignedTo", "name")
+                    .limit(30)
+                    .sort({ updatedAt: -1 })
+                    .lean();
+                
                 logger.info("[AI-Tool] getTasksList result", { count: tasks?.length });
+                if (tasks.length === 0) return { message: "Tôi không tìm thấy công việc nào khớp với bộ lọc của bạn." };
+                
                 return tasks;
             }
         },
@@ -535,14 +547,18 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
             }),
             execute: async (params: any) => {
                 logger.info("[AI-Tool] createTask invoked", { projectId, title: params.title });
-                if (!projectId || !workspaceId) return { error: "Thiếu bối cảnh Project/Workspace để tạo task." };
+                
+                // Kiểm tra input bắt buộc
+                if (!params.title) return { error: "Thiếu thông tin: Bạn cần cung cấp 'Tiêu đề' cho công việc này." };
+                if (!params.phaseId) return { error: "Thiếu thông tin: Tôi cần 'ID giai đoạn' (Phase ID) để tạo task. Hãy hỏi tôi về các giai đoạn của dự án nếu bạn chưa biết." };
+                if (!projectId || !workspaceId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước khi tạo công việc mới." };
                 
                 const project = await ProjectModel.findById(projectId);
-                if (!project) return { error: "Dự án không tồn tại." };
+                if (!project) return { error: "Dự án không tồn tại hoặc đã bị xóa." };
                 
-                // Logic sinh taskCode
                 const prefix = project.name.split(' ').filter(w => w.length > 0).map((w: string) => w[0]?.toUpperCase()).join('').substring(0, 3) || 'TSK';
                 const count = await TaskModel.countDocuments({ projectId, parentId: null });
+                
                 const task = await TaskModel.create({ 
                     ...params, 
                     taskCode: `${prefix}-${count + 1}`, 
@@ -557,10 +573,10 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
                     action: ActivityActionEnum.CREATE_TASK,
                     entityType: ActivityEntityTypeEnum.TASK,
                     entityId: (task._id as any).toString(),
-                    details: { summary: `AI Agent created task: **${task.taskCode}**` }
+                    details: { summary: `AI Agent đã tạo công việc mới: **${task.taskCode}**` }
                 });
                 
-                return { success: true, taskCode: task.taskCode, message: `Đã tạo task **${task.taskCode}** thành công.` };
+                return { success: true, taskCode: task.taskCode, message: `✅ Đã tạo task **${task.taskCode}** thành công.` };
             }
         },
         updateTask: {
@@ -579,18 +595,26 @@ DANH SÁCH CÔNG CỤ CỦA BẠN:
             }),
             execute: async ({ taskId, taskCode, updates }: any) => {
                 logger.info("[AI-Tool] updateTask invoked", { taskId, taskCode, updates });
+                
+                if (!taskId && !taskCode) {
+                    return { error: "Thiếu thông tin định danh: Tôi cần mã công việc (ví dụ: PRO-1) hoặc ID của task để cập nhật." };
+                }
+
+                if (!updates || Object.keys(updates).length === 0) {
+                    return { error: "Thiếu thông tin cập nhật: Bạn muốn thay đổi điều gì (Trạng thái, Người thực hiện, hay Tiêu đề...)?" };
+                }
+
                 const query: any = { workspaceId, deletedAt: null };
                 if (taskId) query._id = taskId;
                 else if (taskCode) query.taskCode = taskCode;
-                else return { error: "Cần cung cấp taskId hoặc taskCode để định danh công việc." };
 
                 const updatePayload = { ...updates };
                 if (updates.assignedTo) updatePayload.assignedTo = [updates.assignedTo];
 
                 const task = await TaskModel.findOneAndUpdate(query, { $set: updatePayload }, { new: true });
-                if (!task) return { error: "Không tìm thấy công việc để cập nhật." };
+                if (!task) return { error: `Không tìm thấy công việc có mã "${taskCode || taskId}" để cập nhật.` };
 
-                return { success: true, message: `Đã cập nhật công việc **${task.taskCode}** thành công.` };
+                return { success: true, message: `✅ Đã cập nhật công việc **${task.taskCode}** thành công.` };
             }
         }
     };

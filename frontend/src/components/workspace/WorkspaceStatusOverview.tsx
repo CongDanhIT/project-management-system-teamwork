@@ -68,12 +68,29 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
   const velocityData = useMemo(() => {
     if (!analyticsHistory) return [];
     
-    // Hiện tại Backend giới hạn 14 ngày, chúng ta lấy 7 ngày gần nhất cho biểu đồ mặc định
-    return analyticsHistory.slice(-7).map(item => ({
+    // Lọc theo bộ lọc thời gian nếu có chọn kỳ cụ thể
+    let filtered = analyticsHistory;
+    if (filters && filters.year !== 0) {
+      filtered = analyticsHistory.filter(item => {
+        const d = parseISO(item.date);
+        if (d.getFullYear() !== filters.year) return false;
+        if (filters.periodType === 'month') {
+          if (filters.periodValue === 0) return true; // Cả năm
+          return (d.getMonth() + 1) === filters.periodValue;
+        }
+        return Math.ceil((d.getMonth() + 1) / 3) === filters.periodValue;
+      });
+    }
+    
+    // Sắp xếp theo thứ tự thời gian tăng dần
+    const sorted = [...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Lấy tối đa 7 ngày gần nhất trong kỳ đã lọc
+    return sorted.slice(-7).map(item => ({
       date: format(parseISO(item.date), 'dd/MM', { locale: vi }),
       completed: item.completedTasks || 0
     }));
-  }, [analyticsHistory]);
+  }, [analyticsHistory, filters]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {

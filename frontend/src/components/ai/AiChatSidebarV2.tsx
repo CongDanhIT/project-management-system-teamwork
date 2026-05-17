@@ -28,7 +28,7 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
       {
         id: 'welcome',
         role: 'assistant',
-        content: `Xin chào! Tôi là **AI Agent V2** ⚡\n\nTôi có khả năng tương tác trực tiếp với dự án của bạn:\n- 📂 Liệt kê dự án & giai đoạn\n- 👥 Quản lý thành viên\n- 📝 Tạo & Cập nhật task trực tiếp\n\nBạn muốn tôi thực hiện tác vụ nào?`,
+        content: `Xin chào! Tôi là **AI Agent V2** ⚡\n\nTôi đã sẵn sàng hỗ trợ bạn quản lý dòng chảy công việc với các tính năng:\n- 📂 **Dự án & Lộ trình**: Liệt kê dự án và các giai đoạn (Phases).\n- 👥 **Thành viên**: Tra cứu và gán việc cho đồng nghiệp.\n- 🔍 **Tra cứu thông minh**: Liệt kê công việc theo trạng thái hoặc **từng thành viên**.\n- 📝 **Thao tác trực tiếp**: Tạo mới và Cập nhật Task ngay tại đây.\n\nTôi có thể giúp gì cho bạn ngay bây giờ?`,
       }
     ],
     onResponse: (response) => {
