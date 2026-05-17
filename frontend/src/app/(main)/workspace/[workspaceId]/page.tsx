@@ -742,44 +742,34 @@ export default function WorkspaceDashboardPage() {
             </p>
           </div>
 
-          <TabsList className="shrink-0 bg-slate-100/50 dark:bg-slate-800/40 p-1.5 rounded-[24px] border border-slate-200 dark:border-white/5 backdrop-blur-xl">
-            <TabsTrigger 
-              value="overview"
-              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
-            >
-              Tổng quan
-            </TabsTrigger>
-            <TabsTrigger 
-              value="focus"
-              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
-            >
-              Tiêu điểm
-            </TabsTrigger>
-            <TabsTrigger 
-              value="project"
-              className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
-            >
-              Hoạt động
-            </TabsTrigger>
-          </TabsList>
-        </div>
+          <div className="flex flex-wrap items-center gap-4 shrink-0">
+            <TabsList className="shrink-0 bg-slate-100/50 dark:bg-slate-800/40 p-1.5 rounded-[24px] border border-slate-200 dark:border-white/5 backdrop-blur-xl">
+              <TabsTrigger 
+                value="overview"
+                className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+              >
+                Tổng quan
+              </TabsTrigger>
+              <TabsTrigger 
+                value="focus"
+                className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+              >
+                Tiêu điểm
+              </TabsTrigger>
+              <TabsTrigger 
+                value="project"
+                className="rounded-[18px] px-8 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-[#C7F964] data-[state=active]:text-[#035D5B] data-[state=active]:shadow-glow-sm"
+              >
+                Hoạt động
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Tab 1: Overview */}
-        <TabsContent value="overview" className="mt-0 space-y-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="space-y-12">
-            {/* Macro Filter Bar & Export Button */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 bg-slate-50/50 dark:bg-slate-800/10 p-4 rounded-[32px] border border-slate-200/50 dark:border-white/5 backdrop-blur-md">
-              <div className="flex-1">
-                <DashboardMacroFilter 
-                  filters={filters} 
-                  setFilters={setFilters} 
-                  projects={allProjectsData?.projects || []} 
-                />
-              </div>
+            {/* Elegant Export Button on Page Level */}
+            {activeTab === 'overview' && (
               <Button
                 onClick={handleExportReport}
                 disabled={isExporting}
-                className="h-14 px-8 rounded-2xl font-black text-xs uppercase tracking-widest bg-[#035D5B] dark:bg-[#C7F964] text-white dark:text-[#035D5B] hover:scale-105 transition-all shadow-glow-sm border border-transparent active:scale-95 flex items-center justify-center gap-2 group shrink-0"
+                className="h-[52px] px-6 rounded-[24px] font-black text-[10px] uppercase tracking-widest bg-teal-50/60 hover:bg-teal-100/80 text-[#035D5B] dark:bg-teal-950/30 dark:hover:bg-teal-900/40 dark:text-teal-400 border border-teal-200/60 dark:border-teal-500/20 shadow-sm hover:scale-105 transition-all active:scale-95 flex items-center justify-center gap-2 group shrink-0"
               >
                 {isExporting ? (
                   <span className="flex items-center gap-2">
@@ -788,11 +778,25 @@ export default function WorkspaceDashboardPage() {
                   </span>
                 ) : (
                   <>
-                    <Download className="w-4 h-4 transition-transform group-hover:translate-y-0.5" />
+                    <Download className="w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5" />
                     Xuất Báo Cáo
                   </>
                 )}
               </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab 1: Overview */}
+        <TabsContent value="overview" className="mt-0 space-y-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="space-y-12">
+            {/* Macro Filter Bar */}
+            <div className="w-full">
+              <DashboardMacroFilter 
+                filters={filters} 
+                setFilters={setFilters} 
+                projects={allProjectsData?.projects || []} 
+              />
             </div>
 
             {/* Stats Bento Grid */}
