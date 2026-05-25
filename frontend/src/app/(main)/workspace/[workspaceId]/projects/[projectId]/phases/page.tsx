@@ -86,7 +86,16 @@ export default function ProjectPhasesHub() {
     const [selectedFile, setSelectedFile] = useState<ProjectAsset | null>(null);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const [renamingFile, setRenamingFile] = useState<ProjectAsset | null>(null);
+    const [renameFileName, setRenameFileName] = useState('');
     const { isPrivileged } = useRole();
+
+    useEffect(() => {
+        if (renamingFile) {
+            setRenameFileName(renamingFile.name);
+        } else {
+            setRenameFileName('');
+        }
+    }, [renamingFile]);
 
 
     // Fetch Project Data
@@ -861,14 +870,14 @@ export default function ProjectPhasesHub() {
                                 Tên tài liệu
                             </label>
                             <Input 
-                                defaultValue={renamingFile?.name}
+                                value={renameFileName}
+                                onChange={(e) => setRenameFileName(e.target.value)}
                                 placeholder="Nhập tên tài liệu mới..."
                                 className="h-12 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus:ring-brand-primary/20"
                                 autoFocus
-                                id="rename-file-input"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        const val = (e.target as HTMLInputElement).value.trim();
+                                        const val = renameFileName.trim();
                                         if (val && renamingFile) {
                                             renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
                                         }
@@ -887,7 +896,7 @@ export default function ProjectPhasesHub() {
                         </Button>
                         <Button 
                             onClick={() => {
-                                const val = (document.getElementById('rename-file-input') as HTMLInputElement)?.value.trim();
+                                const val = renameFileName.trim();
                                 if (val && renamingFile) {
                                     renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
                                 }
