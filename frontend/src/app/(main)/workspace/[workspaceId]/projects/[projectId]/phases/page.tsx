@@ -62,6 +62,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { cn } from '@/lib/utils';
 import { AssetDetailModal } from '@/components/project/AssetDetailModal';
+import { AssetFolderModal } from '@/components/project/AssetFolderModal';
 
 export default function ProjectPhasesHub() {
     const params = useParams();
@@ -77,7 +78,7 @@ export default function ProjectPhasesHub() {
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
+    const [editingFolder, setEditingFolder] = useState<AssetFolder | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [modalPhase, setModalPhase] = useState<Phase | null>(null);
@@ -149,25 +150,7 @@ export default function ProjectPhasesHub() {
         enabled: !!projectId && activeTab === 'files',
     });
 
-    // Create Folder Mutation
-    const createFolderMutation = useMutation({
-        mutationFn: (name: string) => AssetService.createFolder({
-            workspaceId,
-            projectId,
-            phaseId: selectedPhaseId,
-            parentFolderId: selectedFolderId,
-            name
-        }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['project-assets', projectId, selectedPhaseId, selectedFolderId] });
-            toast.success('Đã tạo thư mục mới');
-            setIsFolderModalOpen(false);
-            setNewFolderName('');
-        },
-        onError: (error: any) => {
-            toast.error(error.message || 'Không thể tạo thư mục');
-        }
-    });
+    // Create Folder Mutation (Đã chuyển sang AssetFolderModal quản lý)
 
     // Handle File Upload
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -600,7 +583,10 @@ export default function ProjectPhasesHub() {
                                         <Button 
                                             variant="outline" 
                                             className="rounded-xl border-slate-200/60 h-10"
-                                            onClick={() => setIsFolderModalOpen(true)}
+                                            onClick={() => {
+                                                setEditingFolder(null);
+                                                setIsFolderModalOpen(true);
+                                            }}
                                         >
                                             <FolderPlus className="w-4 h-4 mr-2" />
                                             Thư mục
@@ -635,8 +621,23 @@ export default function ProjectPhasesHub() {
                                                         />
                                                         <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
                                                             <DropdownMenuItem 
-                                                                className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10"
-                                                                onClick={() => deleteAssetMutation.mutate(folder._id)}
+                                                                className="rounded-xl font-bold cursor-pointer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingFolder(folder);
+                                                                    setIsFolderModalOpen(true);
+                                                                }}
+                                                            >
+                                                                <Edit2 className="w-4 h-4 mr-2" />
+                                                                Đổi tên thư mục
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem 
+                                                                className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10 font-bold cursor-pointer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    deleteAssetMutation.mutate(folder._id);
+                                                                }}
                                                             >
                                                                 <Trash2 className="w-4 h-4 mr-2" />
                                                                 Xóa thư mục
@@ -771,54 +772,19 @@ export default function ProjectPhasesHub() {
                 </DialogContent>
             </Dialog>
 
-            {/* Create Folder Modal */}
-            <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
-                <DialogContent className="sm:max-w-[425px] rounded-[32px] p-8 border-none bg-white dark:bg-slate-900 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                                <FolderPlus className="w-6 h-6" />
-                            </div>
-                            Tạo thư mục mới
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="py-6 space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
-                                Tên thư mục
-                            </label>
-                            <Input 
-                                value={newFolderName}
-                                onChange={(e) => setNewFolderName(e.target.value)}
-                                placeholder="Nhập tên thư mục..."
-                                className="h-12 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus:ring-brand-primary/20"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && newFolderName.trim()) {
-                                        createFolderMutation.mutate(newFolderName.trim());
-                                    }
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter className="gap-3 sm:gap-0">
-                        <Button 
-                            variant="ghost" 
-                            onClick={() => setIsFolderModalOpen(false)}
-                            className="rounded-2xl h-12 px-6 font-bold text-slate-500"
-                        >
-                            Hủy
-                        </Button>
-                        <Button 
-                            onClick={() => createFolderMutation.mutate(newFolderName.trim())}
-                            disabled={!newFolderName.trim() || createFolderMutation.isPending}
-                            className="rounded-2xl h-12 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold shadow-lg shadow-brand-primary/20"
-                        >
-                            {createFolderMutation.isPending ? 'Đang tạo...' : 'Tạo thư mục'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Create & Edit Folder Modal */}
+            <AssetFolderModal 
+                isOpen={isFolderModalOpen}
+                onClose={() => {
+                    setIsFolderModalOpen(false);
+                    setEditingFolder(null);
+                }}
+                folder={editingFolder}
+                projectId={projectId}
+                workspaceId={workspaceId}
+                phaseId={selectedPhaseId}
+                parentFolderId={selectedFolderId}
+            />
             {/* File Preview Modal */}
             {/* File Detail Modal */}
             <AssetDetailModal 
