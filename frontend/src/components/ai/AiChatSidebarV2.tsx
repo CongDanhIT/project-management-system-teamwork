@@ -14,7 +14,9 @@ import {
   ClipboardList,
   PlusCircle,
   RefreshCw,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useChat } from '@ai-sdk/react';
 import { toast } from 'sonner';
@@ -131,6 +133,33 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(true);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 2);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && isOpen) {
+      el.addEventListener('scroll', checkScroll);
+      // Kiểm tra ngay sau khi render xong
+      const timer = setTimeout(checkScroll, 150);
+      window.addEventListener('resize', checkScroll);
+      return () => {
+        el.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+        clearTimeout(timer);
+      };
+    }
+  }, [isOpen, messages]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -140,6 +169,8 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Tự động kiểm tra lại cuộn khi có tin nhắn mới làm thay đổi chiều cao hoặc layout
+    setTimeout(checkScroll, 100);
   }, [messages]);
 
   if (!isOpen) return null;
@@ -270,12 +301,36 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
 
       {/* Input & Quick Actions */}
       <form onSubmit={handleSubmit} className="p-5 border-t border-gray-200 dark:border-white/5 bg-white/40 dark:bg-[#121212]/40 backdrop-blur-md flex flex-col gap-3.5">
-        {/* Quick Actions / Horizontal Scrollable với chỉ thị cuộn */}
+        {/* Quick Actions / Horizontal Scrollable với nút Chevron & Chỉ thị gradient */}
         <div className="relative -mx-5 px-5">
+          <style dangerouslySetInnerHTML={{ __html: `
+            .no-scrollbar::-webkit-scrollbar {
+              display: none !important;
+            }
+            .no-scrollbar {
+              -ms-overflow-style: none !important;
+              scrollbar-width: none !important;
+            }
+          `}} />
+          
+          {/* Nút điều hướng Trái */}
+          {canScrollLeft && (
+            <button
+              type="button"
+              onClick={() => scrollRef.current?.scrollBy({ left: -145, behavior: 'smooth' })}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 -mt-1 z-10 w-6 h-6 bg-white/95 dark:bg-[#1f1f21]/95 text-gray-500 hover:text-brand-primary dark:text-gray-400 dark:hover:text-white border border-gray-200/50 dark:border-white/10 shadow-md rounded-full flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-90"
+              aria-label="Scroll Left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Container chứa các Nút hành động */}
           <div 
-            className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory pr-10"
+            ref={scrollRef}
+            className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory pr-10 no-scrollbar scroll-smooth"
             style={{ 
-              scrollbarWidth: 'none', /* Ẩn scrollbar thô kệch ở Firefox */
+              scrollbarWidth: 'none',
               WebkitOverflowScrolling: 'touch'
             }}
           >
@@ -292,8 +347,22 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
               </button>
             ))}
           </div>
-          {/* Gradient mờ ở cạnh phải tạo chỉ báo cuộn tự nhiên (Scroll Indicator) */}
-          <div className="absolute right-0 top-0 bottom-2 w-14 bg-gradient-to-l from-white dark:from-[#0f0f10] via-white/80 dark:via-[#0f0f10]/80 to-transparent pointer-events-none rounded-r-[28px]" />
+
+          {/* Nút điều hướng Phải */}
+          {canScrollRight && (
+            <button
+              type="button"
+              onClick={() => scrollRef.current?.scrollBy({ left: 145, behavior: 'smooth' })}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 -mt-1 z-10 w-6 h-6 bg-white/95 dark:bg-[#1f1f21]/95 text-gray-500 hover:text-brand-primary dark:text-gray-400 dark:hover:text-white border border-gray-200/50 dark:border-white/10 shadow-md rounded-full flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-90"
+              aria-label="Scroll Right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Hiệu ứng Fade Gradient chỉ thị cuộn */}
+          <div className={`absolute left-0 top-0 bottom-2 w-10 bg-gradient-to-r from-white dark:from-[#0f0f10] to-transparent pointer-events-none rounded-l-[28px] transition-opacity duration-300 ${canScrollLeft ? 'opacity-100' : 'opacity-0'}`} />
+          <div className={`absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-white dark:from-[#0f0f10] to-transparent pointer-events-none rounded-r-[28px] transition-opacity duration-300 ${canScrollRight ? 'opacity-100' : 'opacity-0'}`} />
         </div>
 
         <div className="relative group bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 p-1 focus-within:ring-4 focus-within:ring-brand-primary/10 focus-within:border-brand-primary/30 transition-all shadow-inner">
