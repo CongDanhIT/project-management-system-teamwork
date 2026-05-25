@@ -4,6 +4,7 @@ import TaskModel from '../models/task.model';
 import MemberModel from '../models/member.model';
 import mongoose from 'mongoose';
 import eventDispatcher, { EVENTS } from '../utils/eventDispatcher';
+import { getMemberRoleInWorkspace } from './member.service';
 
 /**
  * Tạo bình luận cho Task
@@ -149,8 +150,25 @@ export const createSystemCommentService = async (
  * Lấy danh sách thông báo của người dùng
  */
 export const getUserNotificationsService = async (userId: string, workspaceId: string) => {
-  return await NotificationModel.find({ recipientId: userId, workspaceId })
+  let query: any = { recipientId: userId, workspaceId };
+  try {
+    const role = await getMemberRoleInWorkspace(workspaceId, userId);
+    if (role && (role.name === 'ADMIN' || role.name === 'OWNER')) {
+      query = {
+        workspaceId,
+        $or: [
+          { recipientId: userId },
+          { type: 'TASK_OVERDUE' }
+        ]
+      };
+    }
+  } catch (error) {
+    // ignore
+  }
+
+  return await NotificationModel.find(query)
     .populate('senderId', 'name profilePicture')
+    .populate('recipientId', 'name profilePicture')
     .sort({ createdAt: -1 })
     .limit(50);
 };
@@ -289,18 +307,40 @@ export const getPaginatedNotificationsService = async (
   limit: number = 20,
   type?: string
 ) => {
-  const query: any = { recipientId: userId, workspaceId };
+  let query: any = { recipientId: userId, workspaceId };
+  try {
+    const role = await getMemberRoleInWorkspace(workspaceId, userId);
+    if (role && (role.name === 'ADMIN' || role.name === 'OWNER')) {
+      query = {
+        workspaceId,
+        $or: [
+          { recipientId: userId },
+          { type: 'TASK_OVERDUE' }
+        ]
+      };
+    }
+  } catch (error) {
+    // ignore
+  }
+
   if (type) {
-    if (type.includes(',')) {
-      query.type = { $in: type.split(',') };
+    const typeQuery = type.includes(',') ? { $in: type.split(',') } : type;
+    if (query.$or) {
+      query = {
+        $and: [
+          query,
+          { type: typeQuery }
+        ]
+      };
     } else {
-      query.type = type;
+      query.type = typeQuery;
     }
   }
 
   const total = await NotificationModel.countDocuments(query);
   const notifications = await NotificationModel.find(query)
     .populate('senderId', 'name profilePicture')
+    .populate('recipientId', 'name profilePicture')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit);

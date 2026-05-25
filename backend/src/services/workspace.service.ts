@@ -253,6 +253,14 @@ export const getWorkspaceAnalyticsService = async (
     const currentDate = new Date();
     const twentyFourHoursLater = new Date(currentDate.getTime() + (24 * 60 * 60 * 1000));
 
+    // Khoảng thời gian của ngày hôm qua
+    const startOfYesterday = new Date(currentDate);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    startOfYesterday.setHours(0, 0, 0, 0);
+
+    const endOfYesterday = new Date(startOfYesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+
     // Xây dựng match query cơ bản
     const baseMatch: any = { workspaceId: workspaceId, deletedAt: null };
     if (projectIds && projectIds.length > 0) {
@@ -266,7 +274,16 @@ export const getWorkspaceAnalyticsService = async (
     Object.assign(baseMatch, timeMatch);
 
     // Dùng Promise.all để chạy các truy vấn song song
-    const [totalTasks, overdueTasks, completedTasks, inProgressTasks, nearDueDateTasks] = await Promise.all([
+    const [
+        totalTasks, 
+        overdueTasks, 
+        completedTasks, 
+        inProgressTasks, 
+        nearDueDateTasks,
+        yesterdayCreatedTasks,
+        yesterdayCompletedTasks,
+        topContributors
+    ] = await Promise.all([
         TaskModel.countDocuments(baseMatch),
 
         TaskModel.countDocuments({
@@ -288,12 +305,61 @@ export const getWorkspaceAnalyticsService = async (
         TaskModel.find({
             ...baseMatch,
             dueDate: {
-                $gte: currentDate,
-                $lte: twentyFourHoursLater
+                $gte: currentDate
             },
             status: { $nin: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] }
-        }).sort({ dueDate: 1 })
+        })
+        .sort({ dueDate: 1 })
+        .limit(5)
+        .populate("projectId", "name"),
+
+        // Đếm số task được tạo hôm qua
+        TaskModel.countDocuments({
+            ...baseMatch,
+            createdAt: { $gte: startOfYesterday, $lte: endOfYesterday }
+        }),
+
+        // Đếm số task được hoàn thành hôm qua
+        TaskModel.countDocuments({
+            ...baseMatch,
+            status: { $in: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
+            completedAt: { $gte: startOfYesterday, $lte: endOfYesterday }
+        }),
+
+        // Xác định thành viên hoàn thành nhiều task nhất hôm qua
+        TaskModel.aggregate([
+            {
+                $match: {
+                    workspaceId: new mongoose.Types.ObjectId(workspaceId),
+                    status: { $in: [TaskStatusEnum.DONE, TaskStatusEnum.COMPLETED] },
+                    completedAt: { $gte: startOfYesterday, $lte: endOfYesterday },
+                    deletedAt: null,
+                    ...(projectIds && projectIds.length > 0 ? { projectId: { $in: projectIds.map(id => new mongoose.Types.ObjectId(id)) } } : {})
+                }
+            },
+            { $unwind: "$assignedTo" },
+            {
+                $group: {
+                    _id: "$assignedTo",
+                    completedCount: { $sum: 1 }
+                }
+            },
+            { $sort: { completedCount: -1 } },
+            { $limit: 1 }
+        ])
     ]);
+
+    let topContributor: { name: string; completedCount: number; profilePicture?: string | null } | null = null;
+    if (topContributors && topContributors.length > 0) {
+        const topUser = await UserModel.findById(topContributors[0]._id).select("name profilePicture");
+        if (topUser) {
+            topContributor = {
+                name: topUser.name,
+                completedCount: topContributors[0].completedCount,
+                profilePicture: topUser.profilePicture
+            };
+        }
+    }
 
     // Lấy snapshot gần nhất để tính trend
     // Nếu lọc theo dự án, trend sẽ tính dựa trên tổng snapshot của các dự án đó
@@ -335,6 +401,11 @@ export const getWorkspaceAnalyticsService = async (
         completedTasks,
         inProgressTasks,
         nearDueDateTasks,
+        yesterdayActivity: {
+            createdTasks: yesterdayCreatedTasks,
+            completedTasks: yesterdayCompletedTasks,
+            topContributor
+        },
         summary: {
             completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
         },

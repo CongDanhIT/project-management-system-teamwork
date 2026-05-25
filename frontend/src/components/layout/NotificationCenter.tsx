@@ -4,6 +4,7 @@ import React from 'react';
 import { Bell, Check, Clock, MessageSquare, User, AtSign, AlertCircle, X, CheckSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { interactionService } from '@/services/interaction.service';
+import { useAuthStore } from '@/stores/auth.store';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -30,6 +31,19 @@ interface NotificationCenterProps {
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspaceId }) => {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { user: currentUser } = useAuthStore();
+
+  const getDisplayMessage = (n: any) => {
+    if (n.type === 'TASK_OVERDUE' && n.recipientId && currentUser) {
+      const recipientIdStr = typeof n.recipientId === 'object' ? n.recipientId._id : n.recipientId;
+      const currentUserIdStr = currentUser.id;
+      if (recipientIdStr !== currentUserIdStr) {
+        const recipientName = typeof n.recipientId === 'object' ? n.recipientId.name : '';
+        return n.message.replace('của bạn', `của ${recipientName || 'thành viên'}`);
+      }
+    }
+    return n.message;
+  };
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications', workspaceId],
@@ -177,11 +191,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspac
                     n.isRead ? "opacity-60 grayscale-[0.5]" : "bg-brand-primary/5 hover:bg-brand-primary/10 shadow-sm"
                   )}
                 >
-                  <div className="relative shrink-0">
+                   <div className="relative shrink-0">
                     <Avatar className="w-10 h-10 border border-divider shadow-sm">
-                      <AvatarImage src={n.senderId?.profilePicture} />
+                      <AvatarImage src={n.type === 'TASK_OVERDUE' ? n.recipientId?.profilePicture : n.senderId?.profilePicture} />
                       <AvatarFallback className="bg-modal-surface text-[10px] font-black text-brand-primary">
-                        {n.senderId?.name?.substring(0, 2).toUpperCase()}
+                        {(n.type === 'TASK_OVERDUE' ? n.recipientId?.name : n.senderId?.name)?.substring(0, 2).toUpperCase() || 'TF'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-slate-900 border border-divider flex items-center justify-center shadow-sm">
@@ -192,7 +206,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspac
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[12px] font-black text-foreground group-hover/item:text-brand-primary transition-colors">
-                        {n.senderId?.name}
+                        {n.type === 'TASK_OVERDUE' ? n.recipientId?.name : n.senderId?.name}
                       </span>
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                         {format(new Date(n.createdAt), 'HH:mm, dd/MM', { locale: vi })}
@@ -200,7 +214,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ workspac
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
                       <span className="font-bold text-slate-400 mr-1">{n.title}:</span>
-                      {n.message}
+                      {getDisplayMessage(n)}
                     </p>
                   </div>
 

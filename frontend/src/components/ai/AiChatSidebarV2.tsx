@@ -180,8 +180,12 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
       {/* Header - Minimalist Premium Style */}
       <div className="p-5 border-b border-gray-200/30 dark:border-white/5 flex items-center justify-between bg-white/40 dark:bg-black/10 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-tr from-brand-primary to-teal-500 rounded-xl shadow-md border border-white/20">
-            <Sparkles className="w-4.5 h-4.5 text-white fill-white/10" />
+          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md border border-gray-200/30 dark:border-white/10 flex items-center justify-center bg-white">
+            <img 
+              src="/images/ảnh chat bot.png" 
+              alt="AI Agent" 
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h3 className="font-bold text-sm bg-gradient-to-r from-teal-600 to-indigo-600 dark:from-teal-400 dark:to-indigo-400 bg-clip-text text-transparent tracking-tight">AI Agent V2</h3>
@@ -211,13 +215,21 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
               key={message.id}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-3`}
             >
-              <div className={`flex gap-3 max-w-[88%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+              <div className="flex gap-3 max-w-[88%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}">
+                <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm ${
                   message.role === 'user' 
                     ? 'bg-brand-primary/10 dark:bg-brand-primary/20 text-brand-primary border border-brand-primary/15' 
-                    : 'bg-brand-primary text-white shadow shadow-brand-primary/20'
+                    : 'bg-white border border-gray-200/30 dark:border-white/5'
                 }`}>
-                  {message.role === 'user' ? <User className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5 fill-white/20" />}
+                  {message.role === 'user' ? (
+                    <User className="w-3.5 h-3.5" />
+                  ) : (
+                    <img 
+                      src="/images/ảnh chat bot.png" 
+                      alt="AI Chatbot" 
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                   message.role === 'user'
@@ -266,8 +278,12 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
         {isLoading && (
           <div className="flex justify-start animate-in fade-in">
             <div className="flex gap-3 max-w-[85%]">
-              <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center flex-shrink-0 shadow shadow-brand-primary/20">
-                <Sparkles className="w-3.5 h-3.5 text-white fill-white/20" />
+              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow border border-gray-200/30 dark:border-white/5 bg-white">
+                <img 
+                  src="/images/ảnh chat bot.png" 
+                  alt="AI Chatbot Loading" 
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="bg-gray-100/70 dark:bg-white/5 p-3 rounded-2xl rounded-tl-none flex items-center gap-2 border border-gray-200/30 dark:border-white/5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-primary" />

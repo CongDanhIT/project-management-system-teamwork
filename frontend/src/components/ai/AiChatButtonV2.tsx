@@ -26,31 +26,32 @@ export const AiChatButtonV2: React.FC<AiChatButtonV2Props> = ({ context }) => {
           onClick={() => setIsOpen(!isOpen)}
           title="AI Agent V2"
           className={`
-            relative w-14 h-14 rounded-2xl shadow-2xl
+            relative w-14 h-14 rounded-2xl shadow-xl
             flex items-center justify-center
             transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
-            border-2 border-white/20 dark:border-white/10
             ${isOpen
-              ? 'bg-black rotate-90 scale-90 text-white'
-              : 'bg-gradient-to-br from-brand-primary via-brand-primary to-purple-600 hover:scale-110 active:scale-95'
+              ? 'bg-black rotate-90 scale-90 text-white border-2 border-white/20 dark:border-white/10'
+              : 'bg-white border-2 border-slate-100 dark:border-white/10 hover:scale-110 active:scale-95'
             }
           `}
         >
           {/* Shine effect */}
           {!isOpen && (
-            <div className="absolute inset-0 rounded-2xl bg-white/10 opacity-50 pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 rounded-2xl bg-white/10 opacity-50 pointer-events-none overflow-hidden z-20">
                <div className="absolute -inset-[100%] bg-gradient-to-r from-transparent via-white/30 to-transparent rotate-45 animate-[shine_3s_infinite]" />
             </div>
           )}
 
-          <div className="relative z-10">
+          <div className="relative z-10 w-full h-full flex items-center justify-center">
             {isOpen ? (
-              <X className="w-6 h-6 text-white transition-all" />
+              <X className="w-6 h-6 text-white transition-all animate-in fade-in zoom-in duration-200" />
             ) : (
-              <div className="flex flex-col items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white fill-white/20 animate-pulse" />
-                <span className="text-[7px] font-black text-brand-secondary absolute -bottom-2">AGENT</span>
-              </div>
+              <img 
+                src="/videos/videoImageAIBot.webp" 
+                alt="AI Chatbot Avatar"
+                className="w-full h-full object-cover rounded-[14px] animate-in fade-in duration-300"
+                style={{ willChange: 'transform' }}
+              />
             )}
           </div>
         </button>

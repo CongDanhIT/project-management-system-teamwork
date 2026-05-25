@@ -111,6 +111,15 @@ export class SlackService {
             completedTasks: number;
             overdueTasks: number;
             inProgressTasks: number;
+            yesterdayActivity?: {
+                createdTasks: number;
+                completedTasks: number;
+                topContributor: {
+                    name: string;
+                    completedCount: number;
+                    profilePicture?: string | null;
+                } | null;
+            };
         },
         trends: any,
         urgentTasks: any[] = [],
@@ -119,8 +128,8 @@ export class SlackService {
         // Helper để tạo text xu hướng
         const renderTrend = (trend: any) => {
             if (!trend || trend.value === 0) return "";
-            const icon = trend.value > 0 ? "🔺" : "🔹";
-            return ` (${icon} ${Math.abs(Math.round(trend.percent))}%)`;
+            const direction = trend.value > 0 ? "↗️ +" : "↘️ -";
+            return ` (${direction}${Math.abs(trend.value)} / ${Math.abs(Math.round(trend.percent))}%)`;
         };
 
         const blocks: any[] = [
@@ -128,15 +137,25 @@ export class SlackService {
                 type: "header",
                 text: {
                     type: "plain_text",
-                    text: "📊 Tổng kết dự án hàng ngày: " + workspaceName,
+                    text: "🎯 TEAMFLOW DAILY DIGEST",
                     emoji: true
                 }
             },
             {
+                type: "context",
+                elements: [
+                    {
+                        type: "mrkdwn",
+                        text: `📅 *Báo cáo Lịch trình & Công việc hàng ngày* | Không gian: *${workspaceName}*`
+                    }
+                ]
+            },
+            { type: "divider" },
+            {
                 type: "section",
                 text: {
                     type: "mrkdwn",
-                    text: "Chào buổi sáng team! Dưới đây là tình hình công việc của chúng ta hôm nay:"
+                    text: "📈 *TÌNH HÌNH CÔNG VIỆC CHUNG (WORKSPACE OVERVIEW)*"
                 }
             },
             {
@@ -144,38 +163,78 @@ export class SlackService {
                 fields: [
                     {
                         type: "mrkdwn",
-                        text: `*Tổng công việc:*\n${stats.totalTasks}${renderTrend(trends.totalTasksTrend)}`
+                        text: `• *Tổng công việc:* \`${stats.totalTasks}\`${renderTrend(trends.totalTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Đã hoàn thành:*\n${stats.completedTasks} ✅${renderTrend(trends.completedTasksTrend)}`
+                        text: `• *Đã hoàn thành:* \`${stats.completedTasks}\` ✅${renderTrend(trends.completedTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Đang thực hiện:*\n${stats.inProgressTasks} 🚀${renderTrend(trends.inProgressTasksTrend)}`
+                        text: `• *Đang thực hiện:* \`${stats.inProgressTasks}\` 🚀${renderTrend(trends.inProgressTasksTrend)}`
                     },
                     {
                         type: "mrkdwn",
-                        text: `*Quá hạn:*\n${stats.overdueTasks} ⚠️${renderTrend(trends.overdueTasksTrend)}`
+                        text: `• *Quá hạn:* \`${stats.overdueTasks}\` ⚠️${renderTrend(trends.overdueTasksTrend)}`
                     }
                 ]
-            }
+            },
+            { type: "divider" }
         ];
 
-        // Thêm phần nhiệm vụ khẩn cấp nếu có
-        if (urgentTasks && urgentTasks.length > 0) {
-            blocks.push({ type: "divider" });
+        // Thêm thông tin hoạt động ngày hôm qua nếu có
+        if (stats.yesterdayActivity) {
+            const yesterday = stats.yesterdayActivity;
             blocks.push({
                 type: "section",
                 text: {
                     type: "mrkdwn",
-                    text: "🚩 *Nhiệm vụ sắp hết hạn (Urgent):*"
+                    text: "✨ *HOẠT ĐỘNG NGÀY HÔM QUA (YESTERDAY'S PULSE)*"
                 }
             });
 
-            const taskList = urgentTasks.slice(0, 3).map(task => {
-                const priorityIcon = task.priority === "HIGH" ? "🔴" : "🟡";
-                return `${priorityIcon} *${task.title}* (Hạn: ${new Date(task.dueDate).toLocaleDateString("vi-VN")})`;
+            blocks.push({
+                type: "section",
+                fields: [
+                    {
+                        type: "mrkdwn",
+                        text: `• *Công việc tạo mới:* \`${yesterday.createdTasks}\` nhiệm vụ`
+                    },
+                    {
+                        type: "mrkdwn",
+                        text: `• *Nhiệm vụ hoàn thành:* \`${yesterday.completedTasks}\` nhiệm vụ`
+                    }
+                ]
+            });
+
+            if (yesterday.topContributor) {
+                blocks.push({
+                    type: "context",
+                    elements: [
+                        {
+                            type: "mrkdwn",
+                            text: `🏆 *Thành viên nổi bật:* *${yesterday.topContributor.name}* đã xuất sắc hoàn thành *${yesterday.topContributor.completedCount}* công việc! 🎉`
+                        }
+                    ]
+                });
+            }
+            blocks.push({ type: "divider" });
+        }
+
+        // Thêm phần nhiệm vụ khẩn cấp sắp tới hạn nếu có
+        if (urgentTasks && urgentTasks.length > 0) {
+            blocks.push({
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: "🚨 *CÔNG VIỆC SẮP ĐẾN HẠN CẦN ƯU TIÊN (UPCOMING DUE TASKS)*"
+                }
+            });
+
+            const taskList = urgentTasks.slice(0, 5).map(task => {
+                const priorityIcon = task.priority === "HIGH" ? "🔥" : "📅";
+                const projectName = task.projectId?.name || "Dự án chung";
+                return `• ${priorityIcon} *[${projectName}]* ${task.title} (Hạn: ${new Date(task.dueDate).toLocaleDateString("vi-VN")})`;
             }).join("\n");
 
             blocks.push({
@@ -185,6 +244,7 @@ export class SlackService {
                     text: taskList
                 }
             });
+            blocks.push({ type: "divider" });
         }
 
         // Thêm nút bấm hành động
@@ -196,7 +256,7 @@ export class SlackService {
                         type: "button",
                         text: {
                             type: "plain_text",
-                            text: "Mở TeamFlow 🚀",
+                            text: "Truy cập TeamFlow Board 🚀",
                             emoji: true
                         },
                         url: link,
@@ -211,7 +271,7 @@ export class SlackService {
             elements: [
                 {
                     type: "mrkdwn",
-                    text: "Hãy tập trung xử lý các task quan trọng trước nhé! Chúc team một ngày làm việc hiệu quả."
+                    text: "💡 *Chúc team một ngày làm việc hiệu quả và bùng nổ!*"
                 }
             ]
         });

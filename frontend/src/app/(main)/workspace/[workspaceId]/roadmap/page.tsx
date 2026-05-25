@@ -247,31 +247,55 @@ export default function RoadmapPage() {
       {/* Timeline Grid */}
       <div className="flex-1 overflow-hidden relative flex">
         {/* Project List Sidebar (Fixed) */}
-        <div className="w-[280px] border-r border-border flex flex-col bg-background z-10">
+        <div className="w-[290px] border-r border-border flex flex-col bg-background z-10 shrink-0">
           <div className="h-12 border-b border-border flex items-center px-6">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Dự án & Công việc</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Dự án & Công việc</span>
           </div>
           <ScrollArea className="flex-1">
-            <div className="py-2">
-              {projects.map((project: any) => (
-                <div key={project._id} className="mb-4">
-                   <div 
-                    className="h-12 px-6 flex items-center gap-3 hover:bg-muted cursor-pointer group transition-colors"
-                    onClick={() => handleNavigateToProject(project._id)}
-                   >
-                     <span className="text-lg">{project.emoji || "🎯"}</span>
-                     <span className="text-sm font-medium truncate flex-1">{project.name}</span>
-                     <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" />
-                   </div>
-                   {/* Row placeholders for tasks of this project */}
-                   {tasks.filter((t: any) => (t.projectId?._id?.toString() || t.projectId?.toString()) === project._id?.toString()).map((task: any) => (
-                     <div key={task._id} className="h-[ROW_HEIGHT] px-10 flex items-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary/30 mr-3 shrink-0" />
-                        <span className="text-xs truncate text-muted-foreground font-medium group-hover:text-foreground transition-colors">{task.title}</span>
-                     </div>
-                   ))}
-                 </div>
-              ))}
+            <div className="py-3">
+              {projects.map((project: any) => {
+                const projectTasks = tasks.filter((t: any) => (t.projectId?._id?.toString() || t.projectId?.toString()) === project._id?.toString());
+                return (
+                  <div key={project._id} className="mb-4">
+                    <div 
+                      className="h-12 px-6 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer group transition-all duration-200 border-l-2 border-l-transparent hover:border-l-primary"
+                      onClick={() => handleNavigateToProject(project._id)}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center shrink-0 shadow-sm border border-slate-200/10">
+                        <span className="text-base">{project.emoji || "🎯"}</span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate flex-1">{project.name}</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400" />
+                    </div>
+                    {/* Tasks of this project */}
+                    {projectTasks.map((task: any) => (
+                      <div 
+                        key={task._id} 
+                        className="h-12 ml-6 mr-2 pl-4 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer border-l-2 border-l-transparent hover:border-l-primary/60"
+                        onClick={() => handleNavigateToProject(project._id)}
+                      >
+                        <Badge 
+                          variant="outline" 
+                          className="text-[9px] font-bold tracking-tighter px-1.5 py-0.5 rounded-md mr-2.5 shrink-0 bg-slate-100/50 dark:bg-white/5 border-none text-slate-400 dark:text-slate-500 font-mono"
+                        >
+                          {task.taskCode}
+                        </Badge>
+                        <span className="text-xs truncate text-slate-500 dark:text-slate-400 font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors flex-1">
+                          {task.title}
+                        </span>
+                        {task.assignedTo?.[0] && (
+                          <Avatar className="h-5 w-5 border border-white dark:border-slate-900 shadow-sm shrink-0 ml-2">
+                            <AvatarImage src={task.assignedTo[0].profilePicture} />
+                            <AvatarFallback className="text-[7px] bg-slate-200 dark:bg-slate-800 text-slate-500 font-bold">
+                              {task.assignedTo[0].name?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
         </div>

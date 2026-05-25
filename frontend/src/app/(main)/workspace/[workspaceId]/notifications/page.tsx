@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { interactionService } from '@/services/interaction.service';
+import { useAuthStore } from '@/stores/auth.store';
 import { 
   Bell, 
   Check, 
@@ -34,6 +35,19 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<string | undefined>(undefined);
+  const { user: currentUser } = useAuthStore();
+
+  const getDisplayMessage = (n: any) => {
+    if (n.type === 'TASK_OVERDUE' && n.recipientId && currentUser) {
+      const recipientIdStr = typeof n.recipientId === 'object' ? n.recipientId._id : n.recipientId;
+      const currentUserIdStr = currentUser.id;
+      if (recipientIdStr !== currentUserIdStr) {
+        const recipientName = typeof n.recipientId === 'object' ? n.recipientId.name : '';
+        return n.message.replace('của bạn', `của ${recipientName || 'thành viên'}`);
+      }
+    }
+    return n.message;
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications-paginated', workspaceId, page, filter],
@@ -157,9 +171,9 @@ export default function NotificationsPage() {
                 <CardContent className="p-6 flex gap-6 items-start">
                   <div className="relative shrink-0">
                     <Avatar className="w-12 h-12 border-2 border-white dark:border-slate-800 shadow-md">
-                      <AvatarImage src={n.senderId?.profilePicture} />
+                      <AvatarImage src={n.type === 'TASK_OVERDUE' ? n.recipientId?.profilePicture : n.senderId?.profilePicture} />
                       <AvatarFallback className="font-black text-brand-primary">
-                        {n.senderId?.name?.substring(0, 2).toUpperCase()}
+                        {(n.type === 'TASK_OVERDUE' ? n.recipientId?.name : n.senderId?.name)?.substring(0, 2).toUpperCase() || 'TF'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-divider flex items-center justify-center shadow-sm">
@@ -171,7 +185,7 @@ export default function NotificationsPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black text-slate-900 dark:text-slate-100">
-                          {n.senderId?.name}
+                          {n.type === 'TASK_OVERDUE' ? n.recipientId?.name : n.senderId?.name}
                         </span>
                         <Badge 
                           variant="outline" 
@@ -198,7 +212,7 @@ export default function NotificationsPage() {
                     </div>
                     <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">{n.title}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                      {n.message}
+                      {getDisplayMessage(n)}
                     </p>
                   </div>
 
