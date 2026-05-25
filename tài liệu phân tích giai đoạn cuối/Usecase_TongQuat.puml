@@ -1,0 +1,60 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+' Định nghĩa các Actor và mối quan hệ Kế thừa (Generalization)
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Thành viên\n(Member)" as Member
+
+Owner -left-|> Admin : "<<kế thừa>>"
+Admin -left-|> Member : "<<kế thừa>>"
+
+' Khai báo Ranh giới hệ thống (System Boundary)
+rectangle "Hệ thống Quản trị Dự án Tập trung (TeamFlow)" {
+
+    ' Các Use Case dành riêng cho Owner
+    usecase "Quản trị Không gian làm việc (Workspace)" as UC_Workspace
+    
+    ' Các Use Case bổ sung cho Admin
+    usecase "Quản lý Dự án và Giai đoạn (Phases)" as UC_Project
+    usecase "Quản lý Nhân sự và Phân quyền" as UC_Personnel
+    usecase "Theo dõi Thống kê và Xuất báo cáo" as UC_Report
+    usecase "Quản lý Bảng tin nội bộ" as UC_Announcement
+    usecase "Sử dụng AI Project Planner" as UC_AIPlanner
+
+    ' Các Use Case cơ bản cho Member (Và cả Admin, Owner)
+    usecase "Xác thực và Quản lý tài khoản" as UC_Account
+    usecase "Quản lý Công việc (Task & Kanban)" as UC_Task
+    usecase "Quản lý Tài liệu dự án (Cloud R2)" as UC_Docs
+    usecase "Tương tác và Thảo luận (Comments)" as UC_Communicate
+    usecase "Sử dụng Trợ lý ảo AI (Smart Agent)" as UC_AIAssistant
+    usecase "Tra cứu và Tìm kiếm (Command K)" as UC_Search
+}
+
+' Nối quan hệ Association (Giao tiếp)
+Owner --> UC_Workspace
+
+Admin --> UC_Project
+Admin --> UC_Personnel
+Admin --> UC_Report
+Admin --> UC_Announcement
+Admin --> UC_AIPlanner
+
+Member --> UC_Account
+Member --> UC_Task
+Member --> UC_Docs
+Member --> UC_Communicate
+Member --> UC_AIAssistant
+Member --> UC_Search
+
+@enduml

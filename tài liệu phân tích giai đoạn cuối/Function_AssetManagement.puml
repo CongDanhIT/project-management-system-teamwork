@@ -1,0 +1,69 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+' Định nghĩa các Actor con người (Human Actors)
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Thành viên\n(Member)" as Member
+
+' Định nghĩa Tác nhân hệ thống ngoài (External System Actors) dưới dạng hình chữ nhật
+rectangle "Cloudflare R2\n<<system>>" as R2
+rectangle "Cloudinary\n<<system>>" as Cloudinary
+
+' Thiết lập quan hệ kế thừa (Generalization) giữa các Actor
+Owner -left-|> Admin : "<<kế thừa>>"
+Admin -left-|> Member : "<<kế thừa>>"
+
+' Ranh giới hệ thống (System Boundary)
+rectangle "Hệ thống Quản lý Dự án - Phân hệ Quản lý Tài nguyên và File" {
+    
+    ' Các Use Case nghiệp vụ chính (Base Use Cases)
+    usecase "Tải lên tài liệu dự án" as UC_UploadFile
+    usecase "Xem và Tải xuống tài liệu" as UC_DownloadFile
+    usecase "Quản lý tài liệu tập trung\n(Tab Files)" as UC_ManageFilesTab
+    usecase "Xóa tài liệu dự án" as UC_DeleteFile
+
+    ' Các Use Case bổ trợ kỹ thuật (Included Use Cases)
+    usecase "Xin quyền tải tệp\n(Presigned URL)" as UC_PresignedURL
+    usecase "Kiểm tra quyền truy cập" as UC_CheckPermission
+
+    ' Các Use Case mở rộng tùy chọn (Extended Use Cases)
+    usecase "Xem trước tài liệu\n(Preview)" as UC_PreviewFile
+}
+
+' Liên kết giữa Actor và Base Use Cases (Association - Đường liền nét)
+Member --> UC_UploadFile
+Member --> UC_DownloadFile
+Member --> UC_ManageFilesTab
+Member --> UC_DeleteFile
+
+' Quan hệ Bao gồm (<<include>>) - Đường nét đứt (..>), mũi tên chỉ từ Base đến Included
+UC_UploadFile ..> UC_CheckPermission : "<<include>>"
+UC_DownloadFile ..> UC_CheckPermission : "<<include>>"
+UC_ManageFilesTab ..> UC_CheckPermission : "<<include>>"
+UC_DeleteFile ..> UC_CheckPermission : "<<include>>"
+
+' Tải lên tài liệu thì bắt buộc phải gọi API xin quyền Presigned URL từ R2
+UC_UploadFile ..> UC_PresignedURL : "<<include>>"
+
+' Quan hệ Mở rộng (<<extend>>) - Đường nét đứt (..>), mũi tên chỉ từ Extended ngược về Base
+UC_PreviewFile .u.> UC_DownloadFile : "<<extend>>"
+
+' Liên kết giữa Use Case và Tác nhân hệ thống ngoài (Association - Đường liền nét)
+UC_UploadFile -- R2
+UC_UploadFile -- Cloudinary
+UC_DownloadFile -- R2
+UC_DownloadFile -- Cloudinary
+UC_PresignedURL -- R2
+
+@enduml

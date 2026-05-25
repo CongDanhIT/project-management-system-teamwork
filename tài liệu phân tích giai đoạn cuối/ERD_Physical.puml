@@ -1,0 +1,384 @@
+@startuml ERD_Physical
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam linetype ortho
+
+' Styling
+skinparam class {
+    BackgroundColor #FDFEFE
+    BorderColor #BDC3C7
+    ArrowColor #7F8C8D
+    HeaderBackgroundColor #EAEDED
+    FontSize 11
+}
+
+hide circle
+hide empty members
+
+' Define macros for PK and FK
+!define PK <color:red><b>PK</b></color>
+!define FK <color:blue><b>FK</b></color>
+
+' ==========================================
+' NHÓM ĐỊNH DANH & PHÂN QUYỀN
+' ==========================================
+class "users" as users {
+  PK _id : ObjectId
+  --
+  email : String [unique, required]
+  name : String
+  password : String [select: false]
+  profilePicture : String
+  isActive : Boolean [default: true]
+  lastLogin : Date
+  FK currentWorkspace : ObjectId [ref: workspaces]
+  preferences.receiveDailyDigest : Boolean [default: true]
+  inboxToken : String [unique]
+  slackUserId : String
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "accounts" as accounts {
+  PK _id : ObjectId
+  --
+  FK userId : ObjectId [ref: users, required]
+  provider : String [required, enum]
+  providerId : String [required]
+  refreshToken : String
+  tokenExpiry : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "roles" as roles {
+  PK _id : ObjectId
+  --
+  name : String [unique, required, enum]
+  permission : Array<String> [required]
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "members" as members {
+  PK _id : ObjectId
+  --
+  FK userId : ObjectId [ref: users, required]
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK role : ObjectId [ref: roles, required]
+  joinedAt : Date [default: now]
+  createdAt : Date
+  updatedAt : Date
+}
+
+' ==========================================
+' NHÓM KHÔNG GIAN LÀM VIỆC & CỘNG TÁC
+' ==========================================
+class "workspaces" as workspaces {
+  PK _id : ObjectId
+  --
+  name : String [required]
+  description : String
+  FK owner : ObjectId [ref: users, required]
+  inviteCode : String [unique, required]
+  slackWebhookUrl : String
+  dailyDigestEnabled : Boolean [default: true]
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "announcements" as announcements {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK projectId : ObjectId [ref: projects]
+  type : String [enum, default: 'GENERAL']
+  title : String [required]
+  content : String
+  isPinned : Boolean [default: false]
+  attachments : Array<Object> [fileUrl, fileName, fileType]
+  reactions : Array<Object> [emoji, userIds]
+  comments : Array<Object> [_id, authorId, content, reactions, mentions, replyTo, createdAt]
+  FK createdBy : ObjectId [ref: users, required]
+  deletedAt : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "activitylogs" as activitylogs {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK projectId : ObjectId [ref: projects]
+  FK userId : ObjectId [ref: users, required]
+  action : String [required, enum]
+  entityType : String [required, enum]
+  entityId : ObjectId [required]
+  details.oldValue : Mixed
+  details.newValue : Mixed
+  details.summary : String
+  createdAt : Date
+}
+
+class "notifications" as notifications {
+  PK _id : ObjectId
+  --
+  FK recipientId : ObjectId [ref: users, required]
+  FK senderId : ObjectId [ref: users, required]
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  type : String [required, enum]
+  title : String [required]
+  message : String [required]
+  isRead : Boolean [default: false]
+  refId : ObjectId [required]
+  refType : String [required, enum]
+  metadata : Mixed
+  createdAt : Date
+}
+
+' ==========================================
+' NHÓM QUẢN LÝ DỰ ÁN & CÔNG VIỆC
+' ==========================================
+class "projects" as projects {
+  PK _id : ObjectId
+  --
+  name : String [required]
+  description : String
+  emoji : String [default: '🎯']
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK createdBy : ObjectId [ref: users, required]
+  status : String [enum, default: 'active']
+  startDate : Date
+  endDate : Date
+  deletedAt : Date
+  viewCount : Number [default: 0]
+  lastAccessedAt : Date [default: now]
+  coverUrl : String
+  coverPositionX : Number [default: 50]
+  coverPositionY : Number [default: 50]
+  FK favoritedBy : Array<ObjectId> [ref: users]
+  slackWebhookUrl : String
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "phases" as phases {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK projectId : ObjectId [ref: projects, required]
+  name : String [required]
+  description : String
+  startDate : Date
+  endDate : Date
+  isLocked : Boolean [default: false]
+  FK createdBy : ObjectId [ref: users, required]
+  deletedAt : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "tasks" as tasks {
+  PK _id : ObjectId
+  --
+  taskCode : String [required]
+  title : String [required]
+  description : String
+  FK projectId : ObjectId [ref: projects, required]
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK parentId : ObjectId [ref: tasks]
+  status : String [enum, default: 'todo']
+  priority : String [enum, default: 'medium']
+  FK assignedTo : Array<ObjectId> [ref: users]
+  FK createdBy : ObjectId [ref: users, required]
+  startDate : Date
+  dueDate : Date
+  completedAt : Date
+  estimatedHours : Number [default: 0]
+  loggedHours : Number [default: 0]
+  FK phaseId : ObjectId [ref: phases]
+  FK tags : Array<ObjectId> [ref: tags]
+  requiresApproval : Boolean [default: false]
+  overdueNotificationSent : Boolean [default: false]
+  deletedAt : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "tags" as tags {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  name : String [required]
+  color : String [required]
+  FK createdBy : ObjectId [ref: users, required]
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "taskcomments" as taskcomments {
+  PK _id : ObjectId
+  --
+  FK taskId : ObjectId [ref: tasks, required]
+  FK authorId : ObjectId [ref: users]
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  content : String [required]
+  type : String [enum, default: 'USER']
+  reactions : Array<Object> [emoji, userIds]
+  FK replyTo : ObjectId [ref: taskcomments]
+  FK mentions : Array<ObjectId> [ref: users]
+  isEdited : Boolean [default: false]
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "personalinboxes" as personalinboxes {
+  PK _id : ObjectId
+  --
+  FK ownerId : ObjectId [ref: users, required]
+  title : String [required]
+  description : String
+  sourceType : String [enum, default: 'MANUAL']
+  sourceMetadata : Mixed
+  status : String [enum, default: 'DRAFT']
+  metadata : Mixed
+  createdAt : Date
+  updatedAt : Date
+}
+
+' ==========================================
+' NHÓM TÀI NGUYÊN & THỐNG KÊ
+' ==========================================
+class "assetfolders" as assetfolders {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK projectId : ObjectId [ref: projects, required]
+  FK phaseId : ObjectId [ref: phases]
+  FK parentFolderId : ObjectId [ref: assetfolders]
+  name : String [required]
+  visibility : String [enum, default: 'PUBLIC']
+  FK createdBy : ObjectId [ref: users, required]
+  deletedAt : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "projectassets" as projectassets {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  FK projectId : ObjectId [ref: projects, required]
+  FK folderId : ObjectId [ref: assetfolders]
+  FK phaseId : ObjectId [ref: phases]
+  FK taskId : ObjectId [ref: tasks]
+  name : String [required]
+  storageProvider : String [enum, default: 'R2']
+  storageKey : String [required]
+  fileUrl : String [required]
+  fileSize : Number [required]
+  fileType : String [required]
+  category : String [enum, default: 'GENERAL']
+  status : String [enum, default: 'APPROVED']
+  FK createdBy : ObjectId [ref: users, required]
+  deletedAt : Date
+  createdAt : Date
+  updatedAt : Date
+}
+
+class "workspaceanalyticssnapshots" as workspaceanalyticssnapshots {
+  PK _id : ObjectId
+  --
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  date : Date [required]
+  totalTasks : Number [default: 0]
+  completedTasks : Number [default: 0]
+  inProgressTasks : Number [default: 0]
+  overdueTasks : Number [default: 0]
+  totalProjects : Number [default: 0]
+  createdAt : Date
+}
+
+class "projectanalyticssnapshots" as projectanalyticssnapshots {
+  PK _id : ObjectId
+  --
+  FK projectId : ObjectId [ref: projects, required]
+  FK workspaceId : ObjectId [ref: workspaces, required]
+  date : Date [required]
+  totalTasks : Number [default: 0]
+  completedTasks : Number [default: 0]
+  inProgressTasks : Number [default: 0]
+  overdueTasks : Number [default: 0]
+  unassignedTasks : Number [default: 0]
+  dailyCompletedTasks : Number [default: 0]
+  performanceIndex : Number [default: 0]
+  createdAt : Date
+}
+
+' ==========================================
+' BỐ CỤC & MỐI QUAN HỆ ĐỂ TRÁNH MẠNG NHỆN
+' ==========================================
+
+' Nhóm các lớp theo chiều ngang bằng together
+together {
+  class users
+  class accounts
+  class roles
+  class members
+}
+
+together {
+  class workspaces
+  class announcements
+  class notifications
+}
+
+together {
+  class projects
+  class phases
+  class tasks
+  class tags
+  class taskcomments
+}
+
+together {
+  class assetfolders
+  class projectassets
+}
+
+together {
+  class workspaceanalyticssnapshots
+  class projectanalyticssnapshots
+  class activitylogs
+  class personalinboxes
+}
+
+' Nối các mối quan hệ nghiệp vụ cốt lõi
+users "1" -down- "0..1" accounts
+users "1" -right- "0..*" members
+workspaces "1" -left- "1..*" members
+roles "1" -down- "0..*" members
+
+workspaces "1" -down- "0..*" announcements
+workspaces "1" -down- "0..*" projects
+
+projects "1" -down- "0..*" phases
+projects "1" -down- "0..*" tasks
+phases "1" -down- "0..*" tasks
+tasks "1" -right- "0..*" taskcomments
+tasks "1" -up- "0..*" tasks : parentId
+
+assetfolders "1" -down- "0..*" projectassets
+projects "1" -right- "0..*" assetfolders
+
+workspaces "1" -right- "0..*" workspaceanalyticssnapshots
+projects "1" -right- "0..*" projectanalyticssnapshots
+
+' Các liên kết phụ mang tính chất tham chiếu (vẽ nét đứt và chỉ nối các liên kết quan trọng)
+users "1" .down. personalinboxes
+users "1" .right. notifications
+workspaces "1" .down. activitylogs
+workspaces "1" .down. tags
+tags "1" .down. tasks
+
+@enduml

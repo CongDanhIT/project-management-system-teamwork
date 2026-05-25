@@ -1,0 +1,56 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Thành viên (User)" as User
+participant "Client App\n(React)" as Client
+participant "Backend API\n(Express)" as API
+participant "Cloudflare R2\n<<system>>" as R2
+database "Database\n(MongoDB)" as DB
+
+User -> Client: Chọn file đính kèm, nhấn "Tải lên"
+activate User
+activate Client
+
+Client -> API: POST /api/assets/presigned-url\nPayload: { fileName, fileType, fileSize }
+activate API
+
+API -> API: Kiểm tra phân quyền truy cập\nvào Project/Task (RBAC)
+alt Quyền bị từ chối
+    API --> Client: HTTP 403 Forbidden\n{ message: "Không có quyền thực thi" }
+    Client --> User: Báo lỗi "Bạn không có quyền tải file lên task này"
+else Quyền hợp lệ
+    API -> R2: Gọi S3 SDK sinh Presigned URL cho upload\n(Method: PUT, Expiry: 15 phút)
+    activate R2
+    R2 --> API: Trả về Presigned URL bảo mật\n(Chứa chữ ký số signature & token tạm)
+    deactivate R2
+
+    API --> Client: HTTP 200 OK\nBody: { uploadUrl, fileKey }
+    deactivate API
+
+    Client -> Client: Chuyển đổi file thành luồng nhị phân (Binary)
+    
+    Client -> R2: Thực hiện HTTP PUT gửi file trực tiếp lên [uploadUrl]\n(Gửi file nhị phân trực tiếp không qua Backend)
+    activate R2
+    R2 --> Client: HTTP 200 OK (Upload file thành công)
+    deactivate R2
+
+    Client -> API: POST /api/assets/metadata\nPayload: { fileKey, fileName, fileType, fileSize, taskId }
+    activate API
+    
+    API -> DB: Tạo bản ghi Asset lưu trữ thông tin file vào CSDL
+    activate DB
+    DB --> API: Lưu metadata thành công
+    deactivate DB
+
+    API --> Client: HTTP 201 Created\nBody: { success: true, asset }
+    deactivate API
+
+    Client --> User: Cập nhật giao diện đính kèm file và báo "Thành công"
+    deactivate Client
+    deactivate User
+end
+@enduml

@@ -1,0 +1,86 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Chủ sở hữu (Owner)" as Owner
+actor "Thành viên mới (Invitee)" as Invitee
+participant "Client App\n(React)" as Client
+participant "Member Controller" as Controller
+participant "Member Service" as Service
+database "Database\n(MongoDB)" as DB
+participant "Hệ thống Socket.io\n<<system>>" as SocketIO
+
+== Chủ sở hữu lấy và gửi mã mời ==
+Owner -> Client: Mở màn hình Workspace, nhấn sao chép "Mã mời" (Invite Code)
+activate Owner
+activate Client
+Client --> Owner: Trả về mã mời (Ví dụ: "WS-12345")
+deactivate Client
+Owner -> Invitee: Gửi mã mời qua kênh liên lạc bên ngoài (Slack, Chat, trực tiếp)
+deactivate Owner
+
+== Thành viên mới tham gia Workspace ==
+Invitee -> Client: Đăng nhập hệ thống, nhập mã mời và nhấn "Tham gia"
+activate Invitee
+activate Client
+
+Client -> Controller: POST /api/member/workspace/WS-12345/join
+activate Controller
+
+Controller -> Service: joinWorkspaceService("WS-12345", userId)
+activate Service
+
+Service -> DB: Tìm kiếm Workspace theo inviteCode
+activate DB
+DB --> Service: Thông tin Workspace (nếu tìm thấy)
+deactivate DB
+
+alt Không tìm thấy Workspace hoặc lỗi
+    Service --> Controller: Ném lỗi NotFoundException
+    Controller --> Client: HTTP 404 Not Found\n{ message: "không tìm thấy workspace" }
+    Client --> Invitee: Hiển thị thông báo "Mã mời không hợp lệ"
+else Tìm thấy Workspace
+    Service -> DB: Kiểm tra xem User đã là thành viên chưa
+    activate DB
+    DB --> Service: Kết quả kiểm tra
+    deactivate DB
+    
+    alt Đã là thành viên
+        Service --> Controller: Ném lỗi "bạn đã là thành viên của workspace"
+        Controller --> Client: HTTP 404 Not Found (Hoặc BadRequest)
+        Client --> Invitee: Hiển thị thông báo "Bạn đã ở trong Workspace này"
+    else Chưa là thành viên
+        Service -> DB: 1. Tìm Role "MEMBER"\n2. Khởi tạo Member mới (workspaceId, userId, role)\n3. Lưu Member mới
+        activate DB
+        DB --> Service: Lưu thành viên thành công
+        deactivate DB
+        
+        Service -> DB: logActivity() - Ghi nhật ký "MEMBER_JOINED"
+        activate DB
+        DB --> Service: Lưu log thành công
+        deactivate DB
+        
+        Service --> Controller: Trả về { workspaceId, role }
+        deactivate Service
+        
+        Controller -> SocketIO: Phát sự kiện realtime "member_joined"
+        activate SocketIO
+        SocketIO -> Client: Broadcast sự kiện tới Client của Owner đang online
+        activate Client #LightBlue
+        Client -> Client: Tự động cập nhật danh sách thành viên trên UI
+        deactivate Client
+        SocketIO --> Controller: Đồng bộ realtime thành công
+        deactivate SocketIO
+        
+        Controller --> Client: HTTP 200 OK\n{ success: true, workspaceId }
+        deactivate Controller
+        
+        Client --> Invitee: Chuyển hướng và mở màn hình Workspace vừa tham gia
+        deactivate Client
+        deactivate Invitee
+    end
+end
+@enduml

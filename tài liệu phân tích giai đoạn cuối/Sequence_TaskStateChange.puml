@@ -1,0 +1,78 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Thành viên (Member)" as Member
+participant "Client App\n(React)" as Client
+participant "RBAC Middleware" as Middleware
+participant "Task Controller" as Controller
+participant "Task Service" as Service
+database "Database\n(MongoDB)" as DB
+participant "Hệ thống Socket.io\n<<system>>" as SocketIO
+
+Member -> Client: Kéo thả Task từ "In Progress" sang "Done" trên Kanban
+activate Member
+activate Client
+
+Client -> Controller: PATCH /api/tasks/:id/status\nPayload: { status: "Done" }
+activate Controller
+
+Controller -> Middleware: checkPermission(taskId, "task:update")
+activate Middleware
+Middleware -> DB: Kiểm tra vai trò (Role/Permission) của User trong dự án
+activate DB
+DB --> Middleware: Thông tin phân quyền (Hợp lệ)
+deactivate DB
+alt User không có quyền thực thi
+    Middleware --> Controller: Trả về lỗi phân quyền
+    Controller --> Client: HTTP 403 Forbidden\n{ message: "Bạn không có quyền sửa công việc" }
+    Client --> Member: Báo lỗi "Không có quyền sửa đổi trạng thái công việc"
+else Quyền hợp lệ
+    Middleware --> Controller: Cho phép đi tiếp (next())
+    deactivate Middleware
+
+    Controller -> Service: updateTaskStatus(taskId, "Done")
+    activate Service
+
+    Service -> DB: Truy vấn danh sách các công việc phụ thuộc (Task Dependencies)
+    activate DB
+    DB --> Service: Danh sách Task ID tiên quyết phải hoàn thành trước
+    deactivate DB
+    
+    Service -> Service: Kiểm tra xem các công việc tiên quyết đã ở trạng thái "Done" chưa
+    alt Tồn tại công việc tiên quyết chưa hoàn thành
+        Service --> Controller: Ném lỗi DependencyConflictError
+        Controller --> Client: HTTP 409 Conflict\n{ error: "Công việc phụ thuộc chưa hoàn thành" }
+        Client --> Member: Khôi phục vị trí thẻ Task cũ, báo lỗi "Công việc X chưa hoàn thành!"
+    else Đủ điều kiện hoàn thành (Không có ràng buộc hoặc các ràng buộc đều đã xong)
+        Service -> DB: 1. Cập nhật trạng thái Task thành "Done"\n2. Ghi nhận Activity Log (Nhật ký hoạt động)\n3. Tăng điểm tiến độ Project
+        activate DB
+        DB --> Service: Lưu trữ dữ liệu thành công
+        deactivate DB
+
+        Service --> Controller: Trả về thông tin Task cập nhật
+        deactivate Service
+
+        Controller -> SocketIO: Phát sự kiện realtime "task_status_updated"\nPayload: { taskId, newStatus }
+        activate SocketIO
+        
+        SocketIO -> Client: Broadcast "task_status_updated" tới các Clients đang mở bảng Kanban dự án
+        activate Client #LightBlue
+        Client -> Client: Tự động di chuyển thẻ Task sang cột "Done"
+        deactivate Client
+        
+        SocketIO --> Controller: Đồng bộ realtime hoàn tất
+        deactivate SocketIO
+
+        Controller --> Client: HTTP 200 OK\nBody: { success: true, task }
+        deactivate Controller
+
+        Client --> Member: Cập nhật giao diện Kanban thành công
+        deactivate Client
+        deactivate Member
+    end
+end
+@enduml

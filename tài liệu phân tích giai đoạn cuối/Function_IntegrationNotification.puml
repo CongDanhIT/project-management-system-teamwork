@@ -1,0 +1,68 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+' Định nghĩa các Actor con người (Human Actors)
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+
+' Định nghĩa các Tác nhân hệ thống ngoài (External System Actors) dưới dạng hình chữ nhật
+rectangle "Slack Webhook\n<<system>>" as Slack
+rectangle "SendGrid Service\n<<system>>" as SendGrid
+
+' Thiết lập quan hệ kế thừa (Generalization) giữa các Actor con người
+Owner -left-|> Admin : "<<kế thừa>>"
+
+' Ranh giới hệ thống (System Boundary)
+rectangle "Hệ thống Quản lý Dự án - Phân hệ Tích hợp và Thông báo" {
+    
+    ' Các Use Case cấu hình (Tác nhân con người thực hiện)
+    usecase "Cấu hình tích hợp Webhook" as UC_ConfigWebhook
+    usecase "Cấu hình dịch vụ Email" as UC_ConfigServices
+    usecase "Kiểm tra kết nối dịch vụ" as UC_TestConnection
+    
+    ' Ca sử dụng bổ trợ kỹ thuật (Included Use Cases)
+    usecase "Kiểm tra quyền truy cập" as UC_CheckPermission
+    usecase "Ghi nhật ký truyền thông\n(Log Communication)" as UC_LogCommunication
+    
+    ' Các Use Case tự động gửi thông báo (Hệ thống tự động thực thi và kết nối External Actors)
+    usecase "Gửi bản tin và thông tin\nworkspace hàng ngày qua Slack" as UC_SendSlack
+    usecase "Gửi email thông báo" as UC_SendEmail
+}
+
+' Liên kết giữa Actor con người và các ca sử dụng tương tác (Association - Đường liền nét)
+Admin --> UC_ConfigWebhook
+Admin --> UC_ConfigServices
+Admin --> UC_TestConnection
+
+' Quan hệ Bao gồm (<<include>>) - Nét đứt (..>), từ Base đến Included
+' Mọi thao tác cấu hình đều bắt buộc phải qua bước kiểm tra quyền truy cập
+UC_ConfigWebhook ..> UC_CheckPermission : "<<include>>"
+UC_ConfigServices ..> UC_CheckPermission : "<<include>>"
+UC_TestConnection ..> UC_CheckPermission : "<<include>>"
+
+' Khi thiết lập cấu hình, hệ thống bắt buộc phải kiểm tra kết nối đến dịch vụ đích
+UC_ConfigWebhook ..> UC_TestConnection : "<<include>>"
+UC_ConfigServices ..> UC_TestConnection : "<<include>>"
+
+' Các tiến trình gửi thông báo tự động bắt buộc phải ghi lại nhật ký truyền thông (Luồng sự kiện chính bước 5)
+UC_SendSlack ..> UC_LogCommunication : "<<include>>"
+UC_SendEmail ..> UC_LogCommunication : "<<include>>"
+
+' Liên kết giữa Use Case và Tác nhân hệ thống ngoài (Association - Đường liền nét)
+UC_SendSlack -- Slack
+UC_SendEmail -- SendGrid
+
+UC_TestConnection -- Slack
+UC_TestConnection -- SendGrid
+
+@enduml

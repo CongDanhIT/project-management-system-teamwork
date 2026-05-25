@@ -1,0 +1,62 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Quản trị viên (Admin)" as Admin
+participant "Client App\n(React)" as Client
+participant "Report Controller" as Controller
+participant "AI Service" as AIService
+participant "LLM Engine\n<<system>>" as LLM
+participant "Export Service" as Export
+database "Database\n(MongoDB)" as DB
+
+Admin -> Client: Nhấn nút "Phân tích rủi ro bằng AI & Xuất báo cáo" trên Dashboard
+activate Admin
+activate Client
+
+Client -> Controller: POST /api/reports/ai-analysis\nPayload: { projectId, format: "pdf" }
+activate Controller
+
+Controller -> DB: Thu thập toàn bộ dữ liệu lịch sử của dự án:\n- Trạng thái các Task (Hoàn thành, Quá hạn, Đang chờ)\n- Nhật ký hoạt động (Activity Logs) của thành viên\n- Cấu trúc các Giai đoạn (Phases) & Timeline
+activate DB
+DB --> Controller: Dữ liệu thô của dự án
+deactivate DB
+
+Controller -> AIService: analyzeProjectRisk(projectData)
+activate AIService
+
+AIService -> AIService: Xây dựng System Prompt chuyên sâu về quản lý dự án\n(Yêu cầu LLM phân tích điểm nghẽn, dự báo rủi ro trễ hạn\nvà gợi ý giải pháp khắc phục cụ thể)
+
+AIService -> LLM: Gửi dữ liệu thô + prompt phân tích chuyên sâu\n(Gọi API qua Vercel AI SDK)
+activate LLM
+
+LLM -> LLM: Đánh giá tiến độ dự án, phát hiện các task gây nghẽn (bottleneck),\ndự báo các task có nguy cơ trễ hạn dựa trên lịch sử hoạt động
+LLM --> AIService: Trả về kết quả phân tích cấu trúc\n{ risks: [...], bottlenecks: [...], recommendations: [...] }
+deactivate LLM
+
+AIService --> Controller: Trả về đối tượng kết quả phân tích rủi ro của AI
+deactivate AIService
+
+Controller -> Export: generateReportFile(projectId, analysisResult, format: "pdf")
+activate Export
+
+Export -> Export: 1. Khởi tạo tài liệu PDF (Sử dụng pdfkit/jsPDF)\n2. Dựng layout tiêu đề, mục lục báo cáo\n3. Trình bày nội dung phân tích rủi ro và vẽ biểu đồ tiến độ\n4. Trả về luồng dữ liệu nhị phân (Binary Buffer)
+Export --> Controller: Trả về file PDF Buffer
+deactivate Export
+
+Controller -> DB: Ghi nhận lịch sử xuất báo cáo (Report Generation Log)
+activate DB
+DB --> Controller: Lưu log thành công
+deactivate DB
+
+Controller --> Client: HTTP 200 OK\nHeaders: Content-Disposition (attachment; filename="AI_Risk_Report.pdf")\nBody: Binary File Buffer
+deactivate Controller
+
+Client -> Client: Trình duyệt tự động nhận diện file attachment và kích hoạt tải xuống
+Client --> Admin: Hiển thị tệp tin PDF báo cáo rủi ro đã tải xuống thành công
+deactivate Client
+deactivate Admin
+@enduml

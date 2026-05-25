@@ -1,0 +1,50 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+actor "Khách" as Guest
+actor "Thành viên\n(Member)" as Member
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Chủ sở hữu\n(Owner)" as Owner
+rectangle "Google OAuth\n<<system>>" as Google
+
+Owner -left-|> Admin : "<<kế thừa>>"
+Admin -left-|> Member : "<<kế thừa>>"
+Guest -left-|> Member : "<<kế thừa>>"
+
+rectangle "Xác thực và Bảo mật" {
+    usecase "Đăng ký / Đăng nhập" as UC_Login
+    usecase "Đăng nhập Google OAuth" as UC_GoogleLogin
+    usecase "Quản lý Phiên và Cookie" as UC_Session
+    usecase "Quản lý Tài khoản và Mật khẩu" as UC_Account
+    usecase "Kiểm soát truy cập RBAC" as UC_RBAC
+    usecase "Bảo mật Dữ liệu và Soft Delete" as UC_Security
+}
+
+Guest --> UC_Login
+Guest --> UC_GoogleLogin
+Member --> UC_Login
+Member --> UC_Account
+Admin --> UC_Account
+Admin --> UC_RBAC
+Owner --> UC_RBAC
+Owner --> UC_Security
+
+UC_GoogleLogin --> Google
+UC_Login ..> UC_Session : "<<include>>"
+UC_GoogleLogin ..> UC_Session : "<<include>>"
+UC_Account ..> UC_Session : "<<include>>"
+UC_Login ..> UC_Security : "<<include>>"
+UC_Account ..> UC_Security : "<<include>>"
+UC_RBAC ..> UC_Security : "<<include>>"
+
+@enduml

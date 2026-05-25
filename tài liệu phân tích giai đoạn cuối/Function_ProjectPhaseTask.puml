@@ -1,0 +1,62 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Thành viên\n(Member)" as Member
+
+Owner -left-|> Admin : "<<kế thừa>>"
+Admin -left-|> Member : "<<kế thừa>>"
+
+rectangle "Quản lý Project, Phase và Task" {
+    usecase "Tạo/Sửa Project" as UC_CreateProject
+    usecase "Tạo/Sửa Phase" as UC_CreatePhase
+    usecase "Tạo/Sửa Task" as UC_CreateTask
+    usecase "Phân công Task" as UC_AssignTask
+    usecase "Theo dõi Tiến độ" as UC_TrackProgress
+    usecase "Kiểm tra quyền truy cập" as UC_CheckPermission
+    usecase "Đồng bộ Real-time" as UC_RealTime
+    usecase "Lưu lịch sử hoạt động" as UC_ActivityLog
+}
+
+Owner --> UC_CreateProject
+Owner --> UC_CreatePhase
+Owner --> UC_CreateTask
+Owner --> UC_AssignTask
+Owner --> UC_TrackProgress
+
+Admin --> UC_CreateProject
+Admin --> UC_CreatePhase
+Admin --> UC_CreateTask
+Admin --> UC_AssignTask
+Admin --> UC_TrackProgress
+
+Member --> UC_CreateTask
+Member --> UC_TrackProgress
+
+UC_CreateProject ..> UC_CheckPermission : "<<include>>"
+UC_CreatePhase ..> UC_CheckPermission : "<<include>>"
+UC_CreateTask ..> UC_CheckPermission : "<<include>>"
+UC_AssignTask ..> UC_CheckPermission : "<<include>>"
+
+UC_CreateProject ..> UC_RealTime : "<<include>>"
+UC_CreatePhase ..> UC_RealTime : "<<include>>"
+UC_CreateTask ..> UC_RealTime : "<<include>>"
+UC_AssignTask ..> UC_RealTime : "<<include>>"
+
+UC_CreateProject ..> UC_ActivityLog : "<<include>>"
+UC_CreatePhase ..> UC_ActivityLog : "<<include>>"
+UC_CreateTask ..> UC_ActivityLog : "<<include>>"
+UC_AssignTask ..> UC_ActivityLog : "<<include>>"
+
+@enduml

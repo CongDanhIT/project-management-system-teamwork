@@ -1,0 +1,49 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Người dùng" as User
+participant "Client App\n(React)" as Client
+participant "API Controller" as Controller
+participant "Cookie-Session\nMiddleware" as SessionMiddleware
+participant "Passport\nMiddleware" as Passport
+database "Database\n(MongoDB)" as DB
+
+== Xác thực Stateless Session trên mỗi Request ==
+User -> Client: Click truy cập một màn hình bảo mật (Ví dụ: danh sách Project)
+activate User
+activate Client
+
+Client -> Controller: GET /api/projects\n(Tự động đính kèm Cookie "session" trong Request Header)
+activate Controller
+
+Controller -> SessionMiddleware: Khởi động request (Đọc headers)
+activate SessionMiddleware
+SessionMiddleware -> SessionMiddleware: Giải mã cookie "session"\n(Khôi phục lại đối tượng session thô từ chuỗi base64 đã ký)
+SessionMiddleware --> Passport: Gán session thô vào req.session
+deactivate SessionMiddleware
+
+activate Passport
+Passport -> Passport: Thực hiện deserializeUser (Lấy thông tin User từ session gán vào req.user)
+Passport --> Controller: Cập nhật req.user và req.isAuthenticated() = true
+deactivate Passport
+
+Controller -> Controller: Chạy qua isAuthenticated middleware\n(Kiểm tra nhanh req.user và req.isAuthenticated() không cần query DB)
+
+alt Xác thực thất bại (Cookie không hợp lệ, hết hạn hoặc thiếu)
+    Controller --> Client: HTTP 401 Unauthorized\n{ message: "Yêu cầu đăng nhập lại" }
+    Client --> User: Chuyển hướng về trang Đăng nhập
+else Xác thực thành công
+    Controller -> DB: Lấy danh sách dự án liên quan đến User (Dựa trên req.user._id)
+    activate DB
+    DB --> Controller: Mảng Projects
+    deactivate DB
+    Controller --> Client: HTTP 200 OK\nBody: { projects }
+    Client --> User: Hiển thị giao diện danh sách dự án
+    deactivate Client
+    deactivate User
+end
+@enduml

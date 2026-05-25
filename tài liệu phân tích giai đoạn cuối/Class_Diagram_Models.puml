@@ -1,0 +1,221 @@
+@startuml Class_Diagram_Models
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam componentStyle uml2
+
+' Định nghĩa bảng màu tinh tế cho các class trong diagram
+skinparam class {
+    BackgroundColor #F8F9F9
+    BorderColor #5D6D7E
+    ArrowColor #2C3E50
+    
+    BackgroundColor<<Model>> #EAF2F8
+    BorderColor<<Model>> #2980B9
+    FontColor<<Model>> #1B4F72
+}
+
+title Sơ đồ Lớp Tổng thể Tầng dữ liệu (Domain Models Class Diagram) - TeamFlow
+
+package "Package Identity & Auth" {
+    class User <<Model>> {
+        - id: ObjectId
+        - name: string
+        - email: string
+        - profilePicture: string
+        - isActive: boolean
+        - lastLogin: Date
+        - preferences: object
+        - inboxToken: string
+        - slackUserId: string
+        + comparePassword(value: string): Promise<boolean>
+        + omitPassword(): object
+    }
+
+    class Account <<Model>> {
+        - id: ObjectId
+        - provider: string
+        - providerId: string
+        - refreshToken: string
+        - tokenExpiry: Date
+    }
+
+    class Role <<Model>> {
+        - id: ObjectId
+        - name: string
+        - permissions: string[]
+    }
+}
+
+package "Package Workspace Collaboration" {
+    class Workspace <<Model>> {
+        - id: ObjectId
+        - name: string
+        - description: string
+        - inviteCode: string
+        - slackWebhookUrl: string
+        - dailyDigestEnabled: boolean
+        + resetInviteCode(): void
+    }
+
+    class Member <<Model>> {
+        - id: ObjectId
+        - joinedAt: Date
+    }
+
+    class Announcement <<Model>> {
+        - id: ObjectId
+        - title: string
+        - content: string
+        - authorId: ObjectId
+        - workspaceId: ObjectId
+    }
+
+    class ActivityLog <<Model>> {
+        - id: ObjectId
+        - actorId: ObjectId
+        - action: string
+        - entityType: string
+        - entityId: ObjectId
+        - details: object
+    }
+}
+
+package "Package Project & Task Management" {
+    class Project <<Model>> {
+        - id: ObjectId
+        - name: string
+        - description: string
+        - status: string
+        - workspaceId: ObjectId
+        - isDeleted: boolean
+    }
+
+    class Phase <<Model>> {
+        - id: ObjectId
+        - name: string
+        - description: string
+        - projectId: ObjectId
+    }
+
+    class Task <<Model>> {
+        - id: ObjectId
+        - taskCode: string
+        - title: string
+        - description: string
+        - status: string
+        - priority: string
+        - startDate: Date
+        - dueDate: Date
+        - completedAt: Date
+        - estimatedHours: number
+        - loggedHours: number
+        - requiresApproval: boolean
+        - deletedAt: Date
+    }
+
+    class Tag <<Model>> {
+        - id: ObjectId
+        - name: string
+        - color: string
+        - workspaceId: ObjectId
+    }
+
+    class TaskComment <<Model>> {
+        - id: ObjectId
+        - content: string
+        - authorId: ObjectId
+        - taskId: ObjectId
+    }
+
+    class Inbox <<Model>> {
+        - id: ObjectId
+        - userId: ObjectId
+        - title: string
+        - description: string
+        - status: string
+    }
+}
+
+package "Package Assets & Storage" {
+    class AssetFolder <<Model>> {
+        - id: ObjectId
+        - name: string
+        - parentId: ObjectId
+        - workspaceId: ObjectId
+    }
+
+    class ProjectAsset <<Model>> {
+        - id: ObjectId
+        - fileName: string
+        - fileKey: string
+        - fileSize: number
+        - fileType: string
+        - uploadedBy: ObjectId
+        - folderId: ObjectId
+        - projectId: ObjectId
+    }
+}
+
+package "Package Infrastructure Services" {
+    class Notification <<Model>> {
+        - id: ObjectId
+        - recipientId: ObjectId
+        - senderId: ObjectId
+        - type: string
+        - title: string
+        - content: string
+        - isRead: boolean
+    }
+
+    class WorkspaceAnalyticsSnapshot <<Model>> {
+        - id: ObjectId
+        - workspaceId: ObjectId
+        - activeMembers: number
+        - totalTasks: number
+        - completedTasks: number
+        - snapshotDate: Date
+    }
+
+    class ProjectAnalyticsSnapshot <<Model>> {
+        - id: ObjectId
+        - projectId: ObjectId
+        - burndownData: object
+        - velocity: number
+        - snapshotDate: Date
+    }
+}
+
+' QUAN HỆ GIỮA CÁC CLASS (RELATIONSHIPS)
+' 1. Identity & Auth
+Account "1" -- "1" User : "xác thực (userId)"
+User "1" -- "*" Member : "đóng vai trò"
+Member "*" -- "1" Role : "gán quyền (role)"
+
+' 2. Workspace
+Workspace "1" *-- "*" Member : "sở hữu thành viên (Composition)"
+Workspace "1" o-- "*" Project : "chứa các dự án (Aggregation)"
+Workspace "1" -- "*" Announcement : "đăng tin"
+Workspace "1" -- "*" ActivityLog : "ghi nhật ký"
+
+' 3. Project & Task
+Project "1" *-- "*" Phase : "chia làm các giai đoạn"
+Project "1" *-- "*" Task : "có các công việc"
+Phase "1" o-- "*" Task : "chứa các công việc"
+Task "1" o-- "*" TaskComment : "có các bình luận"
+Task "*" -- "*" Tag : "gán nhãn"
+Task "1" -- "*" Task : "quan hệ cha-con (subtask / parentId)"
+User "1" -- "*" Task : "tạo ra (createdBy)"
+User "1" -- "*" Task : "thực hiện (assignedTo)"
+User "1" -- "1" Inbox : "sở hữu hòm thư"
+
+' 4. Assets
+Workspace "1" *-- "*" AssetFolder : "quản lý thư mục"
+AssetFolder "1" *-- "*" ProjectAsset : "chứa tệp tài nguyên"
+Project "1" o-- "*" ProjectAsset : "đính kèm tài nguyên"
+
+' 5. Infra Services
+User "1" -- "*" Notification : "nhận thông báo (recipientId)"
+Workspace "1" -- "*" WorkspaceAnalyticsSnapshot : "thống kê định kỳ"
+Project "1" -- "*" ProjectAnalyticsSnapshot : "thống kê hiệu suất"
+
+@enduml

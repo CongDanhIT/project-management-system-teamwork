@@ -1,0 +1,53 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+rectangle "Email Notification System\n<<system>>" as EmailSystem
+
+Owner -left-|> Admin : "<<kế thừa>>"
+
+rectangle "Quản lý Workspace và Thành viên" {
+    usecase "Tạo Workspace mới" as UC_CreateWS
+    usecase "Chỉnh sửa thông tin Workspace" as UC_UpdateWS
+    usecase "Xóa Workspace (Soft Delete)" as UC_DeleteWS
+    usecase "Mời thành viên vào Workspace" as UC_InviteMember
+    usecase "Quản lý vai trò RBAC" as UC_ManageRole
+    usecase "Kiểm tra quyền truy cập" as UC_CheckPermission
+    usecase "Gửi thông báo mời" as UC_SendInvitation
+    usecase "Cập nhật danh sách thành viên" as UC_UpdateMemberList
+}
+
+Owner --> UC_CreateWS
+Owner --> UC_UpdateWS
+Owner --> UC_DeleteWS
+Owner --> UC_InviteMember
+Owner --> UC_ManageRole
+
+Admin --> UC_UpdateWS
+Admin --> UC_InviteMember
+Admin --> UC_ManageRole
+
+UC_CreateWS ..> UC_CheckPermission : "<<include>>"
+UC_UpdateWS ..> UC_CheckPermission : "<<include>>"
+UC_DeleteWS ..> UC_CheckPermission : "<<include>>"
+UC_InviteMember ..> UC_CheckPermission : "<<include>>"
+UC_ManageRole ..> UC_CheckPermission : "<<include>>"
+
+UC_InviteMember ..> UC_SendInvitation : "<<include>>"
+UC_InviteMember ..> UC_UpdateMemberList : "<<include>>"
+UC_ManageRole ..> UC_UpdateMemberList : "<<include>>"
+
+UC_SendInvitation --> EmailSystem
+
+@enduml

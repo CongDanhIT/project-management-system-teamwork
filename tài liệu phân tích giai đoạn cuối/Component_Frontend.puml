@@ -1,0 +1,73 @@
+@startuml Component_Frontend
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam componentStyle uml2
+
+' Định nghĩa bảng màu sang trọng cho frontend component
+skinparam component {
+    BackgroundColor<<Pages>> #EBF5FB
+    BorderColor<<Pages>> #2980B9
+    FontColor<<Pages>> #1B4F72
+    
+    BackgroundColor<<UIComponents>> #EAF2F8
+    BorderColor<<UIComponents>> #5499C7
+    FontColor<<UIComponents>> #1F618D
+    
+    BackgroundColor<<StateAndData>> #E8F8F5
+    BorderColor<<StateAndData>> #117A65
+    FontColor<<StateAndData>> #0E6251
+    
+    BackgroundColor<<Services>> #FEF9E7
+    BorderColor<<Services>> #F4D03F
+    FontColor<<Services>> #7D6608
+}
+
+title Sơ đồ Thành phần Frontend (Frontend Component Diagram) - TeamFlow
+
+package "Next.js 16 Application (React 19 & App Router)" {
+
+    package "App Routes / Pages (src/app)" <<Pages>> {
+        [Auth Page\n(/login, /register)] as pg_auth
+        [Workspace Page\n(/workspace/{id})] as pg_ws
+        [Project Dashboard\n(/project/{id})] as pg_project
+        [Task Kanban Board\n(/project/{id}/board)] as pg_board
+        [AI Assistant Panel\n(/project/{id}/ai)] as pg_ai
+    }
+    
+    package "Reusable UI Components (src/components)" <<UIComponents>> {
+        [Kanban Column / Card\n(dnd-kit drag-drop)] as comp_kanban
+        [Chat & Notification Modal\n(realtime events)] as comp_chat
+        [AI Chat Bubble\n(interactive AI helper)] as comp_ai
+        [Analytics Charts\n(Recharts widgets)] as comp_charts
+        [Common UI Library\n(shadcn & Radix UI)] as comp_ui
+    }
+    
+    package "State & Data Synchronization" <<StateAndData>> {
+        [Zustand Stores\n(User, activeWorkspace)] as store_zustand
+        [TanStack Query Hooks\n(useQuery, useMutation)] as react_query
+    }
+    
+    package "Client Services & API Client" <<Services>> {
+        [Axios API Client\n(src/services/api.ts)] as svc_axios
+        [Socket.io Client\n(WebSocket Manager)] as svc_socket
+        [Document Exporter\n(jspdf, exceljs)] as svc_export
+    }
+}
+
+' Định nghĩa mối quan hệ
+pg_board -down-> comp_kanban
+pg_project -down-> comp_charts
+pg_ai -down-> comp_ai
+pg_ws -down-> comp_chat
+
+comp_kanban -down-> react_query : "Fetch & Sync Task State"
+comp_chat -down-> svc_socket : "Lắng nghe tin nhắn realtime"
+comp_charts -down-> svc_export : "Xuất báo cáo PDF/Excel"
+
+comp_kanban -right-> store_zustand : "Đọc Active Workspace ID"
+comp_chat -right-> store_zustand
+
+react_query -down-> svc_axios : "Gửi REST HTTP Requests"
+pg_auth -down-> svc_axios : "Gửi request đăng nhập"
+
+@enduml

@@ -1,0 +1,82 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Người dùng" as User
+participant "Client App\n(React)" as Client
+participant "Auth Route" as Route
+participant "Passport\nMiddleware" as Passport
+participant "Auth Service" as Service
+participant "Google OAuth API\n<<system>>" as Google
+database "Database\n(MongoDB)" as DB
+participant "Cookie-Session\nMiddleware" as SessionMiddleware
+
+== Luồng Đăng nhập Google OAuth2 ==
+User -> Client: Click nút "Login with Google"
+activate User
+activate Client
+
+Client -> Route: GET /api/auth/google
+activate Route
+
+Route -> Passport: passport.authenticate("google")
+activate Passport
+Passport --> Google: Chuyển hướng yêu cầu xác thực (Scope: Profile, Email)
+deactivate Passport
+deactivate Route
+activate Google
+
+Google --> User: Hiển thị Form chọn tài khoản Google
+deactivate Google
+
+User -> Google: Xác nhận chọn tài khoản & đồng ý điều khoản
+activate Google
+
+Google --> Route: Redirect về URL callback\nGET /api/auth/google/callback?code=oauth_code
+deactivate Google
+activate Route
+
+Route -> Passport: passport.authenticate("google")
+activate Passport
+
+Passport -> Service: loginOrCreateAccountService(profileData)
+activate Service
+
+Service -> DB: Bắt đầu Transaction
+activate DB
+
+Service -> DB: Tìm kiếm User theo email từ Google
+alt User mới (Chưa tồn tại trong hệ thống)
+    Service -> DB: 1. Tạo User mới\n2. Tạo Account liên kết (OAuth provider: Google)\n3. Lấy Role "OWNER"\n4. Tạo Workspace mặc định\n5. Thêm Member (Gán User vào Workspace làm OWNER)\n6. Cập nhật currentWorkspace cho User
+    DB --> Service: Hoàn tất khởi tạo tài khoản mới
+else User hiện tại (Đã tồn tại)
+    Service -> DB: Trả về thông tin User hiện tại
+    DB --> Service: Dữ liệu User
+end
+Service -> DB: Commit Transaction
+deactivate DB
+
+Service --> Passport: Trả về đối tượng User
+deactivate Service
+
+Passport -> Passport: Thực hiện serializeUser (Lưu thông tin User vào session object)
+Passport --> Route: Đăng nhập thành công
+deactivate Passport
+
+Route -> SessionMiddleware: Kết thúc callback (res.redirect)
+activate SessionMiddleware
+SessionMiddleware -> SessionMiddleware: Mã hóa đối tượng session (Base64 + Sign) thành chuỗi mã ký
+SessionMiddleware --> Route: Ghi chuỗi mã hóa vào Header Set-Cookie: "session=[data]"
+deactivate SessionMiddleware
+
+Route --> Client: Redirect về trang Frontend (/auth/redirect?success=true)\nCookies: [session]
+deactivate Route
+
+Client -> Client: Lưu thông tin User vào Global State (Zustand)
+Client --> User: Chuyển hướng sang màn hình Dashboard chính
+deactivate Client
+deactivate User
+@enduml

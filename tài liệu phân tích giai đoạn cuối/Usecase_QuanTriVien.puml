@@ -1,0 +1,62 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+actor "Quản trị viên\n(Admin)" as Admin
+
+rectangle "Phân hệ Quản trị viên - Hệ thống Quản lý Dự án" {
+
+    ' Các Use Case gốc (Base)
+    usecase "Quản lý vòng đời Dự án" as UC_Project
+    usecase "Quản lý Giai đoạn (Phases)" as UC_Phase
+    usecase "Quản lý Nhân sự Workspace" as UC_Personnel
+    usecase "Giám sát hoạt động & Báo cáo" as UC_Monitor
+    usecase "Thiết lập Bảng tin nội bộ" as UC_News
+
+    ' Các Use Case Mở rộng (Extend) - Tùy chọn xảy ra
+    usecase "Sử dụng AI Project Planner" as UC_AIPlanner
+    usecase "Đóng băng Dự án (Freeze)" as UC_Freeze
+    usecase "Mời thành viên mới (Invite Link)" as UC_Invite
+    usecase "Thay đổi vai trò (RBAC)" as UC_Role
+    usecase "Trích xuất Báo cáo Excel" as UC_Excel
+    usecase "Cảnh báo rủi ro (AI Risk Detection)" as UC_AIRisk
+    usecase "Ghim thông báo quan trọng (Pin)" as UC_Pin
+
+    ' Các Use Case Bao gồm (Include) - Bắt buộc xảy ra
+    usecase "Truy xuất Lịch sử hành vi (Audit Log)" as UC_Audit
+}
+
+' Nối Actor với Base Use Cases
+Admin --> UC_Project
+Admin --> UC_Phase
+Admin --> UC_Personnel
+Admin --> UC_Monitor
+Admin --> UC_News
+
+' QUAN HỆ INCLUDE (Từ Base -> Included)
+' Để Giám sát và tạo Báo cáo, hệ thống BẮT BUỘC phải Truy xuất Audit Log
+UC_Monitor ..> UC_Audit : <<include>>
+
+' QUAN HỆ EXTEND (Từ Extended -> Base)
+' Các hành động mở rộng mang tính tùy chọn trong các chức năng gốc
+UC_AIPlanner .u.> UC_Project : <<extend>>
+UC_Freeze .u.> UC_Project : <<extend>>
+
+UC_Invite .u.> UC_Personnel : <<extend>>
+UC_Role .u.> UC_Personnel : <<extend>>
+
+UC_Excel .u.> UC_Monitor : <<extend>>
+UC_AIRisk .u.> UC_Monitor : <<extend>>
+
+UC_Pin .u.> UC_News : <<extend>>
+
+@enduml

@@ -1,0 +1,67 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Quản trị viên (Admin)" as Admin
+participant "Client App\n(React)" as Client
+participant "AI Controller" as Controller
+participant "AI Planner Service" as Service
+participant "Vercel AI SDK\n<<system>>" as AISDK
+participant "LLM Engine\n<<system>>" as LLM
+database "Database\n(MongoDB)" as DB
+
+Admin -> Client: Nhập mô tả yêu cầu kế hoạch, nhấn "Dựng kế hoạch bằng AI"
+activate Admin
+activate Client
+
+Client -> Controller: POST /api/ai/generate-plan\nPayload: { prompt, projectId }
+activate Controller
+
+Controller -> DB: Lấy dữ liệu chi tiết dự án làm ngữ cảnh (Context)
+activate DB
+DB --> Controller: Chi tiết dự án (Tên, mục tiêu, thành viên)
+deactivate DB
+
+Controller -> Service: generateProjectPlan(prompt, projectContext)
+activate Service
+
+Service -> AISDK: Gọi generateObject()\nTham số: { model, schema: ZodProjectPlanSchema, prompt }
+activate AISDK
+
+AISDK -> LLM: Gửi Prompt và yêu cầu đầu ra khớp JSON Schema
+activate LLM
+LLM --> AISDK: Trả về chuỗi JSON thô (raw JSON string)
+deactivate LLM
+
+AISDK -> AISDK: Parse chuỗi JSON và thực thi đối sánh\nxác thực cấu trúc bằng thư viện Zod
+alt Dữ liệu trả về không khớp Zod Schema
+    AISDK --> Service: Ném ngoại lệ ZodValidationError
+    Service --> Controller: Bắt lỗi, định dạng thông báo lỗi cấu trúc
+    Controller --> Client: HTTP 422 Unprocessable Entity\n{ error: "AI sinh dữ liệu không đúng cấu trúc" }
+    Client --> Admin: Báo lỗi "Dữ liệu AI trả về không hợp lệ, vui lòng thử lại"
+else Dữ liệu khớp Zod Schema
+    AISDK --> Service: Trả về đối tượng JSON đã validate thành công\n{ phases: [ { name, tasks: [...] } ] }
+    deactivate AISDK
+
+    Service -> DB: Bắt đầu một Database Transaction Session
+    activate DB
+    Service -> DB: 1. Tạo hàng loạt các giai đoạn (Phases)\n2. Tạo hàng loạt các công việc (Tasks) đính kèm Phase tương ứng\n3. Lưu vết hoạt động (Activity Log)
+    DB --> Service: Mọi lệnh thực thi thành công
+    Service -> DB: Commit Transaction để ghi dữ liệu vĩnh viễn vào DB
+    deactivate DB
+
+    Service --> Controller: Trả về danh sách Phases & Tasks đã được tạo
+    deactivate Service
+
+    Controller --> Client: HTTP 200 OK\nBody: { success: true, phases, tasks }
+    deactivate Controller
+
+    Client -> Client: Cập nhật lại sơ đồ Gantt Chart và Kanban board
+    Client --> Admin: Hiển thị kế hoạch dự án do AI tạo trực quan
+    deactivate Client
+    deactivate Admin
+end
+@enduml

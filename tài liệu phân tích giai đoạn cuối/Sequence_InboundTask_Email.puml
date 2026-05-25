@@ -1,0 +1,53 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Người dùng (User)" as User
+participant "Dịch vụ SendGrid\n(Inbound Parse)\n<<system>>" as SendGrid
+participant "Backend API\n(Express)" as API
+database "Database\n(MongoDB)" as DB
+participant "Hệ thống Socket.io\n<<system>>" as SocketIO
+participant "Client App\n(React)" as Client
+
+== Tạo Task từ Email gửi đến hệ thống ==
+User -> SendGrid: Gửi Email tới inbox@teamflow.com\nSubject: [Tên công việc]\nBody: [Mô tả chi tiết]
+activate User
+activate SendGrid
+
+SendGrid -> API: HTTP POST /api/integrations/email/inbound\nPayload: { from, subject, text }
+activate API
+
+API -> DB: Tìm kiếm User theo địa chỉ Email người gửi
+activate DB
+DB --> API: Đối tượng User
+deactivate DB
+
+alt Không tìm thấy Email trong hệ thống
+    API -> SendGrid: Yêu cầu gửi Email phản hồi lỗi
+    SendGrid --> User: Gửi Email tự động báo\n"Địa chỉ email không tồn tại trong TeamFlow"
+    deactivate SendGrid
+    deactivate User
+else Người dùng hợp lệ
+    API -> DB: Tạo Task mới vào Inbox cá nhân của User\n(Title = subject, Description = text)
+    activate DB
+    DB --> API: Lưu Task thành công
+    deactivate DB
+
+    API -> SocketIO: Phát sự kiện realtime "inbox_updated"
+    activate SocketIO
+    SocketIO -> Client: Broadcast tới Client đang online của User
+    activate Client #LightBlue
+    Client -> Client: Cập nhật số lượng Inbox trên sidebar\nvà hiển thị task mới
+    deactivate Client
+    SocketIO --> API: Đồng bộ realtime thành công
+    deactivate SocketIO
+
+    API --> SendGrid: HTTP 200 OK (Xác nhận đã xử lý thành công)
+    deactivate API
+    deactivate SendGrid
+    deactivate User
+end
+@enduml

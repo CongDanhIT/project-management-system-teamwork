@@ -1,0 +1,64 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+' Định nghĩa các Actor (Tác nhân con người)
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Thành viên\n(Member)" as Member
+
+rectangle "Hệ thống Socket.io\n<<system>>" as SocketIO
+
+' Thiết lập quan hệ kế thừa (Generalization) giữa các Actor
+' Mũi tên hướng từ Actor con về Actor cha (chỉ quyền kế thừa)
+Owner -up-|> Admin
+Admin -up-|> Member
+
+' Ranh giới hệ thống (System Boundary)
+rectangle "Hệ thống Quản lý Dự án - Phân hệ Cộng tác và Giao tiếp thời gian thực" {
+    usecase "Bình luận công việc" as UC_Comment
+    usecase "Nhắc tên thành viên" as UC_Mention
+    usecase "Cập nhật trạng thái công việc" as UC_UpdateStatus
+    usecase "Lưu bản nháp" as UC_SaveDraft
+    
+    ' Các Use Case bổ trợ kỹ thuật (được gọi qua include)
+    usecase "Kiểm tra quyền truy cập" as UC_CheckPermission
+    usecase "Phát sự kiện thời gian thực" as UC_BroadcastEvent
+    usecase "Cập nhật giao diện người dùng" as UC_UpdateUI
+}
+
+' Liên kết giữa Actor và Use Case nghiệp vụ chính (Association - Đường liền nét)
+' Chỉ cần kết nối với Member (Admin và Owner sẽ tự động kế thừa các liên kết này)
+Member -- UC_Comment
+Member -- UC_Mention
+Member -- UC_UpdateStatus
+Member -- UC_SaveDraft
+
+' Quan hệ Bao gồm (<<include>>) - Đường nét đứt, mũi tên từ Use Case gốc đến Use Case bổ trợ
+UC_Comment ..> UC_CheckPermission : "<<include>>"
+UC_Mention ..> UC_CheckPermission : "<<include>>"
+UC_UpdateStatus ..> UC_CheckPermission : "<<include>>"
+UC_SaveDraft ..> UC_CheckPermission : "<<include>>"
+
+UC_Comment ..> UC_BroadcastEvent : "<<include>>"
+UC_Mention ..> UC_BroadcastEvent : "<<include>>"
+UC_UpdateStatus ..> UC_BroadcastEvent : "<<include>>"
+UC_SaveDraft ..> UC_BroadcastEvent : "<<include>>"
+
+UC_BroadcastEvent ..> UC_UpdateUI : "<<include>>"
+
+' Liên kết giữa Use Case và Tác nhân hệ thống (Association - Đường liền nét)
+UC_UpdateUI -- SocketIO
+
+@enduml

@@ -1,0 +1,68 @@
+@startuml Architecture_SystemOverview
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam componentStyle uml2
+
+' Định nghĩa bảng màu hiện đại
+skinparam component {
+    BackgroundColor<<Frontend>> #EBF5FB
+    BorderColor<<Frontend>> #2980B9
+    FontColor<<Frontend>> #1B4F72
+    
+    BackgroundColor<<Backend>> #E8F8F5
+    BorderColor<<Backend>> #117A65
+    FontColor<<Backend>> #0E6251
+    
+    BackgroundColor<<Database>> #FEF9E7
+    BorderColor<<Database>> #D4AC0D
+    FontColor<<Database>> #7D6608
+    
+    BackgroundColor<<ThirdParty>> #FDF2E9
+    BorderColor<<ThirdParty>> #E67E22
+    FontColor<<ThirdParty>> #7E5109
+}
+
+title Sơ đồ Kiến trúc Tổng thể Hệ thống - TeamFlow
+
+package "Client-Side (Trình duyệt User)" {
+    component "Next.js Web Client\n(React 19 Components)" as client <<Frontend>>
+}
+
+package "Server-Side (Hạ tầng Máy chủ)" {
+    component "Express API Server\n(Node.js REST Server)" as backend <<Backend>>
+    component "Socket.io Engine\n(Realtime Coordinator)" as socket_srv <<Backend>>
+    component "node-cron Scheduler\n(Background Cron Jobs)" as cron <<Backend>>
+}
+
+database "MongoDB Atlas\n(Data Storage)" as mongodb <<Database>>
+database "Cloudflare R2\n(Object Storage)" as r2 <<Database>>
+
+package "External Services (Dịch vụ bên thứ 3)" {
+    component "Google OAuth 2.0\n(Identity Provider)" as google_auth <<ThirdParty>>
+    component "SendGrid Mail API\n(Email Delivery)" as sendgrid <<ThirdParty>>
+    component "Slack API\n(Slash Command & Webhook)" as slack <<ThirdParty>>
+    component "Google Gemini / Groq\n(Large Language Models)" as llm <<ThirdParty>>
+}
+
+' Kết nối và luồng dữ liệu
+client -down-> google_auth : "1. Xác thực tài khoản Google"
+google_auth -down-> backend : "2. Trả về thông tin User"
+
+client -down-> backend : "Gửi Request REST (HTTPS)"
+client <.right.> socket_srv : "Kết nối Websocket (Realtime)"
+
+backend -right-> socket_srv : "Trigger sự kiện realtime"
+cron -up-> backend : "Kích hoạt tác vụ ngầm định kỳ"
+
+' Kết nối Database & Storage
+backend -down-> mongodb : "Đọc / Ghi dữ liệu dự án"
+backend -down-> r2 : "Ký Presigned URL (GET / PUT)"
+client -down-> r2 : "PUT File trực tiếp (qua Presigned URL)"
+
+' Kết nối với bên thứ 3
+backend -left-> sendgrid : "Gửi Email (Daily Digest / Invite)"
+slack -down-> backend : "Slack Slash Command (Inbound Task)"
+backend -down-> slack : "Gửi thông báo (Slack Daily Digest)"
+backend -down-> llm : "Vercel AI SDK (Project Planner / Analyzer)"
+
+@enduml

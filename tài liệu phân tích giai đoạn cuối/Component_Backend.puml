@@ -1,0 +1,75 @@
+@startuml Component_Backend
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam componentStyle uml2
+
+' Định nghĩa bảng màu tinh tế cho các thành phần backend
+skinparam component {
+    BackgroundColor<<Routing>> #F2F4F4
+    BorderColor<<Routing>> #7F8C8D
+    FontColor<<Routing>> #2C3E50
+    
+    BackgroundColor<<Middleware>> #FDEDEC
+    BorderColor<<Middleware>> #EC7063
+    FontColor<<Middleware>> #78281F
+    
+    BackgroundColor<<CoreModule>> #EAF2F8
+    BorderColor<<CoreModule>> #5499C7
+    FontColor<<CoreModule>> #1B4F72
+    
+    BackgroundColor<<Infrastructure>> #FEF9E7
+    BorderColor<<Infrastructure>> #F4D03F
+    FontColor<<Infrastructure>> #7D6608
+}
+
+title Sơ đồ Thành phần Backend (Backend Component Diagram) - TeamFlow
+
+package "Express.js Application" {
+    
+    [Express Router\n(src/routes/index.ts)] as router <<Routing>>
+    
+    package "Middlewares" {
+        [Auth Middleware\n(Session Verification)] as mw_auth <<Middleware>>
+        [RBAC Middleware\n(Role & Permission)] as mw_rbac <<Middleware>>
+        [Validation Middleware\n(Zod Schema Validator)] as mw_zod <<Middleware>>
+    }
+    
+    package "Core Business Modules" as CoreBusinessModules {
+        [Auth Module\n(Local & Google OAuth)] as mod_auth <<CoreModule>>
+        [Workspace Module\n(Workspace & Invites)] as mod_ws <<CoreModule>>
+        [Project Module\n(Project & Phases)] as mod_project <<CoreModule>>
+        [Task Module\n(Task & Dependencies)] as mod_task <<CoreModule>>
+        [AI Module\n(Planner & Agent v2)] as mod_ai <<CoreModule>>
+        [Asset Module\n(Presigned URLs)] as mod_asset <<CoreModule>>
+        [Inbox & Notification Module\n(WebSockets & Inbox)] as mod_notify <<CoreModule>>
+        [Analytics Module\n(Reports & Excel/PDF)] as mod_analytics <<CoreModule>>
+        [Integration Module\n(Slack Inbound & Email)] as mod_integration <<CoreModule>>
+    }
+    
+    package "System Infrastructure" {
+        [Database Connector\n(Mongoose / MongoDB)] as inf_db <<Infrastructure>>
+        [Socket.io Engine\n(WebSockets)] as inf_socket <<Infrastructure>>
+        [node-cron Scheduler\n(Background Jobs)] as inf_cron <<Infrastructure>>
+        [Winston Logger\n(System Logging)] as inf_log <<Infrastructure>>
+    }
+}
+
+' Định nghĩa luồng gọi hàm & phụ thuộc
+router -down-> mw_auth : "Lọc request"
+mw_auth -right-> mw_rbac
+mw_rbac -right-> mw_zod
+mw_zod -down-> CoreBusinessModules : "Chuyển tiếp payload sạch"
+
+' Các Module sử dụng Hạ tầng
+CoreBusinessModules -down-> inf_db : "Đọc/Ghi CSDL"
+mod_notify -down-> inf_socket : "Gửi sự kiện thời gian thực"
+inf_cron -up-> mod_integration : "Chạy Daily Digest (Slack/Email)"
+CoreBusinessModules -left-> inf_log : "Ghi log hoạt động"
+
+' Mối liên hệ nghiệp vụ chéo giữa các Module
+mod_project -down-> mod_task : "Chứa danh sách task"
+mod_ai -right-> mod_project : "Khởi tạo Project & Tasks"
+mod_task -left-> mod_notify : "Tạo thông báo khi đổi trạng thái"
+mod_integration -right-> mod_task : "Tạo task từ Email/Slack Inbound"
+
+@enduml

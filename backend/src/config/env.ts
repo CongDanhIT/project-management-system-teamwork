@@ -40,6 +40,7 @@ const envSchema = z.object({
     // Slack Integration
     SLACK_WEBHOOK_URL: z.string().optional(),
     SLACK_SIGNING_SECRET: z.string().optional(),
+    TOGETHER_API_KEY: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);
@@ -56,6 +57,7 @@ export const env = {
     isDev: envParsed.data.NODE_ENV === "development",
     isProd: envParsed.data.NODE_ENV === "production",
     isTest: envParsed.data.NODE_ENV === "test",
+    TOGETHER_API_KEY: process.env.TOGETHER_API_KEY || envParsed.data.TOGETHER_API_KEY,
     // Mapping SendGrid_API_KEY từ .env nếu có
     SENDGRID_API_KEY: process.env.SendGrid_API_KEY || envParsed.data.SENDGRID_API_KEY,
     SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_SYSTEM || process.env.SENDGRID_FROM_EMAIL || envParsed.data.SENDGRID_FROM_EMAIL,

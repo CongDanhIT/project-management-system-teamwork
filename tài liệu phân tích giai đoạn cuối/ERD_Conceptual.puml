@@ -1,0 +1,73 @@
+@startuml ERD_Conceptual
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 100
+
+skinparam entity {
+    BackgroundColor #EBF5FB
+    BorderColor #2980B9
+    FontColor #2C3E50
+    FontSize 16
+    FontStyle bold
+}
+skinparam arrowColor #34495E
+skinparam arrowFontSize 14
+
+entity "User\n(Người dùng)" as user
+entity "Account\n(Tài khoản)" as account
+entity "Role\n(Vai trò & Quyền)" as role
+entity "Workspace\n(Không gian làm việc)" as ws
+entity "Member\n(Thành viên Workspace)" as member
+entity "Announcement\n(Thông báo chung)" as announcement
+entity "ActivityLog\n(Nhật ký hoạt động)" as log
+entity "Project\n(Dự án)" as project
+entity "Phase\n(Giai đoạn dự án)" as phase
+entity "Task\n(Công việc)" as task
+entity "Tag\n(Nhãn dán)" as tag
+entity "TaskComment\n(Bình luận việc)" as comment
+entity "Inbox\n(Hòm thư cá nhân)" as inbox
+entity "AssetFolder\n(Thư mục tài nguyên)" as folder
+entity "ProjectAsset\n(Tài nguyên tệp tin)" as asset
+entity "Notification\n(Thông báo đẩy)" as notif
+entity "WorkspaceAnalyticsSnapshot\n(Thống kê Workspace)" as wsAnalytics
+entity "ProjectAnalyticsSnapshot\n(Thống kê Dự án)" as projAnalytics
+
+user ||--o| account : "1 - 0..1\nSở hữu"
+user ||--o{ member : "1 - 0..*\nTham gia"
+member }o--|| role : "* - 1\nĐược gán"
+
+ws ||--o{ member : "1 - 1..*\nCó thành viên"
+ws ||--o{ project : "1 - 0..*\nChứa"
+ws ||--o{ announcement : "1 - 0..*\nĐăng tải"
+ws ||--o{ log : "1 - 0..*\nGhi lại"
+user ||--o{ announcement : "1 - 0..*\nTạo"
+user ||--o{ log : "1 - 0..*\nThực hiện"
+
+project ||--o{ phase : "1 - 0..*\nPhân chia"
+project ||--o{ task : "1 - 0..*\nGồm có"
+phase ||--o{ task : "1 - 0..*\nPhân loại"
+task ||--o{ comment : "1 - 0..*\nCó"
+user ||--o{ comment : "1 - 0..*\nViết"
+task }o--o{ tag : "* - *\nGán nhãn"
+ws ||--o{ tag : "1 - 0..*\nQuản lý"
+
+task ||--o{ task : "1 - 0..*\nCó công việc con (parentId)"
+user ||--o{ task : "1 - 0..*\nTạo (createdBy)"
+user }o--o{ task : "1 - 0..*\nĐảm nhận (assignedTo)"
+user ||--|| inbox : "1 - 1\nSở hữu"
+
+ws ||--o{ folder : "1 - 0..*\nQuản lý"
+folder ||--o{ folder : "1 - 0..*\nThư mục cha-con"
+folder ||--o{ asset : "1 - 0..*\nChứa"
+project ||--o{ asset : "1 - 0..*\nLiên kết"
+user ||--o{ asset : "1 - 0..*\nTải lên"
+
+user ||--o{ notif : "1 - 0..*\nNhận (recipientId)"
+user ||--o{ notif : "1 - 0..*\nGửi (senderId)"
+
+ws ||--o{ wsAnalytics : "1 - 0..*\nThống kê định kỳ"
+project ||--o{ projAnalytics : "1 - 0..*\nThống kê hiệu suất"
+
+@enduml

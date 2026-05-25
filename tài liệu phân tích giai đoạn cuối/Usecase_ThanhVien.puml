@@ -1,0 +1,59 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+actor "Thành viên\n(Member)" as Member
+
+rectangle "Phân hệ Thành viên - Hệ thống Quản lý Dự án" {
+
+    ' Các Use Case gốc (Base Use Cases)
+    usecase "Xác thực tài khoản" as UC_Auth
+    usecase "Quản lý Hồ sơ cá nhân" as UC_Profile
+    usecase "Quản lý Công việc cá nhân" as UC_Task
+    usecase "Theo dõi Tiến độ & Thống kê" as UC_Track
+    usecase "Tương tác và Thảo luận" as UC_Chat
+    usecase "Tải lên Tài liệu dự án" as UC_Upload
+    usecase "Sử dụng Trợ lý ảo AI" as UC_AI
+
+    ' Các Use Case Mở rộng (Extend)
+    usecase "Đăng nhập bằng Google OAuth" as UC_OAuth
+    usecase "Tìm kiếm toàn cục (Command K)" as UC_CmdK
+    usecase "Xem Sơ đồ Gantt Chart" as UC_Gantt
+    usecase "Gắn thẻ thành viên (@Mention)" as UC_Mention
+    usecase "Tự động tạo Task (Tool Calling)" as UC_AITask
+
+    ' Các Use Case Bao gồm (Include)
+    usecase "Xin quyền tải tệp (Presigned URL)" as UC_Presigned
+}
+
+' Gắn Actor với các Base Use Cases
+Member --> UC_Auth
+Member --> UC_Profile
+Member --> UC_Task
+Member --> UC_Track
+Member --> UC_Chat
+Member --> UC_Upload
+Member --> UC_AI
+
+' QUAN HỆ INCLUDE (Đường nét đứt, mũi tên từ Base -> Included)
+' Tải file lên thì BẮT BUỘC phải gọi API xin quyền Presigned URL từ R2
+UC_Upload ..> UC_Presigned : <<include>>
+
+' QUAN HỆ EXTEND (Đường nét đứt, mũi tên từ Extended -> Base)
+' Trong điều kiện nhất định, các chức năng này mở rộng luồng xử lý cho Base
+UC_OAuth .u.> UC_Auth : <<extend>>
+UC_CmdK .u.> UC_Task : <<extend>>
+UC_Gantt .u.> UC_Track : <<extend>>
+UC_Mention .u.> UC_Chat : <<extend>>
+UC_AITask .u.> UC_AI : <<extend>>
+
+@enduml

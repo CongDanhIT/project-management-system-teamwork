@@ -1,0 +1,53 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Người dùng (User)" as User
+participant "Nền tảng Slack\n<<system>>" as Slack
+participant "Backend API\n(Express)" as API
+database "Database\n(MongoDB)" as DB
+participant "Hệ thống Socket.io\n<<system>>" as SocketIO
+participant "Client App\n(React)" as Client
+
+== Tạo Task từ Slack (Slash Command) ==
+User -> Slack: Gõ lệnh: /teamflow task [Tên công việc]
+activate User
+activate Slack
+
+Slack -> API: HTTP POST /api/integrations/slack/commands\nPayload: { user_id, text, command }
+activate API
+
+API -> DB: Tìm kiếm User liên kết với Slack user_id
+activate DB
+DB --> API: Đối tượng User (TeamFlow)
+deactivate DB
+
+alt Không tìm thấy tài khoản liên kết
+    API --> Slack: HTTP 200 OK\nBody: "Tài khoản Slack chưa liên kết.\nVui lòng liên kết trước."
+    Slack --> User: Hiển thị thông báo lỗi cá nhân (Ephemeral message)
+else Tài khoản hợp lệ
+    API -> API: Phân tích text trích xuất tên Task
+    API -> DB: Tạo Task mới vào Inbox cá nhân của User
+    activate DB
+    DB --> API: Lưu Task thành công
+    deactivate DB
+
+    API -> SocketIO: Phát sự kiện realtime "inbox_updated"
+    activate SocketIO
+    SocketIO -> Client: Broadcast tới Client đang online của User
+    activate Client #LightBlue
+    Client -> Client: Cập nhật số lượng Inbox trên sidebar\nvà hiển thị task mới
+    deactivate Client
+    SocketIO --> API: Đồng bộ realtime thành công
+    deactivate SocketIO
+
+    API --> Slack: HTTP 200 OK\nBody: "Đã tạo thành công task vào Inbox của bạn."
+    deactivate API
+    Slack --> User: Hiển thị xác nhận thành công trên kênh Slack
+    deactivate Slack
+    deactivate User
+end
+@enduml

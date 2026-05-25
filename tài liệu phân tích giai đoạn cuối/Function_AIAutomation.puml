@@ -1,0 +1,82 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #f9f9f9
+    BorderColor #333333
+    ArrowColor #666666
+}
+skinparam actor {
+    BackgroundColor #ffffff
+    BorderColor #333333
+}
+
+' Định nghĩa các Actor con người (Human Actors)
+actor "Chủ sở hữu\n(Owner)" as Owner
+actor "Quản trị viên\n(Admin)" as Admin
+actor "Thành viên\n(Member)" as Member
+
+' Định nghĩa Tác nhân hệ thống ngoài (External System Actors) dưới dạng hình chữ nhật
+rectangle "AI Engine\n(Vercel AI SDK)\n<<system>>" as AIEngine
+rectangle "Slack Webhook\n<<system>>" as Slack
+rectangle "SendGrid / Gmail API\n<<system>>" as Email
+rectangle "Hệ thống Cron Job\n<<system>>" as CronSystem
+
+' Thiết lập quan hệ kế thừa (Generalization) giữa các Actor con người
+Owner -left-|> Admin : "<<kế thừa>>"
+Admin -left-|> Member : "<<kế thừa>>"
+
+' Ranh giới hệ thống (System Boundary)
+rectangle "Hệ thống Quản lý Dự án - Phân hệ Vận hành AI và Tự động hóa" {
+    
+    ' Nhóm các Use Case vận hành AI tương tác (AI-Powered Core)
+    usecase "Sử dụng Trợ lý ảo AI\n(Smart Agent Chat)" as UC_AIChat
+    usecase "Lập kế hoạch dự án bằng AI\n(AI Project Planner)" as UC_AIPlanner
+    usecase "Phân tích và Cảnh báo rủi ro" as UC_RiskAnalysis
+    
+    ' Ca sử dụng bổ trợ kỹ thuật (Included Use Cases)
+    usecase "Xác thực cấu trúc dữ liệu\n(Zod Schema Validation)" as UC_ZodValidate
+    
+    ' Ca sử dụng mở rộng tùy chọn (Extended Use Cases)
+    usecase "Tự động tạo Task\n(Tool Calling)" as UC_ToolCalling
+    usecase "Tự động gửi cảnh báo rủi ro" as UC_AutoRiskAlert
+
+    ' Nhóm các Use Case Tự động hóa nền (Cron Jobs & System Automation)
+    usecase "Tự động dọn dẹp dữ liệu rác\n(Garbage Collector)" as UC_GarbageCollector
+    usecase "Chụp ảnh thống kê hàng ngày\n(Daily Snapshot)" as UC_DailySnapshot
+    usecase "Gửi báo cáo Email hàng ngày\n(Daily Email Digest)" as UC_DailyEmail
+    usecase "Gửi bản tin và thông tin\nworkspace hàng ngày qua Slack" as UC_SlackNotify
+}
+
+' Liên kết giữa Actor con người và các ca sử dụng tương tác (Association - Đường liền nét)
+Member --> UC_AIChat
+Admin --> UC_AIPlanner
+Admin --> UC_RiskAnalysis
+
+' Liên kết kích hoạt từ Hệ thống Cron Job đến các tiến trình tự động chạy ngầm
+CronSystem --> UC_GarbageCollector
+CronSystem --> UC_DailySnapshot
+CronSystem --> UC_DailyEmail
+CronSystem --> UC_SlackNotify
+
+' Quan hệ Bao gồm (<<include>>) - Nét đứt (..>), từ Base đến Included
+' Cả AI Planner và Agent Chat đều cần parse & validate kết quả trả về từ LLM
+UC_AIPlanner ..> UC_ZodValidate : "<<include>>"
+UC_AIChat ..> UC_ZodValidate : "<<include>>"
+
+' Quan hệ Mở rộng (<<extend>>) - Nét đứt (..>), từ Extended ngược về Base
+' AI Agent có thể gọi tool để tạo task dựa trên ngữ cảnh trò chuyện
+UC_ToolCalling .u.> UC_AIChat : "<<extend>>"
+' Phân tích rủi ro có thể mở rộng thêm hành động gửi cảnh báo tự động ra kênh bên ngoài
+UC_AutoRiskAlert .u.> UC_RiskAnalysis : "<<extend>>"
+
+' Liên kết giữa Use Case và Tác nhân hệ thống ngoài (Association - Đường liền nét)
+UC_AIChat -- AIEngine
+UC_AIPlanner -- AIEngine
+UC_RiskAnalysis -- AIEngine
+
+UC_DailyEmail -- Email
+UC_SlackNotify -- Slack
+UC_AutoRiskAlert -- Email
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml Architecture_3Tier
+skinparam backgroundcolor transparent
+skinparam maxMessageSize 150
+
+' Định nghĩa phong cách vẽ gọn đẹp
+skinparam rectangle {
+    BackgroundColor<<Presentation>> #EBF5FB
+    BorderColor<<Presentation>> #2980B9
+    FontColor<<Presentation>> #1B4F72
+    
+    BackgroundColor<<Application>> #E8F8F5
+    BorderColor<<Application>> #117A65
+    FontColor<<Application>> #0E6251
+    
+    BackgroundColor<<Data>> #FEF9E7
+    BorderColor<<Data>> #D4AC0D
+    FontColor<<Data>> #7D6608
+}
+
+title Sơ đồ Kiến trúc 3-Tier - Hệ thống 
+
+rectangle "TẦNG TRÌNH DIỄN (PRESENTATION LAYER)" <<Presentation>> {
+    rectangle "Next.js 16 Client App\n(React 19, TailwindCSS v4)" as client
+    rectangle "Zustand Store\n(Global State Management)" as state
+    rectangle "TanStack Query\n(Client-side Caching & Sync)" as query
+    rectangle "Socket.io Client\n(Realtime Listening)" as socket_client
+    
+    client -right-> state
+    client --> query
+    client --> socket_client
+}
+
+rectangle "TẦNG ỨNG DỤNG (APPLICATION LAYER)" <<Application>> {
+    rectangle "Express 5 Backend\n(REST API Server & Router)" as express
+    rectangle "Passport Auth\n(Local & Google OAuth2)" as auth
+    rectangle "Socket.io Server\n(Realtime Broadcast)" as socket_server
+    rectangle "Vercel AI SDK\n(LLM Integration & Agent)" as ai_engine
+    rectangle "node-cron\n(Daily Email/Slack Scheduler)" as cron
+    
+    express -right-> auth
+    express --> socket_server
+    express --> ai_engine
+    express --> cron
+}
+
+rectangle "TẦNG DỮ LIỆU (DATA LAYER)" <<Data>> {
+    database "MongoDB Atlas\n(Mongoose ODM - NoSQL)" as mongodb
+    entity "Cloudflare R2\n(Object Storage - File/Assets)" as r2
+}
+
+' Thể hiện các luồng liên kết giữa các tầng
+client ..> express : "HTTP REST API Calls"
+socket_client <..> socket_server : "WebSocket Protocol"
+express --> mongodb : "Read / Write (Schema-validated)"
+express --> r2 : "Generate Presigned PUT/GET URLs"
+
+@enduml

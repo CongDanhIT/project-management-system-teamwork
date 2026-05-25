@@ -1,0 +1,79 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Thành viên (User)" as User
+participant "Client App\n(React)" as Client
+participant "Chat Controller" as Controller
+participant "AI Agent Service" as AIService
+participant "LLM Engine\n<<system>>" as LLM
+participant "Task Service" as TaskService
+database "Database\n(MongoDB)" as DB
+participant "Hệ thống Socket.io\n<<system>>" as SocketIO
+
+User -> Client: Nhập yêu cầu chat: "Tạo hộ tôi task viết tài liệu, gán cho Huy"
+activate User
+activate Client
+
+Client -> Controller: POST /api/ai/chat\nPayload: { message, projectId }
+activate Controller
+
+Controller -> AIService: handleAgentChat(message, projectId)
+activate AIService
+
+AIService -> AIService: Định nghĩa danh sách các công cụ hệ thống (Tools)\n(VD: createTask, updateTaskStatus,... kèm Zod Schema cho input)
+
+AIService -> LLM: Gửi nội dung tin nhắn + danh sách Tools định nghĩa\n(Gọi API của Vercel AI SDK - generateText)
+activate LLM
+
+LLM -> LLM: Phân tích ngữ cảnh hội thoại, nhận diện ý định\nngười dùng và quyết định kích hoạt công cụ createTask
+LLM --> AIService: Phản hồi yêu cầu gọi tool (tool_calls)\nkèm tham số trích xuất: { tool: "createTask", args: { title: "Viết tài liệu", assignee: "Huy" } }
+deactivate LLM
+
+alt Kích hoạt và thực thi local tool tương ứng
+    AIService -> TaskService: Gọi hàm cục bộ createTask(title, assignee)
+    activate TaskService
+    
+    TaskService -> DB: Thực hiện ghi nhận thông tin Task mới vào CSDL
+    activate DB
+    DB --> TaskService: Ghi dữ liệu thành công
+    deactivate DB
+    
+    TaskService -> SocketIO: Phát tín hiệu realtime cập nhật Kanban "task_created"
+    activate SocketIO
+    SocketIO -> Client: Broadcast "task_created" đến Clients đang mở dự án
+    activate Client #LightBlue
+    Client -> Client: Tự động render task mới lên cột "To Do" tương ứng
+    deactivate Client
+    SocketIO --> TaskService: Đồng bộ realtime thành công
+    deactivate SocketIO
+    
+    TaskService --> AIService: Trả về kết quả thực thi: { status: "success", taskId: "new_task_123" }
+    deactivate TaskService
+end
+
+AIService -> LLM: Gửi trả lại kết quả thực thi tool (tool result) cho LLM\n(Để LLM tổng hợp thông điệp hội thoại tự nhiên)
+activate LLM
+
+LLM -> LLM: Đọc kết quả thực thi, sinh câu trả lời tự nhiên phù hợp
+LLM --> AIService: Trả về phản hồi: "Tôi đã tạo thành công công việc 'Viết tài liệu' và gán cho Huy."
+deactivate LLM
+
+AIService -> DB: Ghi nhận lịch sử hội thoại (Chat History) vào CSDL
+activate DB
+DB --> AIService: Lưu lịch sử thành công
+deactivate DB
+
+AIService --> Controller: Trả về câu trả lời của AI và dữ liệu liên quan
+deactivate AIService
+
+Controller --> Client: HTTP 200 OK\nBody: { responseText }
+deactivate Controller
+
+Client --> User: Hiển thị câu trả lời của Trợ lý ảo AI lên giao diện chat
+deactivate Client
+deactivate User
+@enduml
