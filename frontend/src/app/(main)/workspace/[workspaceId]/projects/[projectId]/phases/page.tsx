@@ -649,59 +649,76 @@ export default function ProjectPhasesHub() {
                                                 <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Thư mục</p>
                                             </div>
                                         ))}
-                                        {assetsData.files.map((file: ProjectAsset) => (
-                                            <div 
-                                                key={file._id} 
-                                                onClick={() => setSelectedFile(file)}
-                                                className="p-5 bg-slate-50/50 dark:bg-white/5 rounded-2xl border border-slate-200/60 dark:border-white/5 hover:border-brand-primary/30 transition-all group shadow-sm cursor-pointer"
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                                        <Files className="w-6 h-6 text-blue-500" />
+                                        {assetsData.files.map((file: ProjectAsset) => {
+                                            const isImage = file.fileType.startsWith('image/');
+                                            return (
+                                                <div 
+                                                    key={file._id} 
+                                                    onClick={() => setSelectedFile(file)}
+                                                    className="p-5 bg-slate-50/50 dark:bg-white/5 rounded-2xl border border-slate-200/60 dark:border-white/5 hover:border-brand-primary/30 transition-all group shadow-sm cursor-pointer"
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        {isImage ? (
+                                                            <div className="w-12 h-12 rounded-xl overflow-hidden mb-3 group-hover:scale-110 transition-transform border border-slate-200/40 dark:border-white/5 bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
+                                                                <img 
+                                                                    src={file.fileUrl} 
+                                                                    alt={file.name} 
+                                                                    className="w-full h-full object-cover" 
+                                                                    loading="lazy"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                                                <Files className="w-6 h-6 text-blue-500" />
+                                                            </div>
+                                                        )}
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger 
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                render={
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100">
+                                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
+                                                                    </Button>
+                                                                }
+                                                            />
+                                                            <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                                                                <DropdownMenuItem 
+                                                                    className="rounded-xl"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedFile(file);
+                                                                    }}
+                                                                >
+                                                                    <ArrowRight className="w-4 h-4 mr-2" />
+                                                                    Xem chi tiết
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem 
+                                                                    className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10 font-bold cursor-pointer"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        deleteAssetMutation.mutate(file._id);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4 mr-2" />
+                                                                    Xóa tài liệu
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </div>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger 
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            render={
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100">
-                                                                    <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                                </Button>
-                                                            }
-                                                        />
-                                                        <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
-                                                            <DropdownMenuItem 
-                                                                className="rounded-xl"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedFile(file);
-                                                                }}
-                                                            >
-                                                                <ArrowRight className="w-4 h-4 mr-2" />
-                                                                Xem chi tiết
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem 
-                                                                className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10"
-                                                                onClick={() => deleteAssetMutation.mutate(file._id)}
-                                                            >
-                                                                <Trash2 className="w-4 h-4 mr-2" />
-                                                                Xóa tài liệu
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                    <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{file.name}</h4>
+                                                    <div className="flex items-center justify-between mt-2 gap-2">
+                                                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={file.fileType}>
+                                                            {file.fileType.includes('spreadsheetml') ? 'XLSX' : 
+                                                             file.fileType.includes('wordprocessingml') ? 'DOCX' : 
+                                                             file.fileType.includes('presentationml') ? 'PPTX' :
+                                                             file.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(file.fileSize / 1024).toFixed(2)} KB</p>
+                                                    </div>
                                                 </div>
-                                                <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{file.name}</h4>
-                                                <div className="flex items-center justify-between mt-2 gap-2">
-                                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={file.fileType}>
-                                                        {file.fileType.includes('spreadsheetml') ? 'XLSX' : 
-                                                         file.fileType.includes('wordprocessingml') ? 'DOCX' : 
-                                                         file.fileType.includes('presentationml') ? 'PPTX' :
-                                                         file.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
-                                                    </p>
-                                                    <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(file.fileSize / 1024).toFixed(2)} KB</p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="flex-1 flex flex-col items-center justify-center text-center">
