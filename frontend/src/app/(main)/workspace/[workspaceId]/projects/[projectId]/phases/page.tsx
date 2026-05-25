@@ -85,6 +85,7 @@ export default function ProjectPhasesHub() {
     const [phaseToDelete, setPhaseToDelete] = useState<Phase | null>(null);
     const [selectedFile, setSelectedFile] = useState<ProjectAsset | null>(null);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [renamingFile, setRenamingFile] = useState<ProjectAsset | null>(null);
     const { isPrivileged } = useRole();
 
 
@@ -201,6 +202,19 @@ export default function ProjectPhasesHub() {
         },
         onError: (error: any) => {
             toast.error(error.message || 'Không thể xóa tài liệu');
+        }
+    });
+
+    // Rename Asset Mutation
+    const renameAssetMutation = useMutation({
+        mutationFn: ({ assetId, name }: { assetId: string, name: string }) => AssetService.updateAsset(assetId, { name }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project-assets', projectId, selectedPhaseId, selectedFolderId] });
+            toast.success('Đã đổi tên tài liệu');
+            setRenamingFile(null);
+        },
+        onError: (error: any) => {
+            toast.error(error.message || 'Không thể đổi tên tài liệu');
         }
     });
 
@@ -683,7 +697,18 @@ export default function ProjectPhasesHub() {
                                                             />
                                                             <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
                                                                 <DropdownMenuItem 
-                                                                    className="rounded-xl"
+                                                                    className="rounded-xl font-bold cursor-pointer"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setRenamingFile(file);
+                                                                    }}
+                                                                >
+                                                                    <Edit2 className="w-4 h-4 mr-2" />
+                                                                    Đổi tên tài liệu
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem 
+                                                                    className="rounded-xl font-bold cursor-pointer"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setSelectedFile(file);
@@ -809,7 +834,72 @@ export default function ProjectPhasesHub() {
                 isOpen={!!selectedFile}
                 onClose={() => setSelectedFile(null)}
                 onDelete={(id) => deleteAssetMutation.mutate(id)}
+                onRename={(id, newName) => {
+                    if (selectedFile && selectedFile._id === id) {
+                        setSelectedFile({
+                            ...selectedFile,
+                            name: newName
+                        });
+                    }
+                }}
             />
+
+            {/* Rename File Modal */}
+            <Dialog open={!!renamingFile} onOpenChange={(v) => !v && setRenamingFile(null)}>
+                <DialogContent className="sm:max-w-[425px] rounded-[32px] p-8 border-none bg-white dark:bg-slate-900 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                <Edit2 className="w-6 h-6" />
+                            </div>
+                            Đổi tên tài liệu
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-6 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
+                                Tên tài liệu
+                            </label>
+                            <Input 
+                                defaultValue={renamingFile?.name}
+                                placeholder="Nhập tên tài liệu mới..."
+                                className="h-12 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus:ring-brand-primary/20"
+                                autoFocus
+                                id="rename-file-input"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        const val = (e.target as HTMLInputElement).value.trim();
+                                        if (val && renamingFile) {
+                                            renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-3 sm:gap-0">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setRenamingFile(null)}
+                            className="rounded-2xl h-12 px-6 font-bold text-slate-500"
+                        >
+                            Hủy
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                const val = (document.getElementById('rename-file-input') as HTMLInputElement)?.value.trim();
+                                if (val && renamingFile) {
+                                    renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
+                                }
+                            }}
+                            disabled={renameAssetMutation.isPending}
+                            className="rounded-2xl h-12 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold shadow-lg shadow-brand-primary/20"
+                        >
+                            {renameAssetMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

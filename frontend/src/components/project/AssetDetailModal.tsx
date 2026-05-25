@@ -21,21 +21,59 @@ import {
     Database,
     HardDrive,
     ExternalLink,
-    ShieldCheck
+    ShieldCheck,
+    Check,
+    X,
+    Edit2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AssetService } from '@/services/asset.service';
+import { toast } from 'sonner';
+
 interface AssetDetailModalProps {
     asset: ProjectAsset | null;
     isOpen: boolean;
     onClose: () => void;
     onDelete?: (assetId: string) => void;
+    onRename?: (assetId: string, newName: string) => void;
 }
 
-export function AssetDetailModal({ asset, isOpen, onClose, onDelete }: AssetDetailModalProps) {
+export function AssetDetailModal({ asset, isOpen, onClose, onDelete, onRename }: AssetDetailModalProps) {
+    const queryClient = useQueryClient();
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [newName, setNewName] = React.useState('');
+
+    React.useEffect(() => {
+        if (asset) {
+            setNewName(asset.name);
+            setIsEditing(false);
+        }
+    }, [asset]);
+
+    const renameMutation = useMutation({
+        mutationFn: async (name: string) => {
+            if (!asset) throw new Error('Asset is null');
+            return AssetService.updateAsset(asset._id, { name });
+        },
+        onSuccess: () => {
+            if (!asset) return;
+            queryClient.invalidateQueries({ queryKey: ['project-assets', asset.projectId] });
+            toast.success('Đã đổi tên tài liệu');
+            setIsEditing(false);
+            if (onRename) {
+                onRename(asset._id, newName.trim());
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Không thể đổi tên tài liệu');
+        }
+    });
+
     if (!asset) return null;
 
     const formatSize = (bytes: number) => {
@@ -63,17 +101,66 @@ export function AssetDetailModal({ asset, isOpen, onClose, onDelete }: AssetDeta
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-[32px]">
+            <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-[32px]">
                 <DialogHeader className="p-6 pb-0 text-left">
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900">
                             {getFileIcon(asset.fileType)}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <DialogTitle className="text-xl font-bold truncate">
-                                {asset.name}
-                            </DialogTitle>
-                            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 truncate" title={asset.fileType}>
+                        <div className="flex-1 min-w-0 pr-4">
+                            {isEditing ? (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <input
+                                        type="text"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="w-full text-base font-bold bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && newName.trim() && newName.trim() !== asset.name) {
+                                                renameMutation.mutate(newName.trim());
+                                            } else if (e.key === 'Escape') {
+                                                setIsEditing(false);
+                                                setNewName(asset.name);
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (newName.trim() && newName.trim() !== asset.name) {
+                                                renameMutation.mutate(newName.trim());
+                                            }
+                                        }}
+                                        disabled={renameMutation.isPending || !newName.trim() || newName.trim() === asset.name}
+                                        className="p-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 cursor-pointer"
+                                    >
+                                        <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsEditing(false);
+                                            setNewName(asset.name);
+                                        }}
+                                        className="p-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg hover:bg-zinc-200 transition-colors cursor-pointer"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 group/title">
+                                    <DialogTitle className="text-lg font-bold break-all whitespace-pre-wrap leading-tight">
+                                        {asset.name}
+                                    </DialogTitle>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-all opacity-0 group-hover/title:opacity-100 focus:opacity-100 cursor-pointer"
+                                        title="Đổi tên tài liệu"
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mt-1 truncate" title={asset.fileType}>
                                 {asset.fileType.includes('spreadsheetml') ? 'Microsoft Excel (XLSX)' : 
                                  asset.fileType.includes('wordprocessingml') ? 'Microsoft Word (DOCX)' : 
                                  asset.fileType.includes('presentationml') ? 'Microsoft PowerPoint (PPTX)' :
