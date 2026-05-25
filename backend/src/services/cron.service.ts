@@ -293,6 +293,17 @@ export const startCronService = () => {
     saveDailySnapshotsForAllWorkspaces();
     saveDailySnapshotsForAllProjects();
 
+    // [INTEGRITY] Tự động dọn dẹp tài nguyên mồ côi trên Cloudinary & R2 sau khi server khởi động 10 giây
+    setTimeout(() => {
+        logger.info("[CRON] Bắt đầu tiến trình quét dọn tài nguyên mồ côi (Cloudinary & R2) khi khởi động server...");
+        cleanupOrphanedCloudinaryFiles().catch(err => {
+            logger.error("[CRON-ERR] Lỗi chạy dọn dẹp Cloudinary lúc khởi động:", { error: err.message });
+        });
+        cleanupOrphanedR2Files().catch(err => {
+            logger.error("[CRON-ERR] Lỗi chạy dọn dẹp R2 lúc khởi động:", { error: err.message });
+        });
+    }, 10000); // Trì hoãn 10 giây để đảm bảo server ổn định trước khi quét tải trọng lớn
+
     // 1. Dọn dẹp thùng rác: Chạy vào 00:00 hàng ngày
     cron.schedule("0 0 * * *", () => {
         cleanupExpiredTrash();
