@@ -270,18 +270,15 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
 
       {/* Input & Quick Actions */}
       <form onSubmit={handleSubmit} className="p-5 border-t border-gray-200 dark:border-white/5 bg-white/40 dark:bg-[#121212]/40 backdrop-blur-md flex flex-col gap-3.5">
-        {/* Quick Actions / Horizontal Carousel */}
-        <div 
-          className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory"
-          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
-        >
+        {/* Quick Actions / Flex Wrap - Hiển thị đầy đủ tất cả tùy chọn */}
+        <div className="flex flex-wrap gap-2 pb-1">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.label}
               type="button"
               onClick={() => handleQuickAction(action.prompt)}
               disabled={isLoading}
-              className="snap-start flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white/70 dark:bg-white/5 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-tertiary text-gray-600 dark:text-gray-300 border border-gray-200/30 dark:border-white/5 rounded-xl text-[11px] font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-sm hover:shadow"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/70 dark:bg-white/5 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-tertiary text-gray-600 dark:text-gray-300 border border-gray-200/30 dark:border-white/5 rounded-xl text-[11px] font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-sm hover:shadow"
             >
               {action.icon}
               <span>{action.label}</span>
