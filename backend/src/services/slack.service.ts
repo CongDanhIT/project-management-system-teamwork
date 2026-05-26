@@ -3,6 +3,10 @@ import logger from "../utils/logger";
 import UserModel from "../models/user.model";
 import TaskModel from "../models/task.model";
 import MemberModel from "../models/member.model";
+import WorkspaceModel from "../models/workspace.model";
+import ProjectModel from "../models/project.model";
+import RoleModel from "../models/role-permission.model";
+import { RoleEnum } from "../enums/role.enum";
 import mongoose from "mongoose";
 
 interface SlackBlock {
@@ -592,6 +596,119 @@ export class SlackService {
         } catch (error: any) {
             logger.error("Error publishing Slack App Home", {
                 slackUserId,
+                error: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
+        }
+    }
+
+    /**
+     * Gửi tin nhắn DM yêu cầu xét duyệt task đến tất cả Admin/Owner trong Workspace
+     */
+    static async sendTaskApprovalRequest(workspaceId: string, task: any, requesterName: string) {
+        try {
+            const token = process.env.SLACK_BOT_TOKEN;
+            if (!token) {
+                logger.warn("SLACK_BOT_TOKEN is not configured in .env. Skipping Slack task approval request.");
+                return;
+            }
+
+            // 1. Lấy thông tin Workspace
+            const workspace = await WorkspaceModel.findById(workspaceId);
+            const workspaceName = workspace?.name || "Chung";
+
+            // 2. Lấy thông tin Project
+            const project = await ProjectModel.findById(task.projectId);
+            const projectName = project?.name || "Dự án chung";
+
+            // 3. Tìm Admin/Owner trong Workspace
+            const adminRoles = await RoleModel.find({ name: { $in: [RoleEnum.ADMIN, RoleEnum.OWNER] } }).select('_id');
+            const adminRoleIds = adminRoles.map(r => r._id);
+
+            const admins = await MemberModel.find({
+                workspaceId,
+                role: { $in: adminRoleIds }
+            }).select('userId');
+
+            const adminUserIds = admins.map(a => a.userId);
+
+            // 4. Lấy danh sách user và lọc các user có slackUserId
+            const adminUsers = await UserModel.find({
+                _id: { $in: adminUserIds },
+                slackUserId: { $ne: null }
+            });
+
+            if (adminUsers.length === 0) {
+                logger.info("No Admin/Owner with linked Slack ID found. Skipping DM notification.");
+                return;
+            }
+
+            // 5. Gửi tin nhắn cho từng Admin
+            for (const admin of adminUsers) {
+                const payload = {
+                    channel: admin.slackUserId,
+                    text: `Yêu cầu xét duyệt công việc: ${task.title}`,
+                    blocks: [
+                        {
+                            type: "header",
+                            text: {
+                                type: "plain_text",
+                                text: "🔔 YÊU CẦU XÉT DUYỆT CÔNG VIỆC",
+                                emoji: true
+                            }
+                        },
+                        {
+                            type: "section",
+                            text: {
+                                type: "mrkdwn",
+                                text: `*${requesterName}* vừa gửi yêu cầu xét duyệt cho công việc:\n\n*${task.taskCode}*: ${task.title}\n🏢 Workspace: *${workspaceName}* | 📁 Dự án: *${projectName}*`
+                            }
+                        },
+                        {
+                            type: "actions",
+                            elements: [
+                                {
+                                    type: "button",
+                                    text: {
+                                        type: "plain_text",
+                                        text: "Duyệt (Approve) ✅",
+                                        emoji: true
+                                    },
+                                    style: "primary",
+                                    value: task._id.toString(),
+                                    action_id: "approve_task"
+                                },
+                                {
+                                    type: "button",
+                                    text: {
+                                        type: "plain_text",
+                                        text: "Từ chối (Reject) ❌",
+                                        emoji: true
+                                    },
+                                    style: "danger",
+                                    value: task._id.toString(),
+                                    action_id: "reject_task"
+                                }
+                            ]
+                        }
+                    ]
+                };
+
+                await axios.post("https://slack.com/api/chat.postMessage", payload, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json; charset=utf-8"
+                    }
+                });
+
+                logger.info("Task approval request DM sent to Slack user", { 
+                    adminEmail: admin.email, 
+                    slackUserId: admin.slackUserId 
+                });
+            }
+        } catch (error: any) {
+            logger.error("Error sending Task approval request to Slack", {
                 error: error.message,
                 status: error.response?.status,
                 data: error.response?.data

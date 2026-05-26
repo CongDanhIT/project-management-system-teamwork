@@ -3,9 +3,12 @@ import { asyncHandler } from "../middlewares/asyncHandle";
 import { createDraftService } from "../services/inbox.service";
 import UserModel from "../models/user.model";
 import TaskModel from "../models/task.model";
+import MemberModel from "../models/member.model";
 import { InboxSourceTypeEnum } from "../enums/inbox.enum";
 import { SlackService } from "../services/slack.service";
+import { createSystemCommentService } from "../services/interaction.service";
 import HTTP_STATUS from "../config/http.config";
+import axios from "axios";
 
 /**
  * Xử lý Email gửi đến (Inbound Parse)
@@ -101,17 +104,87 @@ export const handleSlackWebhook = asyncHandler(
                         await task.save();
                         console.log(`[Slack-Interactive] User ${dbUser.email} hoàn thành Task ${task.taskCode}`);
                     }
+                    // Đẩy lại giao diện App Home mới nhất
+                    await SlackService.publishAppHome(slackUserId);
                 } else if (action.action_id === "assign_task" && taskId) {
                     await TaskModel.findByIdAndUpdate(taskId, {
                         $addToSet: { assignedTo: dbUser._id }
                     });
                     console.log(`[Slack-Interactive] User ${dbUser.email} nhận Task ID: ${taskId}`);
+                    // Đẩy lại giao diện App Home mới nhất
+                    await SlackService.publishAppHome(slackUserId);
                 } else if (action.action_id === "refresh_dashboard") {
                     console.log(`[Slack-Interactive] User ${dbUser.email} yêu cầu làm mới Dashboard`);
-                }
+                    // Đẩy lại giao diện App Home mới nhất
+                    await SlackService.publishAppHome(slackUserId);
+                } else if ((action.action_id === "approve_task" || action.action_id === "reject_task") && taskId) {
+                    // Xử lý Phê duyệt / Từ chối duyệt Task
+                    const task = await TaskModel.findById(taskId);
+                    if (!task) {
+                        await axios.post(payload.response_url, {
+                            text: "❌ Không tìm thấy công việc này trên hệ thống.",
+                            replace_original: false,
+                            response_type: "ephemeral"
+                        });
+                        return res.status(HTTP_STATUS.OK).send();
+                    }
 
-                // Đẩy lại giao diện App Home mới nhất
-                await SlackService.publishAppHome(slackUserId);
+                    // Kiểm tra xem user bấm nút có quyền Admin/Owner trong Workspace của task đó không
+                    const member = await MemberModel.findOne({
+                        workspaceId: task.workspaceId,
+                        userId: dbUser._id
+                    }).populate("role");
+
+                    const roleName = (member?.role as any)?.name;
+                    if (roleName !== "ADMIN" && roleName !== "OWNER") {
+                        await axios.post(payload.response_url, {
+                            text: "❌ Bạn không có quyền phê duyệt công việc trong không gian làm việc này.",
+                            replace_original: false,
+                            response_type: "ephemeral"
+                        });
+                        return res.status(HTTP_STATUS.OK).send();
+                    }
+
+                    if (action.action_id === "approve_task") {
+                        task.status = "DONE";
+                        task.completedAt = new Date();
+                        await task.save();
+
+                        await createSystemCommentService(
+                            task.workspaceId.toString(),
+                            task._id.toString(),
+                            dbUser._id.toString(),
+                            `đã phê duyệt hoàn thành công việc trực tiếp qua Slack`
+                        );
+
+                        // Cập nhật lại tin nhắn gốc trên Slack
+                        await axios.post(payload.response_url, {
+                            text: `✅ *Đã phê duyệt:* Công việc *${task.taskCode}* đã được phê duyệt hoàn thành bởi *${dbUser.name}* vào lúc ${new Date().toLocaleTimeString("vi-VN")} ngày ${new Date().toLocaleDateString("vi-VN")}.`,
+                            replace_original: true
+                        });
+
+                        console.log(`[Slack-Approval] Admin ${dbUser.email} đã duyệt Task ${task.taskCode}`);
+                    } else if (action.action_id === "reject_task") {
+                        task.status = "IN_PROGRESS";
+                        task.completedAt = null;
+                        await task.save();
+
+                        await createSystemCommentService(
+                            task.workspaceId.toString(),
+                            task._id.toString(),
+                            dbUser._id.toString(),
+                            `đã từ chối phê duyệt công việc trực tiếp qua Slack`
+                        );
+
+                        // Cập nhật lại tin nhắn gốc trên Slack
+                        await axios.post(payload.response_url, {
+                            text: `❌ *Đã từ chối:* Yêu cầu xét duyệt công việc *${task.taskCode}* đã bị từ chối bởi *${dbUser.name}* vào lúc ${new Date().toLocaleTimeString("vi-VN")} ngày ${new Date().toLocaleDateString("vi-VN")}. Trạng thái công việc chuyển về *Đang thực hiện*.`,
+                            replace_original: true
+                        });
+
+                        console.log(`[Slack-Approval] Admin ${dbUser.email} đã từ chối duyệt Task ${task.taskCode}`);
+                    }
+                }
             }
 
             return res.status(HTTP_STATUS.OK).send();

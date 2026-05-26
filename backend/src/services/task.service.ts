@@ -15,6 +15,8 @@ import NotificationModel, { NotificationType } from "../models/notification.mode
 import RoleModel from "../models/role-permission.model";
 import eventDispatcher, { EVENTS } from "../utils/eventDispatcher";
 import { NotificationService } from "./notification.service";
+import { SlackService } from "./slack.service";
+import UserModel from "../models/user.model";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -364,6 +366,15 @@ export const updateTaskService = async (
                         eventDispatcher.emit(EVENTS.NOTIFICATION.RECEIVED, notif);
                     }
                 });
+
+                // [AI-ADDED] Gửi thông báo phê duyệt trực tiếp qua Slack DM cho Admin
+                try {
+                    const requesterUser = await UserModel.findById(userId).select("name");
+                    const requesterName = requesterUser?.name || "Một thành viên";
+                    await SlackService.sendTaskApprovalRequest(workspaceId, task, requesterName);
+                } catch (slackError: any) {
+                    console.error("[Slack-Approval-Notification-Error] Lỗi khi gửi yêu cầu xét duyệt qua Slack:", slackError.message);
+                }
             }
         }
     }
