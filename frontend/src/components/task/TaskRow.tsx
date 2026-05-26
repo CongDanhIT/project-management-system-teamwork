@@ -79,7 +79,11 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
       <div className="flex items-center justify-center gap-2 text-slate-400/80 italic">
         <Calendar className="w-3 h-3 stroke-[2.5px]" />
         <span className="text-[10px] font-black uppercase tracking-widest">
-          {task.dueDate ? format(new Date(task.dueDate), 'dd MMM', { locale: vi }) : '--'}
+          {task.dueDate ? (() => {
+            const d = new Date(task.dueDate);
+            const isDefault = d.getHours() === 23 && d.getMinutes() === 59 && d.getSeconds() === 59;
+            return format(d, isDefault ? 'dd MMM' : 'HH:mm - dd MMM', { locale: vi });
+          })() : '--'}
         </span>
       </div>
 

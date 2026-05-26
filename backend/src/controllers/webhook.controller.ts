@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandle";
 import { createDraftService } from "../services/inbox.service";
 import UserModel from "../models/user.model";
+import TaskModel from "../models/task.model";
 import { InboxSourceTypeEnum } from "../enums/inbox.enum";
+import { SlackService } from "../services/slack.service";
 import HTTP_STATUS from "../config/http.config";
 
 /**
@@ -68,11 +70,65 @@ export const handleSlackWebhook = asyncHandler(
             return res.status(HTTP_STATUS.OK).json({ challenge: req.body.challenge });
         }
 
-        // 2. Xử lý Slack Events (ví dụ: message, app_mention)
+        // 2. Xử lý Tương tác nút bấm (Slack Interactivity)
+        if (req.body.payload) {
+            const payload = JSON.parse(req.body.payload);
+            const { type, user, actions } = payload;
+
+            if (type === "block_actions" && actions && actions.length > 0) {
+                const action = actions[0];
+                const slackUserId = user.id;
+
+                // Tìm user liên kết
+                const dbUser = await UserModel.findOne({ slackUserId });
+                if (!dbUser) {
+                    console.warn(`[Slack-Interactive] User với Slack ID ${slackUserId} chưa liên kết tài khoản.`);
+                    return res.status(HTTP_STATUS.OK).send();
+                }
+
+                const taskId = action.value;
+
+                if (action.action_id === "complete_task" && taskId) {
+                    const task = await TaskModel.findById(taskId);
+                    if (task) {
+                        if (task.requiresApproval) {
+                            task.status = "INREVIEW";
+                            task.completedAt = null;
+                        } else {
+                            task.status = "DONE";
+                            task.completedAt = new Date();
+                        }
+                        await task.save();
+                        console.log(`[Slack-Interactive] User ${dbUser.email} hoàn thành Task ${task.taskCode}`);
+                    }
+                } else if (action.action_id === "assign_task" && taskId) {
+                    await TaskModel.findByIdAndUpdate(taskId, {
+                        $addToSet: { assignedTo: dbUser._id }
+                    });
+                    console.log(`[Slack-Interactive] User ${dbUser.email} nhận Task ID: ${taskId}`);
+                } else if (action.action_id === "refresh_dashboard") {
+                    console.log(`[Slack-Interactive] User ${dbUser.email} yêu cầu làm mới Dashboard`);
+                }
+
+                // Đẩy lại giao diện App Home mới nhất
+                await SlackService.publishAppHome(slackUserId);
+            }
+
+            return res.status(HTTP_STATUS.OK).send();
+        }
+
+        // 3. Xử lý Slack Events (ví dụ: message, app_home_opened)
         if (req.body.event) {
-            const { user, text, type } = req.body.event;
+            const { user, text, type, bot_id } = req.body.event;
+
+            // Xử lý khi user mở tab Home của App
+            if (type === "app_home_opened") {
+                await SlackService.publishAppHome(user);
+                return res.status(HTTP_STATUS.OK).send();
+            }
+
             // Chỉ xử lý tin nhắn từ người dùng, không phải từ bot
-            if (req.body.event.bot_id) return res.status(HTTP_STATUS.OK).send();
+            if (bot_id) return res.status(HTTP_STATUS.OK).send();
 
             const dbUser = await UserModel.findOne({ slackUserId: user });
             if (dbUser) {
@@ -86,7 +142,7 @@ export const handleSlackWebhook = asyncHandler(
             return res.status(HTTP_STATUS.OK).send();
         }
 
-        // 3. Xử lý Slack Slash Command (Payload dạng x-www-form-urlencoded)
+        // 4. Xử lý Slack Slash Command (Payload dạng x-www-form-urlencoded)
         const { user_id, text, command, team_domain } = req.body;
 
         if (!user_id) {

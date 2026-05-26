@@ -1,14 +1,12 @@
-feat(tasks): hoàn thiện giao diện Công việc & tối ưu độ ổn định hệ thống
+feat(slack): tích hợp slack app home dashboard và nâng cấp tính năng task
 
-- Nâng cấp giao diện trang Tasks (Công việc của tôi):
-  - Bổ sung biểu đồ cột hiển thị phân bổ task theo giai đoạn (Phase Bar Chart).
-  - Sử dụng bộ icon chuyên nghiệp từ thư viện lucide-react (Target, Clock, Zap, TrendingUp).
-  - Tối ưu hiệu ứng Glassmorphism, làm mềm viền đỏ ở cột "Đã quá hạn", điều chỉnh mỏng lại thanh tiến độ.
-  - Thiết lập chiều cao và cấu hình lại thanh trượt (ScrollArea) giúp Bento Grid không bị vỡ bố cục.
-- Cải tiến hiển thị danh sách Task (TaskRow):
-  - Thay đổi hiển thị task "Hoàn thành": Chuyển sang chữ màu xanh lá thay vì gạch ngang mờ.
-  - Sửa lỗi hiển thị icon dự án: Cập nhật API Backend (task.service) populate thêm trường `emoji` cho `projectId` để UI nhận đúng biểu tượng.
-- Mở rộng thư viện Emoji: Cập nhật và tăng thêm số lượng Emoji chuyên nghiệp cho tính năng chọn biểu tượng trong ProjectFormDialog.
-- Củng cố tính ổn định Backend (Crash Prevention):
-  - Bổ sung khối `catch` vào các promise bất đồng bộ của Vercel AI SDK tại `ai-v2.controller` để xử lý triệt để lỗi stream.
-  - Thiết lập màng lọc lỗi toàn cục (Global Error Handlers) cho `uncaughtException` và `unhandledRejection` tại root `index.ts`.
+- Backend:
+  * Tích hợp tính năng Slack App Home (Mini-Dashboard) cho phép hiển thị danh sách Task cá nhân và tương tác ngay trên Slack.
+  * Hỗ trợ xử lý sự kiện 'app_home_opened' và các hành động Block Kit tương tác ('complete_task', 'assign_task', 'refresh_dashboard').
+  * Cải tiến hiển thị đường dẫn Task gồm Workspace, Dự án và Phase (Giai đoạn) cụ thể để dễ phân biệt.
+  * Thêm file script migration 'migrateDueDate.ts' giúp chuẩn hóa hạn chót của các Task cũ từ 00:00:00 sang 23:59:59.
+- Frontend:
+  * Triển khai chọn Giờ & Phút (Time Picker) cho Task trong modal tạo mới và chỉnh sửa chi tiết.
+  * Cập nhật định dạng ngày hiển thị linh hoạt (chỉ hiện giờ khi Task có đặt giờ cụ thể).
+- Fixes:
+  * Khắc phục lỗi tính toán chỉ số Nhịp độ (Pace) của Workspace Dashboard do bị giới hạn 4 dự án hiển thị.

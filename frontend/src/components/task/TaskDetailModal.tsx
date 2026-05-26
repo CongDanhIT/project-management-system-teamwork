@@ -108,6 +108,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [hasDueTime, setHasDueTime] = useState(false);
+  const [dueTime, setDueTime] = useState('23:59');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
   const [loggedHours, setLoggedHours] = useState<number | ''>('');
@@ -230,7 +232,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setDescription(task.description || '');
       setStatus(task.status);
       setPriority(task.priority);
-      setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+      if (task.dueDate) {
+        const d = new Date(task.dueDate);
+        setDueDate(d);
+        if (d.getHours() === 23 && d.getMinutes() === 59 && d.getSeconds() === 59) {
+          setHasDueTime(false);
+          setDueTime('23:59');
+        } else {
+          setHasDueTime(true);
+          setDueTime(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`);
+        }
+      } else {
+        setDueDate(undefined);
+        setHasDueTime(false);
+        setDueTime('23:59');
+      }
       setStartDate(task.startDate ? new Date(task.startDate) : undefined);
       setEstimatedHours(task.estimatedHours || '');
       setLoggedHours(task.loggedHours || '');
@@ -332,8 +348,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     try {
       // Prepare date values: only send null if explicitly intended, 
       // otherwise send the current state or fallback to original task value
-      const finalDueDate = dueDate ? dueDate.toISOString() : (task.dueDate || null);
-      const finalStartDate = startDate ? startDate.toISOString() : (task.startDate || null);
+      const finalDueDate = dueDate ? (() => {
+        const d = new Date(dueDate);
+        if (hasDueTime) {
+          const [hours, minutes] = dueTime.split(':').map(Number);
+          d.setHours(hours, minutes, 0, 0);
+        } else {
+          d.setHours(23, 59, 59, 999);
+        }
+        return d.toISOString();
+      })() : (task.dueDate || null);
+      
+      const finalStartDate = startDate ? (() => {
+        const d = new Date(startDate);
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString();
+      })() : (task.startDate || null);
 
       await onUpdate(task._id, {
         title,
@@ -838,7 +868,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         !dueDate && "text-text-dim font-medium opacity-60"
                       )}
                     >
-                      {dueDate ? format(dueDate, "dd/MM/yyyy") : <span>Chọn ngày hạn</span>}
+                      {dueDate ? (
+                        <span>
+                          {format(dueDate, "dd/MM/yyyy")}
+                          {hasDueTime && <span className="text-text-dim ml-2">({dueTime})</span>}
+                        </span>
+                      ) : <span>Chọn ngày hạn</span>}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 border-none shadow-2xl rounded-2xl" align="start">
                       <Calendar
@@ -848,6 +883,46 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         initialFocus
                         className="rounded-2xl"
                       />
+                      {dueDate && (
+                        <div className="p-4 border-t border-modal-border bg-input-bg space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Chọn giờ cụ thể
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setHasDueTime(!hasDueTime)}
+                              disabled={!isAdminOrOwner}
+                              className={cn(
+                                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-opacity-75",
+                                hasDueTime ? 'bg-brand-primary' : 'bg-slate-300 dark:bg-slate-600',
+                                !isAdminOrOwner && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                  hasDueTime ? 'translate-x-4' : 'translate-x-0'
+                                )}
+                              />
+                            </button>
+                          </div>
+                          
+                          {hasDueTime && (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                              <Clock className="w-4 h-4 text-brand-primary" />
+                              <input
+                                type="time"
+                                value={dueTime}
+                                onChange={(e) => setDueTime(e.target.value)}
+                                disabled={!isAdminOrOwner}
+                                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </PopoverContent>
                   </Popover>
                 </div>

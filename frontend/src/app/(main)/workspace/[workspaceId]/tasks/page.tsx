@@ -69,7 +69,7 @@ export default function TaskListPage() {
       ... (filters.assigneeIds.length > 0 && { assignedTo: filters.assigneeIds.join(',') }),
       ... (filters.parentId !== 'all' && { parentId: filters.parentId === 'root' ? '' : filters.parentId }),
       ... (filters.phaseId !== 'all' && { phaseId: filters.phaseId }),
-      ... (filters.search && { search: filters.search }),
+      ... (filters.search && { keyword: filters.search }),
       pageSize: 50
     }),
     enabled: !!workspaceId,

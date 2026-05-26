@@ -45,7 +45,7 @@ import { workspaceService } from '@/services/workspace.service';
 import { Tag as TagType } from '@/types/task';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Tag as TagIcon, Check, X, Users } from 'lucide-react';
+import { Tag as TagIcon, Check, X, Users, Clock } from 'lucide-react';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -104,6 +104,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [loggedHours, setLoggedHours] = useState<number | ''>('');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [hasDueTime, setHasDueTime] = useState(false);
+  const [dueTime, setDueTime] = useState('23:59');
   const [selectedParentId, setSelectedParentId] = useState<string>(parentId || 'none');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
@@ -216,8 +218,21 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         status: initialStatus,
         estimatedHours: estimatedHours === '' ? 0 : Number(estimatedHours),
         loggedHours: loggedHours === '' ? 0 : Number(loggedHours),
-        startDate: startDate ? startDate.toISOString() : undefined,
-        dueDate: selectedParentId === 'none' ? (dueDate ? dueDate.toISOString() : undefined) : null,
+        startDate: startDate ? (() => {
+          const d = new Date(startDate);
+          d.setHours(0, 0, 0, 0);
+          return d.toISOString();
+        })() : undefined,
+        dueDate: selectedParentId === 'none' ? (dueDate ? (() => {
+          const d = new Date(dueDate);
+          if (hasDueTime) {
+            const [hours, minutes] = dueTime.split(':').map(Number);
+            d.setHours(hours, minutes, 0, 0);
+          } else {
+            d.setHours(23, 59, 59, 999);
+          }
+          return d.toISOString();
+        })() : undefined) : null,
         parentId: selectedParentId === 'none' ? undefined : selectedParentId,
         subtasks: selectedSubtasks, // Truyền danh sách subtask đã chọn
         tags: selectedTagIds,
@@ -232,6 +247,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setLoggedHours('');
       setStartDate(undefined);
       setDueDate(undefined);
+      setHasDueTime(false);
+      setDueTime('23:59');
       setSelectedParentId('none');
       setSelectedSubtasks([]);
       setAiSubtaskSuggestions([]);
@@ -721,7 +738,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       )}
                     >
                       <CalendarIcon className="mr-3 h-5 w-5 text-rose-500" />
-                      {dueDate ? format(dueDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
+                      {dueDate ? (
+                        <span>
+                          {format(dueDate, "dd/MM/yyyy")}
+                          {hasDueTime && <span className="text-slate-500 ml-2">({dueTime})</span>}
+                        </span>
+                      ) : <span>Chọn ngày</span>}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 rounded-3xl overflow-hidden shadow-depth-3 border-ghost" align="start">
                       <Calendar
@@ -730,6 +752,43 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         onSelect={setDueDate}
                         initialFocus
                       />
+                      {dueDate && (
+                        <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Chọn giờ cụ thể
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setHasDueTime(!hasDueTime)}
+                              className={cn(
+                                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-opacity-75",
+                                hasDueTime ? 'bg-brand-primary' : 'bg-slate-300 dark:bg-slate-600'
+                              )}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                  hasDueTime ? 'translate-x-4' : 'translate-x-0'
+                                )}
+                              />
+                            </button>
+                          </div>
+                          
+                          {hasDueTime && (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                              <Clock className="w-4 h-4 text-brand-primary" />
+                              <input
+                                type="time"
+                                value={dueTime}
+                                onChange={(e) => setDueTime(e.target.value)}
+                                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-brand-primary/20"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </PopoverContent>
                   </Popover>
                 </div>

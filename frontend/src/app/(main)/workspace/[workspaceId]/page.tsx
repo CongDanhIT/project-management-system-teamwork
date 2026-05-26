@@ -1329,10 +1329,10 @@ export default function WorkspaceDashboardPage() {
                         <p className="text-[10px] font-black text-white/50 dark:text-brand-primary/80 uppercase tracking-[0.2em] mb-2">Dự án hoàn tất</p>
                         <div className="flex items-end gap-2">
                           <span className="text-5xl font-black text-white tracking-tighter drop-shadow-sm">
-                            {projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length || 0}
+                            {allProjectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length || 0}
                           </span>
                           <span className="text-xs font-bold text-white/30 mb-1.5 uppercase tracking-widest">
-                            / {projectsData?.pagination?.totalCount || projectsData?.projects?.length || 0} TỔNG THỂ
+                            / {allProjectsData?.pagination?.totalCount || allProjectsData?.projects?.length || 0} TỔNG THỂ
                           </span>
                         </div>
                       </div>
@@ -1341,7 +1341,7 @@ export default function WorkspaceDashboardPage() {
                         <div className="h-2 w-full bg-black/20 dark:bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/5">
                           <div
                             className="h-full bg-gradient-to-r from-teal-400 via-[#C7F964] to-emerald-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(199,249,100,0.5)]"
-                            style={{ width: `${(projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.pagination?.totalCount || projectsData?.projects?.length || 1)) * 100}%` }}
+                            style={{ width: `${(allProjectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (allProjectsData?.pagination?.totalCount || allProjectsData?.projects?.length || 1)) * 100}%` }}
                           />
                         </div>
                         <div className="flex justify-between items-center">
@@ -1349,7 +1349,7 @@ export default function WorkspaceDashboardPage() {
                             Nhịp độ vận hành tối ưu
                           </p>
                           <span className="text-[10px] font-black text-[#C7F964] drop-shadow-md">
-                            {Math.round((projectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (projectsData?.pagination?.totalCount || projectsData?.projects?.length || 1)) * 100)}%
+                            {Math.round((allProjectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length / (allProjectsData?.pagination?.totalCount || allProjectsData?.projects?.length || 1)) * 100)}%
                           </span>
                         </div>
                       </div>
