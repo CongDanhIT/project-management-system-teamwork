@@ -71,6 +71,23 @@ export const chatV2Controller = asyncHandler(
                 modelId
             });
 
+            // Tránh Unhandled Promise Rejection từ các Promise ngầm của Vercel AI SDK
+            result.text.catch((err: any) => {
+                logger.error("[AI-V2-Controller] Bắt được lỗi từ result.text Promise", { 
+                    message: err?.message || String(err),
+                    stack: err?.stack
+                });
+            });
+
+            if (result.response) {
+                result.response.catch((err: any) => {
+                    logger.error("[AI-V2-Controller] Bắt được lỗi từ result.response Promise", { 
+                        message: err?.message || String(err),
+                        stack: err?.stack
+                    });
+                });
+            }
+
             // Ghi nhận phản hồi stream vào response Express
             // pipeDataStreamToResponse là method trực tiếp trên StreamTextResult (ai v4.3)
             (result as any).pipeDataStreamToResponse(res, {

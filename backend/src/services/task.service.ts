@@ -546,7 +546,7 @@ export const getAllTasksService = async (
     const [tasks, totalCount] = await Promise.all([
         TaskModel.find(query)
             .populate("assignedTo", "_id name email profilePicture")
-            .populate("projectId", "_id name")
+            .populate("projectId", "_id name emoji")
             .populate("parentId", "_id title taskCode")
             .populate("phaseId", "_id name")
             .populate("tags")
@@ -606,7 +606,7 @@ export const getTaskByIdService = async (
 
     const task = await TaskModel.findOne(query)
         .populate("assignedTo", "_id name email profilePicture")
-        .populate("projectId", "_id name")
+        .populate("projectId", "_id name emoji")
         .populate("parentId", "_id title taskCode")
         .populate("createdBy", "_id name email profilePicture")
         .populate("tags");
@@ -638,7 +638,7 @@ export const getSubtasksService = async (
     const [tasks, totalCount] = await Promise.all([
         TaskModel.find(query)
             .populate("assignedTo", "_id name email profilePicture")
-            .populate("projectId", "_id name")
+            .populate("projectId", "_id name emoji")
             .sort({ createdAt: 1 })
             .skip(skip)
             .limit(pagination.pageSize),

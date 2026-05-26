@@ -156,5 +156,18 @@ const startServer = async () => {
 
 startServer();
 
-// Force restart 2
+// Lá chắn bảo vệ ứng dụng khỏi bị crash do lỗi unhandled
+process.on('uncaughtException', (error) => {
+    logger.error('💥 CRITICAL: Uncaught Exception', { 
+        message: error.message, 
+        stack: error.stack 
+    });
+});
+
+process.on('unhandledRejection', (reason: any) => {
+    logger.error('💥 CRITICAL: Unhandled Rejection', { 
+        message: reason?.message || String(reason), 
+        stack: reason?.stack 
+    });
+});
  

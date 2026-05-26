@@ -1,0 +1,14 @@
+feat(tasks): hoàn thiện giao diện Công việc & tối ưu độ ổn định hệ thống
+
+- Nâng cấp giao diện trang Tasks (Công việc của tôi):
+  - Bổ sung biểu đồ cột hiển thị phân bổ task theo giai đoạn (Phase Bar Chart).
+  - Sử dụng bộ icon chuyên nghiệp từ thư viện lucide-react (Target, Clock, Zap, TrendingUp).
+  - Tối ưu hiệu ứng Glassmorphism, làm mềm viền đỏ ở cột "Đã quá hạn", điều chỉnh mỏng lại thanh tiến độ.
+  - Thiết lập chiều cao và cấu hình lại thanh trượt (ScrollArea) giúp Bento Grid không bị vỡ bố cục.
+- Cải tiến hiển thị danh sách Task (TaskRow):
+  - Thay đổi hiển thị task "Hoàn thành": Chuyển sang chữ màu xanh lá thay vì gạch ngang mờ.
+  - Sửa lỗi hiển thị icon dự án: Cập nhật API Backend (task.service) populate thêm trường `emoji` cho `projectId` để UI nhận đúng biểu tượng.
+- Mở rộng thư viện Emoji: Cập nhật và tăng thêm số lượng Emoji chuyên nghiệp cho tính năng chọn biểu tượng trong ProjectFormDialog.
+- Củng cố tính ổn định Backend (Crash Prevention):
+  - Bổ sung khối `catch` vào các promise bất đồng bộ của Vercel AI SDK tại `ai-v2.controller` để xử lý triệt để lỗi stream.
+  - Thiết lập màng lọc lỗi toàn cục (Global Error Handlers) cho `uncaughtException` và `unhandledRejection` tại root `index.ts`.

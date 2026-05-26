@@ -8,10 +8,10 @@ import { projectService } from '@/services/project.service';
 import { PhaseService } from '@/services/phase.service';
 import { TaskRow } from '@/components/task/TaskRow';
 import { TaskFilters } from '@/components/task/TaskFilters';
-import { Loader2, Inbox, Plus } from 'lucide-react';
+import { Loader2, Inbox, Plus, TrendingUp, Clock, Zap } from 'lucide-react';
 import Loader from "@/components/ui/Loader";
 import { Button } from '@/components/ui/button';
-import { Task } from '@/types/task';
+import { Task, TaskStatus } from '@/types/task';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
@@ -58,6 +58,7 @@ export default function TaskListPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedFeaturedProjectId, setSelectedFeaturedProjectId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['workspace-tasks-list', workspaceId, filters],
@@ -287,15 +288,478 @@ export default function TaskListPage() {
     });
   };
 
+  const featuredProject = projects.length > 0 
+    ? (selectedFeaturedProjectId 
+        ? projects.find((p: any) => p._id === selectedFeaturedProjectId) || [...projects].sort((a: any, b: any) => (b.totalTasks || 0) - (a.totalTasks || 0))[0]
+        : [...projects].sort((a: any, b: any) => (b.totalTasks || 0) - (a.totalTasks || 0))[0])
+    : null;
+
+  const featuredProjectPhasesCount = featuredProject 
+    ? phases.filter((p: any) => (typeof p.projectId === 'string' ? p.projectId === featuredProject._id : p.projectId?._id === featuredProject._id)).length 
+    : 0;
+
+  // Lọc các task của user hiện tại trong dự án nổi bật
+  const myTasksInFeaturedProject = allTasks.filter((t: Task) => {
+    if (!featuredProject || !user?.id) return false;
+    
+    const tProjId = typeof t.projectId === 'object' && t.projectId !== null
+      ? (t.projectId as any)._id
+      : t.projectId;
+      
+    const isProjMatch = tProjId === featuredProject._id;
+    
+    const isAssignedToMe = t.assignedTo?.some((u: any) => {
+      const uId = typeof u === 'object' && u !== null ? u._id : u;
+      return uId === user.id;
+    });
+    
+    return isProjMatch && isAssignedToMe;
+  });
+
+  // 1. Ô 1: Tính tỉ lệ hoàn thành công việc của tôi
+  const myTotalTasksCount = myTasksInFeaturedProject.length;
+  const myCompletedTasksCount = myTasksInFeaturedProject.filter((t: Task) => 
+    t.status === TaskStatus.COMPLETED || t.status === TaskStatus.DONE
+  ).length;
+  const myCompletionRate = myTotalTasksCount > 0 
+    ? Math.round((myCompletedTasksCount / myTotalTasksCount) * 100) 
+    : 0;
+
+  // Lọc các task đang hoạt động (chưa hoàn thành, chưa hủy) của tôi trong dự án nổi bật
+  const myActiveTasksInFeaturedProject = myTasksInFeaturedProject
+    .filter((t: Task) => 
+      t.status !== TaskStatus.COMPLETED && 
+      t.status !== TaskStatus.DONE && 
+      t.status !== TaskStatus.CANCELLED
+    )
+    .sort((a: Task, b: Task) => {
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    });
+
+  // 2. Ô 2: Tìm công việc có hạn chót gần nhất trong tương lai hoặc hôm nay (không lấy task đã quá hạn trước ngày hôm nay)
+  const nextDeadlineTask = myActiveTasksInFeaturedProject.find((t: Task) => {
+    if (!t.dueDate) return false;
+    const taskTime = new Date(t.dueDate).getTime();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return taskTime >= startOfToday.getTime();
+  });
+
+  // Tính số ngày/giờ còn lại cho task sắp đến hạn
+  let deadlineText = 'Không có hạn chót';
+  let deadlineBadgeColor = 'bg-slate-200/80 dark:bg-white/5 text-slate-600 dark:text-slate-400 font-extrabold';
+  
+  if (nextDeadlineTask && nextDeadlineTask.dueDate) {
+    const diffTime = new Date(nextDeadlineTask.dueDate).getTime() - Date.now();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffTime < 0) {
+      const absDays = Math.abs(diffDays);
+      deadlineText = absDays === 0 ? 'Quá hạn hôm nay' : `Quá hạn ${absDays} ngày`;
+      deadlineBadgeColor = 'bg-rose-500/15 text-rose-750 dark:text-rose-450 border border-rose-500/25 font-black';
+    } else if (diffDays === 0) {
+      deadlineText = 'Hết hạn hôm nay';
+      deadlineBadgeColor = 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/25 font-black animate-pulse';
+    } else if (diffDays === 1) {
+      deadlineText = 'Hạn ngày mai';
+      deadlineBadgeColor = 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/25 font-black';
+    } else {
+      deadlineText = `Còn ${diffDays} ngày`;
+      deadlineBadgeColor = 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-500/25 font-black';
+    }
+  }
+
+  // 3. Ô 3: Lấy tối đa 2 active tasks
+  const topActiveTasks = myActiveTasksInFeaturedProject.slice(0, 2);
+
+  // Danh sách công việc trễ hạn (của tôi)
+  const overdueTasks = myTasksInFeaturedProject.filter((t: Task) => {
+    if (t.status === TaskStatus.COMPLETED || t.status === TaskStatus.DONE || t.status === TaskStatus.CANCELLED) return false;
+    if (!t.dueDate) return false;
+
+    const taskTime = new Date(t.dueDate).getTime();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return taskTime < startOfToday.getTime(); // Overdue = dueDate is strictly before today
+  }).sort((a: Task, b: Task) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+
+  // 4. Khung 2 (Ô giữa): Công việc theo giai đoạn
+  const featuredProjectPhasesList = featuredProject 
+    ? phases.filter((p: any) => (typeof p.projectId === 'string' ? p.projectId === featuredProject._id : p.projectId?._id === featuredProject._id))
+    : [];
+
+  const tasksByPhase = featuredProjectPhasesList.map((phase: any) => {
+    const count = myTasksInFeaturedProject.filter((t: Task) => {
+      const tPhaseId = typeof t.phaseId === 'object' && t.phaseId !== null ? (t.phaseId as any)._id : t.phaseId;
+      return tPhaseId === phase._id;
+    }).length;
+    return {
+      ...phase,
+      count
+    };
+  }).sort((a: any, b: any) => new Date(a.startDate || 0).getTime() - new Date(b.startDate || 0).getTime());
+  
+  const maxTasksInPhase = Math.max(...tasksByPhase.map((p: any) => p.count), 1);
+
   return (
     <div className="flex flex-col h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Công việc của tôi</h1>
+            <h1 className="text-3xl font-extrabold text-brand-primary tracking-tight">Công việc của tôi</h1>
             <p className="text-slate-500 dark:text-slate-400 font-medium">Quản lý và theo dõi tiến độ công việc tập trung.</p>
           </div>
         </div>
+
+      {/* Bento Grid Analytics */}
+      <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mt-6 mb-6">
+        {/* Khung dự án (6 cột, 2 dòng) */}
+        <div className="md:col-span-6 md:row-span-2 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xl rounded-[32px] border border-slate-100 dark:border-white/5 overflow-hidden flex flex-col relative min-h-[300px] shadow-sm">
+          {featuredProject ? (
+            <>
+              {featuredProject.coverUrl ? (
+                <div className="w-full h-full relative shadow-sm flex flex-col justify-between">
+                  <img 
+                    src={featuredProject.coverUrl} 
+                    alt={featuredProject.name} 
+                    className="absolute inset-0 w-full h-full object-cover z-0"
+                    style={{ objectPosition: `${featuredProject.coverPositionX}% ${featuredProject.coverPositionY}%` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 z-0" />
+                  
+                  <div className="relative z-10 flex items-center gap-2 p-4 mt-auto">
+                    <span className="text-xl bg-white/20 backdrop-blur-md rounded-xl p-2 shadow-lg border border-white/10">{featuredProject.emoji || '📁'}</span>
+                    <h3 className="text-white font-black text-xl tracking-tight drop-shadow-md">{featuredProject.name}</h3>
+                  </div>
+
+                  <div className="relative z-10 p-4 pt-0">
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
+                          <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Thời gian
+                        </span>
+                        <span className="text-xs font-bold truncate">
+                          {featuredProject.startDate && featuredProject.endDate 
+                            ? `${new Date(featuredProject.startDate).toLocaleDateString('vi-VN')} - ${new Date(featuredProject.endDate).toLocaleDateString('vi-VN')}`
+                            : 'Vô thời hạn'}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
+                          <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Giai đoạn
+                        </span>
+                        <span className="text-lg font-black">{featuredProjectPhasesCount} <span className="text-[10px] font-bold opacity-80">phase</span></span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
+                          <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Công việc
+                        </span>
+                        <span className="text-lg font-black">{featuredProject.totalTasks || 0} <span className="text-[10px] font-bold opacity-80">task</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-brand-primary to-brand-tertiary flex flex-col justify-between shadow-sm relative overflow-hidden">
+                  <div className="absolute inset-0 bg-black/10 z-0"></div>
+                  
+                  <div className="relative z-10 flex items-center gap-2 p-4 mt-auto">
+                    <span className="text-xl bg-white/20 backdrop-blur-md rounded-xl p-2 shadow-lg border border-white/20">{featuredProject.emoji || '📁'}</span>
+                    <h3 className="text-white font-black text-xl tracking-tight drop-shadow-md">{featuredProject.name}</h3>
+                  </div>
+                  
+                  <div className="relative z-10 p-4 pt-0">
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
+                          <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Thời gian
+                        </span>
+                        <span className="text-xs font-bold truncate">
+                          {featuredProject.startDate && featuredProject.endDate 
+                            ? `${new Date(featuredProject.startDate).toLocaleDateString('vi-VN')} - ${new Date(featuredProject.endDate).toLocaleDateString('vi-VN')}`
+                            : 'Vô thời hạn'}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
+                          <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Giai đoạn
+                        </span>
+                        <span className="text-lg font-black">{featuredProjectPhasesCount} <span className="text-[10px] font-bold opacity-90">phase</span></span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                        <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
+                          <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                          Công việc
+                        </span>
+                        <span className="text-lg font-black">{featuredProject.totalTasks || 0} <span className="text-[10px] font-bold opacity-90">task</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+              <span className="text-5xl opacity-50">📁</span>
+              <p className="font-bold text-sm">Chưa có dự án nổi bật</p>
+            </div>
+          )}
+        </div>
+
+        {/* Khối bên phải dòng 1 (2 khối, mỗi khối 2 cột) */}
+        <div className="md:col-span-2 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-brand-primary/30 dark:hover:border-white/20 transition-all duration-300 group min-h-[142px]">
+          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-brand-primary" />Tiến độ của tôi</span>
+          
+          <div className="flex items-center justify-between gap-3 my-auto">
+            <div className="flex flex-col">
+              <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight drop-shadow-[0_2px_8px_rgba(59,130,246,0.15)]">{myCompletionRate}%</span>
+              <span className="text-[11px] text-slate-600 dark:text-slate-300 font-extrabold mt-0.5">
+                {myTotalTasksCount > 0 ? `${myCompletedTasksCount}/${myTotalTasksCount} hoàn thành` : 'Chưa có task'}
+              </span>
+            </div>
+            
+            <div className="relative flex items-center justify-center w-14 h-14 flex-shrink-0">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="24"
+                  className="stroke-slate-200/50 dark:stroke-white/5"
+                  strokeWidth="4"
+                  fill="transparent"
+                />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="24"
+                  className="stroke-brand-primary transition-all duration-700 ease-out"
+                  strokeWidth="4"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 24}
+                  strokeDashoffset={2 * Math.PI * 24 * (1 - myCompletionRate / 100)}
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-brand-primary/30 dark:hover:border-white/20 hover:-translate-y-0.5 transition-all duration-300 min-h-[142px]">
+          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-500" />Hạn chót tiếp theo</span>
+          
+          {nextDeadlineTask ? (
+            <div 
+              onClick={() => handleTaskClick(nextDeadlineTask)}
+              className="flex flex-col gap-2 cursor-pointer group my-auto"
+            >
+              <div className="flex">
+                <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md ${deadlineBadgeColor}`}>
+                  {deadlineText}
+                </span>
+              </div>
+              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-brand-primary transition-colors line-clamp-2 leading-relaxed mt-1">
+                {nextDeadlineTask.title}
+              </h4>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 my-auto">
+              <div className="flex animate-pulse">
+                <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md ${deadlineBadgeColor}`}>
+                  {deadlineText}
+                </span>
+              </div>
+              <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">
+                Mọi việc đã hoàn thành
+              </h4>
+            </div>
+          )}
+        </div>
+
+        {/* Khối bên phải dòng 2 (1 khối lớn, 4 cột) */}
+        <div className="md:col-span-4 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-4 flex flex-col justify-between shadow-sm min-h-[142px]">
+          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-2.5 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-rose-500" />Công việc đang làm</span>
+          
+          <div className="flex-1 grid grid-cols-2 gap-3 items-center">
+            {topActiveTasks.length > 0 ? (
+              topActiveTasks.map((task: Task) => {
+                let progressWidth = '0%';
+                let progressColor = 'bg-slate-400 dark:bg-slate-500';
+                
+                if (task.status === TaskStatus.TODO) {
+                  progressWidth = '20%';
+                  progressColor = 'bg-slate-400 dark:bg-slate-500';
+                } else if (task.status === TaskStatus.IN_PROGRESS) {
+                  progressWidth = '60%';
+                  progressColor = 'bg-gradient-to-r from-brand-primary to-brand-primary/75 dark:to-brand-primary/50';
+                } else if (task.status === TaskStatus.INREVIEW) {
+                  progressWidth = '85%';
+                  progressColor = 'bg-gradient-to-r from-brand-primary to-indigo-600 dark:to-indigo-500';
+                } else if (task.status === TaskStatus.BACKLOG) {
+                  progressWidth = '10%';
+                  progressColor = 'bg-slate-350 dark:bg-slate-700';
+                }
+
+                return (
+                  <div 
+                    key={task._id}
+                    onClick={() => handleTaskClick(task)}
+                    className="flex flex-col gap-2 p-2.5 bg-white/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300 cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 bg-slate-200/80 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300/30 dark:border-white/5 font-mono flex-shrink-0">
+                          {task.taskCode}
+                        </span>
+                        <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-brand-primary transition-colors truncate">
+                          {task.title}
+                        </h4>
+                      </div>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full h-1.5 bg-slate-200/70 dark:bg-slate-950 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${progressColor} transition-all duration-500`}
+                        style={{ width: progressWidth }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      <span>Trạng thái: <span className="text-slate-700 dark:text-slate-300 capitalize font-extrabold">{task.status.toLowerCase().replace('_', ' ')}</span></span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-2 flex flex-col items-center justify-center py-2 text-center text-slate-400 dark:text-slate-500">
+                <span className="text-xl">✨</span>
+                <span className="text-[10px] font-bold mt-1">Tuyệt vời! Bạn không có task dở dang</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* New 3-Column Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Column 1: Danh sách Project */}
+        <div className="bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col shadow-sm h-[320px]">
+          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4">Dự án của bạn</span>
+          <ScrollArea className="h-[240px] -mx-2 px-2">
+            <div className="flex flex-col gap-3 pb-4">
+              {projects.length > 0 ? projects.map((p: any) => (
+                <div 
+                  key={p._id} 
+                  onClick={() => setSelectedFeaturedProjectId(p._id)}
+                  className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all duration-300 border ${featuredProject?._id === p._id ? 'bg-brand-primary/10 border-brand-primary/30 dark:bg-brand-primary/20 dark:border-brand-primary/50 shadow-sm' : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/50 dark:border-white/5 hover:bg-white dark:hover:bg-slate-800'}`}
+                >
+                  {/* Image */}
+                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800 relative">
+                    {p.coverUrl ? (
+                      <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">{p.emoji || '📁'}</div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <h4 className={`text-sm font-bold truncate ${featuredProject?._id === p._id ? 'text-brand-primary' : 'text-slate-800 dark:text-slate-200'}`}>{p.name}</h4>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">{p.totalTasks || 0} tasks</span>
+                  </div>
+                  {/* Status Badge */}
+                  <div className="flex-shrink-0 self-end">
+                    <span className="text-[8px] font-black uppercase px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {p.status || 'Active'}
+                    </span>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center text-slate-500 dark:text-slate-400 text-xs font-medium py-4">Chưa có dự án</div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Column 2: Biểu đồ task theo Phase */}
+        <div className="bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col shadow-sm h-[320px]">
+          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4 flex items-center justify-between">
+            <span>Phân bổ theo giai đoạn</span>
+          </span>
+          <ScrollArea className="h-[240px] -mx-2 px-2">
+            <div className="flex flex-col gap-4 pb-4">
+              {tasksByPhase.length > 0 ? tasksByPhase.map((phase: any) => {
+                const widthPercent = phase.count > 0 ? Math.max((phase.count / maxTasksInPhase) * 100, 6) : 0;
+                // Tính độ đậm nhạt: base opacity 0.4, tối đa 1.0 tùy theo số lượng
+                const barOpacity = phase.count > 0 ? 0.3 + (0.7 * (phase.count / maxTasksInPhase)) : 0;
+                
+                return (
+                  <div key={phase._id} className="flex flex-col gap-1.5 group">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="text-slate-700 dark:text-slate-300 truncate pr-2 group-hover:text-brand-primary transition-colors">{phase.name}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-black bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{phase.count}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100/80 dark:bg-slate-800/50 rounded-full overflow-hidden flex">
+                      {phase.count > 0 && (
+                        <div 
+                          className="h-full bg-gradient-to-r from-brand-primary to-brand-primary/75 dark:to-brand-primary/50 rounded-full transition-all duration-1000 ease-out" 
+                          style={{ 
+                            width: `${widthPercent}%`,
+                            opacity: barOpacity 
+                          }} 
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="text-center text-slate-500 dark:text-slate-400 text-xs font-medium py-10 flex flex-col items-center gap-2">
+                  <span className="text-2xl opacity-40">📉</span>
+                  Dự án này chưa có giai đoạn nào
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Column 3: Danh sách task hết hạn */}
+        <div className="bg-gradient-to-br from-rose-50/90 to-white/60 dark:from-rose-950/30 dark:to-slate-900/40 backdrop-blur-xl rounded-[32px] border border-rose-100/50 dark:border-rose-900/20 p-5 flex flex-col shadow-sm h-[320px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-rose-500/10 dark:bg-rose-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-rose-500/20 transition-all duration-500" />
+          
+          <span className="text-rose-600 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            Đã quá hạn
+          </span>
+          
+          <ScrollArea className="h-[240px] -mx-2 px-2 relative z-10">
+            <div className="flex flex-col gap-3 pb-4">
+              {overdueTasks.length > 0 ? overdueTasks.map((t: Task) => (
+                <div 
+                  key={t._id}
+                  onClick={() => handleTaskClick(t)}
+                  className="flex flex-col p-3 rounded-2xl cursor-pointer transition-all duration-300 bg-white/60 dark:bg-slate-900/40 border border-slate-200/50 dark:border-white/5 hover:bg-white dark:hover:bg-slate-800 hover:border-rose-200 dark:hover:border-rose-900/50 hover:shadow-sm"
+                >
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{t.title}</h4>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] text-rose-600/80 dark:text-rose-400/80 font-bold bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-100 dark:border-rose-900/30">
+                      {t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : 'Không có'} - {t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : 'Không có'}
+                    </span>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center text-slate-500 dark:text-slate-400 text-xs font-medium py-10 flex flex-col items-center gap-2">
+                  <span className="text-2xl opacity-50">🎉</span>
+                  Tuyệt vời! Không có việc nào trễ hạn.
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
 
       {/* Filters */}
       <TaskFilters 

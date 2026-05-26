@@ -37,7 +37,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({ task, onClick }) => {
       <div className="flex-1 min-w-0 flex flex-col">
         <span className={cn(
           "text-sm font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-primary transition-colors",
-          task.status === 'DONE' && "line-through text-slate-400 dark:text-slate-600"
+          (task.status === 'DONE' || task.status === 'COMPLETED') && "text-emerald-500 dark:text-emerald-400"
         )}>
           {task.title}
         </span>

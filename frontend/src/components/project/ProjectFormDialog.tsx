@@ -27,7 +27,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const EMOJI_LIST = ['📁', '🚀', '🎨', '💡', '🔧', '📊', '🌟', '🔥', '🎯', '🌐', '🛠️', '📱'];
+const EMOJI_LIST = [
+  '📁', '💼', '📈', '📊', '🎯', '🛡️', 
+  '⚙️', '🌐', '💻', '🏢', '💡', '🗓️', 
+  '🤝', '📣', '💵', '🔍', '🔑', '⚡',
+  '🚀', '🏆', '👥', '🛠️', '🔒', '🌱',
+  '⚖️', '📋', '🗺️', '✉️', '📉', '📦'
+];
 
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Lập kế hoạch' },
