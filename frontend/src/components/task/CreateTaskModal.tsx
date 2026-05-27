@@ -417,13 +417,13 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
                   <SelectTrigger className="h-14 border-white/50 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-2xl shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-all font-bold group">
                     <SelectValue placeholder="Chọn mức độ">
-                      {priority === TaskPriority.LOW ? "Tiêu chuẩn" : priority === TaskPriority.MEDIUM ? "Trung bình" : "Khẩn cấp"}
+                      {priority === TaskPriority.LOW ? "Thấp" : priority === TaskPriority.MEDIUM ? "Trung bình" : "Cao"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl shadow-depth-3 border-ghost">
-                    <SelectItem value={TaskPriority.LOW} className="font-bold py-3">Tiêu chuẩn</SelectItem>
+                    <SelectItem value={TaskPriority.LOW} className="font-bold py-3 text-emerald-600">Thấp</SelectItem>
                     <SelectItem value={TaskPriority.MEDIUM} className="font-bold py-3 text-brand-primary">Trung bình</SelectItem>
-                    <SelectItem value={TaskPriority.HIGH} className="font-bold py-3 text-rose-600">Khẩn cấp</SelectItem>
+                    <SelectItem value={TaskPriority.HIGH} className="font-bold py-3 text-rose-600">Cao</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

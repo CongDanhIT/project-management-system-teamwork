@@ -1,5 +1,4 @@
-fix(frontend): sửa lỗi API phân tích AI và cảnh báo React key prop trong thùng rác
+fix(frontend): chỉnh sửa nhãn mức độ ưu tiên công việc thành Thấp, Trung bình, Cao
 
-- [AdvancedInsightsDrawer] Sửa URL lấy chi tiết dự án từ `/projects/workspace/...` (số nhiều) thành `/project/workspace/...` (số ít) để khớp với route backend và tránh lỗi 404 làm sập tính năng Phân tích AI.
-- [ProjectsPage] Bọc các mảng map dự án, công việc và giai đoạn bằng `React.Fragment` kèm unique key để giải quyết triệt để cảnh báo 'Each child in a list should have a unique key prop' trong thùng rác.
-- [Sidebar] Bổ sung làn phân cách gradient mờ phân tách các phân mục menu chính (Thực thi & quản lý, Hệ thống) theo thiết kế tổng quan.
+- [CreateTaskModal] Thay thế nhãn hiển thị mức độ ưu tiên từ "Tiêu chuẩn" -> "Thấp" (LOW) và "Khẩn cấp" -> "Cao" (HIGH).
+- Đồng bộ giao diện dropdown chọn ưu tiên khi tạo task mới với các phần còn lại của ứng dụng.
