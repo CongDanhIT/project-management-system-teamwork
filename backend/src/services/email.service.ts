@@ -92,7 +92,7 @@ export class EmailService {
             }).populate("createdBy", "name").populate("projectId", "name");
 
             // 6. Tính toán báo cáo cho các Workspace mà user là ADMIN hoặc OWNER
-            const userMemberships = await MemberModel.find({ userId }).populate("role").populate("workspaceId", "name");
+            const userMemberships = await MemberModel.find({ userId, joined: { $ne: false } }).populate("role").populate("workspaceId", "name");
             const adminWorkspaceReports: any[] = [];
 
             for (const member of userMemberships) {

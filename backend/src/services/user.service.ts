@@ -88,7 +88,7 @@ export const switchWorkspaceService = async (
     }
 
     // Kiểm tra user có phải là thành viên của workspace không
-    const isMember = await MemberModel.exists({ workspaceId, userId });
+    const isMember = await MemberModel.exists({ workspaceId, userId, joined: { $ne: false } });
     if (!isMember) {
         throw new BadRequestException("Bạn không phải là thành viên của workspace này");
     }

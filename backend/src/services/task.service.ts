@@ -339,7 +339,8 @@ export const updateTaskService = async (
                 
                 const admins = await MemberModel.find({
                     workspaceId,
-                    role: { $in: adminRoleIds }
+                    role: { $in: adminRoleIds },
+                    joined: { $ne: false }
                 }).select('userId');
 
                 const notificationPromises = admins.map(admin => {
@@ -442,13 +443,28 @@ export const updateTaskService = async (
     });
 
     let detailedSummary = `đã cập nhật thông tin công việc **${task.title}**`;
-    
+    const changeDescriptions: string[] = [];
+
     if (changedFields.includes('status')) {
-        detailedSummary = `đã chuyển trạng thái công việc **${task.title}** từ **${oldValues.status}** sang **${task.status}**`;
-    } else if (changedFields.includes('priority')) {
-        detailedSummary = `đã đổi mức ưu tiên công việc **${task.title}** từ **${oldValues.priority}** sang **${task.priority}**`;
-    } else if (changedFields.includes('startDate') || changedFields.includes('dueDate')) {
-        detailedSummary = `đã cập nhật lại lịch trình thời gian cho công việc **${task.title}**`;
+        changeDescriptions.push(`chuyển trạng thái từ **${oldValues.status}** sang **${task.status}**`);
+    }
+    if (changedFields.includes('priority')) {
+        changeDescriptions.push(`đổi mức ưu tiên từ **${oldValues.priority}** sang **${task.priority}**`);
+    }
+    if (changedFields.includes('startDate') || changedFields.includes('dueDate')) {
+        changeDescriptions.push(`cập nhật lại lịch trình thời gian`);
+    }
+    if (changedFields.includes('title')) {
+        changeDescriptions.push(`thay đổi tiêu đề`);
+    }
+
+    if (changeDescriptions.length > 0) {
+        if (changeDescriptions.length === 1) {
+            detailedSummary = `đã ${changeDescriptions[0]} cho công việc **${task.title}**`;
+        } else {
+            const lastChange = changeDescriptions.pop();
+            detailedSummary = `đã ${changeDescriptions.join(', ')} và ${lastChange} cho công việc **${task.title}**`;
+        }
     }
 
     await logActivityService({

@@ -353,7 +353,7 @@ export class SlackService {
                 ];
             } else {
                 // User đã liên kết, lấy danh sách task
-                const members = await MemberModel.find({ userId: user._id });
+                const members = await MemberModel.find({ userId: user._id, joined: { $ne: false } });
                 const workspaceIds = members.map(m => m.workspaceId);
 
                 // Lấy các task được gán cho user
@@ -628,7 +628,8 @@ export class SlackService {
 
             const admins = await MemberModel.find({
                 workspaceId,
-                role: { $in: adminRoleIds }
+                role: { $in: adminRoleIds },
+                joined: { $ne: false }
             }).select('userId');
 
             const adminUserIds = admins.map(a => a.userId);

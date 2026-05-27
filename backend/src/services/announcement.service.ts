@@ -9,7 +9,7 @@ import RoleModel from "../models/role-permission.model";
 const checkAdminOwner = async (workspaceId: string, userId: string) => {
   const userObjId = new mongoose.Types.ObjectId(userId);
   const wpObjId = new mongoose.Types.ObjectId(workspaceId);
-  const member = await MemberModel.findOne({ workspaceId: wpObjId, userId: userObjId }).populate("role");
+  const member = await MemberModel.findOne({ workspaceId: wpObjId, userId: userObjId, joined: { $ne: false } }).populate("role");
   
   if (!member) throw new Error("Thành viên không có trong workspace");
   

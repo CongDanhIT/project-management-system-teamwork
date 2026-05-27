@@ -358,16 +358,16 @@ export default function TaskListPage() {
     if (diffTime < 0) {
       const absDays = Math.abs(diffDays);
       deadlineText = absDays === 0 ? 'Quá hạn hôm nay' : `Quá hạn ${absDays} ngày`;
-      deadlineBadgeColor = 'bg-rose-500/15 text-rose-750 dark:text-rose-450 border border-rose-500/25 font-black';
+      deadlineBadgeColor = 'bg-rose-500/10 text-rose-750 dark:text-rose-450 font-black shadow-[0_0_8px_rgba(244,63,94,0.1)]';
     } else if (diffDays === 0) {
       deadlineText = 'Hết hạn hôm nay';
-      deadlineBadgeColor = 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/25 font-black animate-pulse';
+      deadlineBadgeColor = 'bg-amber-500/10 text-amber-800 dark:text-amber-400 font-black animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.1)]';
     } else if (diffDays === 1) {
       deadlineText = 'Hạn ngày mai';
-      deadlineBadgeColor = 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/25 font-black';
+      deadlineBadgeColor = 'bg-amber-500/10 text-amber-800 dark:text-amber-400 font-black shadow-[0_0_8px_rgba(245,158,11,0.1)]';
     } else {
       deadlineText = `Còn ${diffDays} ngày`;
-      deadlineBadgeColor = 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-500/25 font-black';
+      deadlineBadgeColor = 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-black shadow-[0_0_8px_rgba(16,185,129,0.1)]';
     }
   }
 
@@ -414,13 +414,13 @@ export default function TaskListPage() {
         </div>
 
       {/* Bento Grid Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mt-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-10 gap-8 mt-8 mb-8">
         {/* Khung dự án (6 cột, 2 dòng) */}
-        <div className="md:col-span-6 md:row-span-2 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xl rounded-[32px] border border-slate-100 dark:border-white/5 overflow-hidden flex flex-col relative min-h-[300px] shadow-sm">
+        <div className="md:col-span-6 md:row-span-2 bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] overflow-hidden flex flex-col relative min-h-[300px] shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none">
           {featuredProject ? (
             <>
               {featuredProject.coverUrl ? (
-                <div className="w-full h-full relative shadow-sm flex flex-col justify-between">
+                <div className="w-full h-full relative flex flex-col justify-between">
                   <img 
                     src={featuredProject.coverUrl} 
                     alt={featuredProject.name} 
@@ -429,14 +429,14 @@ export default function TaskListPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 z-0" />
                   
-                  <div className="relative z-10 flex items-center gap-2 p-4 mt-auto">
+                  <div className="relative z-10 flex items-center gap-2 px-8 pt-6 pb-2 mt-auto">
                     <span className="text-xl bg-white/20 backdrop-blur-md rounded-xl p-2 shadow-lg border border-white/10">{featuredProject.emoji || '📁'}</span>
                     <h3 className="text-white font-black text-xl tracking-tight drop-shadow-md">{featuredProject.name}</h3>
                   </div>
 
-                  <div className="relative z-10 p-4 pt-0">
-                    <div className="grid grid-cols-3 gap-2.5">
-                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                  <div className="relative z-10 px-8 pb-8 pt-0">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
                           <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Thời gian
@@ -447,14 +447,14 @@ export default function TaskListPage() {
                             : 'Vô thời hạn'}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
                           <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Giai đoạn
                         </span>
                         <span className="text-lg font-black">{featuredProjectPhasesCount} <span className="text-[10px] font-bold opacity-80">phase</span></span>
                       </div>
-                      <div className="flex flex-col gap-1 p-3 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 text-white shadow-xl">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/10 hover:bg-white/20 transition-all dark:bg-black/30 backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-80">
                           <div className="w-1 h-1 rounded-full bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Công việc
@@ -465,17 +465,17 @@ export default function TaskListPage() {
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-brand-primary to-brand-tertiary flex flex-col justify-between shadow-sm relative overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-brand-primary to-brand-tertiary flex flex-col justify-between relative overflow-hidden">
                   <div className="absolute inset-0 bg-black/10 z-0"></div>
                   
-                  <div className="relative z-10 flex items-center gap-2 p-4 mt-auto">
+                  <div className="relative z-10 flex items-center gap-2 px-8 pt-6 pb-2 mt-auto">
                     <span className="text-xl bg-white/20 backdrop-blur-md rounded-xl p-2 shadow-lg border border-white/20">{featuredProject.emoji || '📁'}</span>
                     <h3 className="text-white font-black text-xl tracking-tight drop-shadow-md">{featuredProject.name}</h3>
                   </div>
                   
-                  <div className="relative z-10 p-4 pt-0">
-                    <div className="grid grid-cols-3 gap-2.5">
-                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                  <div className="relative z-10 px-8 pb-8 pt-0">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
                           <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Thời gian
@@ -486,14 +486,14 @@ export default function TaskListPage() {
                             : 'Vô thời hạn'}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
                           <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Giai đoạn
                         </span>
                         <span className="text-lg font-black">{featuredProjectPhasesCount} <span className="text-[10px] font-bold opacity-90">phase</span></span>
                       </div>
-                      <div className="flex flex-col gap-1 p-3 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-2xl border border-white/30 text-white shadow-xl">
+                      <div className="flex flex-col gap-1.5 p-6 bg-white/20 hover:bg-white/30 transition-all backdrop-blur-md rounded-[32px] text-white shadow-xl">
                         <span className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1 opacity-95">
                           <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                           Công việc
@@ -514,13 +514,13 @@ export default function TaskListPage() {
         </div>
 
         {/* Khối bên phải dòng 1 (2 khối, mỗi khối 2 cột) */}
-        <div className="md:col-span-2 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-brand-primary/30 dark:hover:border-white/20 transition-all duration-300 group min-h-[142px]">
-          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-brand-primary" />Tiến độ của tôi</span>
+        <div className="md:col-span-2 md:row-span-1 bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col justify-between shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none hover:shadow-[0_40px_60px_-5px_rgba(0,68,66,0.08)] transition-all duration-300 hover:-translate-y-1 min-h-[160px]">
+          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-brand-primary" />Tiến độ của tôi</span>
           
-          <div className="flex items-center justify-between gap-3 my-auto">
+          <div className="flex items-center justify-between gap-3 my-auto pt-2">
             <div className="flex flex-col">
               <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight drop-shadow-[0_2px_8px_rgba(59,130,246,0.15)]">{myCompletionRate}%</span>
-              <span className="text-[11px] text-slate-600 dark:text-slate-300 font-extrabold mt-0.5">
+              <span className="text-[11px] text-slate-600 dark:text-slate-350 font-extrabold mt-0.5">
                 {myTotalTasksCount > 0 ? `${myCompletedTasksCount}/${myTotalTasksCount} hoàn thành` : 'Chưa có task'}
               </span>
             </div>
@@ -531,7 +531,7 @@ export default function TaskListPage() {
                   cx="28"
                   cy="28"
                   r="24"
-                  className="stroke-slate-200/50 dark:stroke-white/5"
+                  className="stroke-slate-200/50 dark:stroke-[#172925]/80"
                   strokeWidth="4"
                   fill="transparent"
                 />
@@ -551,31 +551,31 @@ export default function TaskListPage() {
           </div>
         </div>
 
-        <div className="md:col-span-2 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-brand-primary/30 dark:hover:border-white/20 hover:-translate-y-0.5 transition-all duration-300 min-h-[142px]">
-          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-500" />Hạn chót tiếp theo</span>
+        <div className="md:col-span-2 md:row-span-1 bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col justify-between shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none hover:shadow-[0_40px_60px_-5px_rgba(0,68,66,0.08)] transition-all duration-300 hover:-translate-y-1 min-h-[160px]">
+          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-500" />Hạn chót tiếp theo</span>
           
           {nextDeadlineTask ? (
             <div 
               onClick={() => handleTaskClick(nextDeadlineTask)}
-              className="flex flex-col gap-2 cursor-pointer group my-auto"
+              className="flex flex-col gap-2 cursor-pointer group/item my-auto pt-2"
             >
               <div className="flex">
                 <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md ${deadlineBadgeColor}`}>
                   {deadlineText}
                 </span>
               </div>
-              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-brand-primary transition-colors line-clamp-2 leading-relaxed mt-1">
+              <h4 className="text-base font-extrabold font-manrope text-slate-900 dark:text-slate-100 group-hover/item:text-brand-primary transition-colors line-clamp-2 leading-relaxed mt-1">
                 {nextDeadlineTask.title}
               </h4>
             </div>
           ) : (
-            <div className="flex flex-col gap-1.5 my-auto">
+            <div className="flex flex-col gap-1.5 my-auto pt-2">
               <div className="flex animate-pulse">
                 <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md ${deadlineBadgeColor}`}>
                   {deadlineText}
                 </span>
               </div>
-              <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">
+              <h4 className="text-base font-bold text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">
                 Mọi việc đã hoàn thành
               </h4>
             </div>
@@ -583,10 +583,10 @@ export default function TaskListPage() {
         </div>
 
         {/* Khối bên phải dòng 2 (1 khối lớn, 4 cột) */}
-        <div className="md:col-span-4 md:row-span-1 bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-4 flex flex-col justify-between shadow-sm min-h-[142px]">
-          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-2.5 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-rose-500" />Công việc đang làm</span>
+        <div className="md:col-span-4 md:row-span-1 bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col justify-between shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none min-h-[160px]">
+          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block mb-4 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-rose-500" />Công việc đang làm</span>
           
-          <div className="flex-1 grid grid-cols-2 gap-3 items-center">
+          <div className="flex-1 grid grid-cols-2 gap-4 items-center">
             {topActiveTasks.length > 0 ? (
               topActiveTasks.map((task: Task) => {
                 let progressWidth = '0%';
@@ -597,24 +597,24 @@ export default function TaskListPage() {
                   progressColor = 'bg-slate-400 dark:bg-slate-500';
                 } else if (task.status === TaskStatus.IN_PROGRESS) {
                   progressWidth = '60%';
-                  progressColor = 'bg-gradient-to-r from-brand-primary to-brand-primary/75 dark:to-brand-primary/50';
+                  progressColor = 'bg-brand-primary dark:bg-brand-secondary';
                 } else if (task.status === TaskStatus.INREVIEW) {
                   progressWidth = '85%';
-                  progressColor = 'bg-gradient-to-r from-brand-primary to-indigo-600 dark:to-indigo-500';
+                  progressColor = 'bg-brand-primary dark:bg-brand-secondary';
                 } else if (task.status === TaskStatus.BACKLOG) {
                   progressWidth = '10%';
-                  progressColor = 'bg-slate-350 dark:bg-slate-700';
+                  progressColor = 'bg-slate-300 dark:bg-slate-700';
                 }
 
                 return (
                   <div 
                     key={task._id}
                     onClick={() => handleTaskClick(task)}
-                    className="flex flex-col gap-2 p-2.5 bg-white/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-300 cursor-pointer group"
+                    className="flex flex-col gap-2.5 p-6 bg-slate-100/65 dark:bg-[#172925]/85 rounded-[32px] hover:bg-slate-100 dark:hover:bg-[#172925] hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:hover:shadow-none transition-all duration-300 cursor-pointer group"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 bg-slate-200/80 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300/30 dark:border-white/5 font-mono flex-shrink-0">
+                        <span className="text-[9px] font-black text-slate-650 dark:text-slate-350 bg-slate-200/60 dark:bg-[#071613] px-1.5 py-0.5 rounded border-none font-mono flex-shrink-0">
                           {task.taskCode}
                         </span>
                         <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-brand-primary transition-colors truncate">
@@ -623,7 +623,7 @@ export default function TaskListPage() {
                       </div>
                     </div>
                     {/* Progress Bar */}
-                    <div className="w-full h-1.5 bg-slate-200/70 dark:bg-slate-950 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-200/50 dark:bg-[#071613] rounded-full overflow-hidden">
                       <div 
                         className={`h-full ${progressColor} transition-all duration-500`}
                         style={{ width: progressWidth }}
@@ -646,20 +646,20 @@ export default function TaskListPage() {
       </div>
 
       {/* New 3-Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
         {/* Column 1: Danh sách Project */}
-        <div className="bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col shadow-sm h-[320px]">
-          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4">Dự án của bạn</span>
-          <ScrollArea className="h-[240px] -mx-2 px-2">
-            <div className="flex flex-col gap-3 pb-4">
+        <div className="bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none h-[320px]">
+          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block mb-4">Dự án của bạn</span>
+          <ScrollArea className="h-[210px] pr-4">
+            <div className="flex flex-col gap-3 pb-4 pr-1">
               {projects.length > 0 ? projects.map((p: any) => (
                 <div 
                   key={p._id} 
                   onClick={() => setSelectedFeaturedProjectId(p._id)}
-                  className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all duration-300 border ${featuredProject?._id === p._id ? 'bg-brand-primary/10 border-brand-primary/30 dark:bg-brand-primary/20 dark:border-brand-primary/50 shadow-sm' : 'bg-white/60 dark:bg-slate-900/40 border-slate-200/50 dark:border-white/5 hover:bg-white dark:hover:bg-slate-800'}`}
+                  className={`flex items-center gap-3 p-6 rounded-[32px] cursor-pointer transition-all duration-300 ${featuredProject?._id === p._id ? 'bg-brand-primary/10 text-brand-primary dark:bg-[#172925] dark:text-[#C7F964]' : 'bg-slate-100/55 hover:bg-slate-100 dark:bg-[#172925]/50 dark:hover:bg-[#172925]/80 text-slate-800 dark:text-slate-200'}`}
                 >
                   {/* Image */}
-                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800 relative">
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800 relative">
                     {p.coverUrl ? (
                       <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
@@ -668,12 +668,12 @@ export default function TaskListPage() {
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0 flex flex-col">
-                    <h4 className={`text-sm font-bold truncate ${featuredProject?._id === p._id ? 'text-brand-primary' : 'text-slate-800 dark:text-slate-200'}`}>{p.name}</h4>
+                    <h4 className="text-sm font-bold truncate">{p.name}</h4>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">{p.totalTasks || 0} tasks</span>
                   </div>
                   {/* Status Badge */}
                   <div className="flex-shrink-0 self-end">
-                    <span className="text-[8px] font-black uppercase px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    <span className="text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-slate-200/50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 tracking-[0.2em]">
                       {p.status || 'Active'}
                     </span>
                   </div>
@@ -686,12 +686,12 @@ export default function TaskListPage() {
         </div>
 
         {/* Column 2: Biểu đồ task theo Phase */}
-        <div className="bg-gradient-to-br from-white/90 to-slate-50/60 dark:from-slate-900/70 dark:to-slate-950/50 backdrop-blur-xl rounded-[32px] border border-slate-200 dark:border-white/10 p-5 flex flex-col shadow-sm h-[320px]">
-          <span className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4 flex items-center justify-between">
+        <div className="bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none h-[320px]">
+          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block mb-4 flex items-center justify-between">
             <span>Phân bổ theo giai đoạn</span>
           </span>
-          <ScrollArea className="h-[240px] -mx-2 px-2">
-            <div className="flex flex-col gap-4 pb-4">
+          <ScrollArea className="h-[210px] pr-4">
+            <div className="flex flex-col gap-4 pb-4 pr-1">
               {tasksByPhase.length > 0 ? tasksByPhase.map((phase: any) => {
                 const widthPercent = phase.count > 0 ? Math.max((phase.count / maxTasksInPhase) * 100, 6) : 0;
                 // Tính độ đậm nhạt: base opacity 0.4, tối đa 1.0 tùy theo số lượng
@@ -701,12 +701,12 @@ export default function TaskListPage() {
                   <div key={phase._id} className="flex flex-col gap-1.5 group">
                     <div className="flex items-center justify-between text-[11px] font-bold">
                       <span className="text-slate-700 dark:text-slate-300 truncate pr-2 group-hover:text-brand-primary transition-colors">{phase.name}</span>
-                      <span className="text-slate-500 dark:text-slate-400 font-black bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{phase.count}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-black bg-slate-100 dark:bg-[#172925] px-2 py-0.5 rounded-lg">{phase.count}</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100/80 dark:bg-slate-800/50 rounded-full overflow-hidden flex">
                       {phase.count > 0 && (
                         <div 
-                          className="h-full bg-gradient-to-r from-brand-primary to-brand-primary/75 dark:to-brand-primary/50 rounded-full transition-all duration-1000 ease-out" 
+                          className="h-full bg-brand-primary dark:bg-brand-secondary rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(3,93,91,0.2)] dark:shadow-none" 
                           style={{ 
                             width: `${widthPercent}%`,
                             opacity: barOpacity 
@@ -727,25 +727,25 @@ export default function TaskListPage() {
         </div>
 
         {/* Column 3: Danh sách task hết hạn */}
-        <div className="bg-gradient-to-br from-rose-50/90 to-white/60 dark:from-rose-950/30 dark:to-slate-900/40 backdrop-blur-xl rounded-[32px] border border-rose-100/50 dark:border-rose-900/20 p-5 flex flex-col shadow-sm h-[320px] relative overflow-hidden group">
+        <div className="bg-rose-500/[0.03] dark:bg-rose-950/[0.05] backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none h-[320px] relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-40 h-40 bg-rose-500/10 dark:bg-rose-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-rose-500/20 transition-all duration-500" />
           
-          <span className="text-rose-600 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-widest block mb-4 flex items-center gap-1.5">
+          <span className="text-rose-600 dark:text-rose-400 font-bold text-[11px] uppercase tracking-[0.2em] block mb-4 flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
             Đã quá hạn
           </span>
           
-          <ScrollArea className="h-[240px] -mx-2 px-2 relative z-10">
-            <div className="flex flex-col gap-3 pb-4">
+          <ScrollArea className="h-[210px] pr-4 relative z-10">
+            <div className="flex flex-col gap-3 pb-4 pr-1">
               {overdueTasks.length > 0 ? overdueTasks.map((t: Task) => (
                 <div 
                   key={t._id}
                   onClick={() => handleTaskClick(t)}
-                  className="flex flex-col p-3 rounded-2xl cursor-pointer transition-all duration-300 bg-white/60 dark:bg-slate-900/40 border border-slate-200/50 dark:border-white/5 hover:bg-white dark:hover:bg-slate-800 hover:border-rose-200 dark:hover:border-rose-900/50 hover:shadow-sm"
+                  className="flex flex-col p-6 rounded-[32px] cursor-pointer transition-all duration-300 bg-white/80 dark:bg-[#172925]/60 hover:bg-white dark:hover:bg-[#172925] hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:hover:shadow-none"
                 >
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{t.title}</h4>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-650 dark:group-hover:text-rose-400 transition-colors">{t.title}</h4>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[10px] text-rose-600/80 dark:text-rose-400/80 font-bold bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-100 dark:border-rose-900/30">
+                    <span className="text-[10px] text-rose-600/90 dark:text-rose-400/90 font-bold bg-rose-500/10 px-2 py-0.5 rounded-lg">
                       {t.startDate ? new Date(t.startDate).toLocaleDateString('vi-VN') : 'Không có'} - {t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : 'Không có'}
                     </span>
                   </div>

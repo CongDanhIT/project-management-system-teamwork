@@ -16,6 +16,7 @@ import {
     updateWorkspaceByIdService,
     resetInviteCodeService,
     removeMemberFromWorkspaceService,
+    leaveWorkspaceService,
     triggerSlackTestService,
     triggerEmailTestService,
 } from "../services/workspace.service";
@@ -290,5 +291,20 @@ export const triggerEmailTestController = asyncHandler(
         const userId = req.user?._id;
         const result = await triggerEmailTestService(userId);
         return res.status(HTTP_STATUS.OK).json(result);
+    }
+);
+
+// Tự rời khỏi workspace
+export const leaveWorkspaceController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        const currentWorkspace = await leaveWorkspaceService(workspaceId, userId);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Rời khỏi workspace thành công",
+            currentWorkspace
+        });
     }
 );

@@ -22,7 +22,7 @@ export const getMemberRoleInWorkspace = async (workspaceId: string, userId: stri
     if (!workspace) {
         throw new NotFoundException("không tìm thấy workspace");
     }
-    const member = await MemberModel.findOne({ workspaceId: workspaceId, userId: userId })
+    const member = await MemberModel.findOne({ workspaceId: workspaceId, userId: userId, joined: { $ne: false } })
         .populate("role").exec();
     if (!member) {
         throw new NotFoundException("không tìm thấy thành viên");
@@ -37,17 +37,43 @@ export const joinWorkspaceService = async (inviteCode: string, userId: string) =
         throw new NotFoundException("không tìm thấy workspace");
     }
     const member = await MemberModel.findOne({ workspaceId: workspace._id, userId: userId });
-    if (member) {
-        throw new NotFoundException("bạn đã là thành viên của workspace");
-    }
+    
     const role = await RoleModel.findOne({ name: RoleEnum.MEMBER });
     if (!role) {
         throw new NotFoundException("không tìm thấy role");
     }
+
+    if (member) {
+        if (member.joined !== false) {
+            throw new NotFoundException("bạn đã là thành viên của workspace");
+        }
+        
+        // Khôi phục thành viên cũ
+        member.joined = true;
+        member.joinedAt = new Date();
+        member.role = role._id;
+        await member.save();
+
+        // Ghi nhật ký tham gia lại
+        await logActivity({
+            workspaceId: workspace._id.toString(),
+            userId: userId,
+            action: ActivityActionEnum.MEMBER_JOINED,
+            entityType: ActivityEntityTypeEnum.MEMBER,
+            entityId: userId,
+            details: {
+                summary: `đã tham gia lại không gian làm việc **${workspace.name}**`
+            }
+        });
+
+        return { workspaceId: workspace._id, role: role.name };
+    }
+
     const newMember = new MemberModel({
         workspaceId: workspace._id,
         userId: userId,
         role: role._id,
+        joined: true
     });
     await newMember.save();
 

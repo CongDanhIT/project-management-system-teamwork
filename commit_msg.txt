@@ -1,9 +1,10 @@
-feat(slack): tích hợp luồng phê duyệt task một chạm 1-click approvals
+feat(workspace): tich hop tinh nang Roi khoi Workspace & Soft Delete Member
 
-- Backend:
-  * Triển khai phương thức sendTaskApprovalRequest trong SlackService để gửi tin nhắn DM phê duyệt cho Admin/Owner của Workspace.
-  * Tích hợp gọi Slack approval request trong TaskService khi Task được chuyển sang trạng thái INREVIEW và yêu cầu duyệt.
-  * Cập nhật webhook.controller.ts để đón nhận tương tác approve_task và reject_task:
-    - Xác thực quyền Admin/Owner của tài khoản bấm nút.
-    - Cập nhật trạng thái Task (DONE/IN_PROGRESS) và ghi nhật ký comment hệ thống.
-    - Tự động xóa nút bấm trên Slack và cập nhật nội dung tin nhắn gốc báo trạng thái đã duyệt/từ chối.
+- [Backend] Bo sung thuoc tinh `joined: boolean` (mac dinh la true) vao Member Schema de ho tro co che Soft Delete.
+- [Backend] Cap nhat cac service (member, workspace, task, slack, email, announcement, ai) de loc thanh vien hoat dong bang query dieu kien { joined: { $ne: false } }, bao toan du lieu lich su cua thanh vien da roi di.
+- [Backend] Viet moi service va controller leaveWorkspace xu ly cho phep thanh vien tu roi khoi Workspace va don dep currentWorkspace cho ho.
+- [Frontend] Bo sung API client `leaveWorkspace` trong workspaceService.
+- [Frontend] Tich hop tinh nang roi nhom trong trang danh sach thanh vien:
+  + Hien thi truc tiep nut "Roi khoi nhom" mau do dang outline cho chinh ban than nguoi dung thay vi giau trong menu ba cham.
+  + Day nut "Roi khoi nhom" sang ben trai cua badge vai tro va can le thang hang voi cac thanh vien khac bang khoang trong w-10.
+  + Tich hop mutation goi API va tu dong chuyen huong trang mot cach thong minh kem theo reload de cap nhat Sidebar.

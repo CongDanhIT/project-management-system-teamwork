@@ -518,7 +518,7 @@ QUY TẮC VẬN HÀNH:
                 try {
                     logger.info("[AI-Tool] getWorkspaceMembers invoked", { workspaceId });
                     if (!workspaceId) return { error: "Không tìm thấy Workspace ID." };
-                    const members = await MemberModel.find({ workspaceId }).populate("userId", "name email").lean();
+                    const members = await MemberModel.find({ workspaceId, joined: { $ne: false } }).populate("userId", "name email").lean();
                     const result = members.map((m: any) => ({ 
                         memberId: m._id, 
                         userId: m.userId?._id, 
@@ -769,7 +769,7 @@ QUY TẮC VẬN HÀNH:
                     const workloadMap = new Map<string, { name: string, activeTasksCount: number, overdueTasksCount: number }>();
 
                     // Lấy thông tin thành viên dự án để map tên
-                    const members = await MemberModel.find({ workspaceId }).populate("userId", "name").lean();
+                    const members = await MemberModel.find({ workspaceId, joined: { $ne: false } }).populate("userId", "name").lean();
                     const memberIdToName = new Map<string, string>();
                     members.forEach((m: any) => {
                         if (m.userId) {

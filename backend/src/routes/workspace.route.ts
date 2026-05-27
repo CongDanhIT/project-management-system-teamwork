@@ -14,6 +14,7 @@ import {
     removeWorkspaceMemberController,
     triggerSlackTestController,
     triggerEmailTestController,
+    leaveWorkspaceController,
 } from "../controllers/workspace.controller";
 import { getWorkspaceRoadmapController } from "../controllers/roadmap.controller";
 import { getWorkspaceExplorerController } from "../controllers/explorer.controller";
@@ -48,6 +49,9 @@ workspaceRoutes.put("/:id/invite-code", resetInviteCodeController);
 
 // [AI-ADDED] Xóa thành viên khỏi workspace
 workspaceRoutes.delete("/:id/member/:memberId", removeWorkspaceMemberController);
+
+// [AI-ADDED] Tự rời khỏi workspace
+workspaceRoutes.post("/:id/leave", leaveWorkspaceController);
 
 // [AI-ADDED] Trigger gửi thông báo test thủ công
 workspaceRoutes.post("/:id/trigger-slack-test", triggerSlackTestController);

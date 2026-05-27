@@ -92,9 +92,9 @@ export const getAllWorkspaceIsMemberService = async (userId: string) => {
     if (!user) {
         throw new NotFoundException("User not found");
     }
-    const memberShip = await MemberModel.find({ userId: userId })
+    const memberShip = await MemberModel.find({ userId: userId, joined: { $ne: false } })
         .populate("workspaceId").exec();
-    const workspace = memberShip.map((member) => member.workspaceId);
+    const workspace = memberShip.map((member) => member.workspaceId).filter(Boolean);
     return workspace;
 };
 // lấy thông tin workspace theo id
@@ -103,7 +103,7 @@ export const getWorkspaceByIdService = async (workspaceId: string, userId: strin
     if (!workspace) {
         throw new NotFoundException("Workspace not found");
     }
-    const member = await MemberModel.find({ workspaceId: workspaceId })
+    const member = await MemberModel.find({ workspaceId: workspaceId, joined: { $ne: false } })
         .populate("role").exec();
     const WorkspaceWithMember = {
         ...workspace.toObject(),
@@ -120,7 +120,7 @@ export const getWorkspaceMemberService = async (
     timeFilters?: { year?: number, month?: number, quarter?: number }
 ) => {
     // 1. Lấy danh sách thành viên và populate thông tin User + Role
-    const members = await MemberModel.find({ workspaceId: workspaceId })
+    const members = await MemberModel.find({ workspaceId: workspaceId, joined: { $ne: false } })
         .populate("userId", "name email profilePicture") // Chỉ lấy các trường cần thiết của User
         .populate("role", "name") // Lấy tên của Role (Owner, Admin, Member)
         .lean();
@@ -707,9 +707,9 @@ export const removeMemberFromWorkspaceService = async (
     }
 
     // Tìm bản ghi member theo userId (memberId ở đây là userId của người bị kick)
-    const member = await MemberModel.findOne({ workspaceId, userId: memberId });
+    const member = await MemberModel.findOne({ workspaceId, userId: memberId, joined: { $ne: false } });
     if (!member) {
-        throw new NotFoundException("Thành viên không tồn tại trong workspace");
+        throw new NotFoundException("Thành viên không tồn tại trong workspace hoặc đã rời đi");
     }
 
     // Không cho phép kick owner của workspace
@@ -717,8 +717,84 @@ export const removeMemberFromWorkspaceService = async (
         throw new BadRequestException("Không thể xóa chủ sở hữu khỏi workspace");
     }
 
-    await MemberModel.deleteOne({ workspaceId, userId: memberId });
+    // Chuyển sang Soft Delete thay vì deleteOne
+    member.joined = false;
+    await member.save();
+
+    // Dọn dẹp currentWorkspace của user bị kick nếu họ đang trỏ về workspace này
+    const kickedUser = await UserModel.findById(memberId);
+    if (kickedUser && kickedUser.currentWorkspace?.toString() === workspaceId) {
+        const nextMembership = await MemberModel.findOne({
+            userId: memberId,
+            workspaceId: { $ne: workspaceId },
+            joined: { $ne: false }
+        });
+        kickedUser.currentWorkspace = nextMembership ? nextMembership.workspaceId : null;
+        await kickedUser.save();
+    }
+
+    // Ghi nhật ký hành động kick
+    await logActivity({
+        workspaceId: workspaceId,
+        userId: memberId, // UserId của người bị xóa
+        action: ActivityActionEnum.MEMBER_LEFT,
+        entityType: ActivityEntityTypeEnum.MEMBER,
+        entityId: memberId,
+        details: {
+            summary: `đã bị xóa khỏi không gian làm việc`
+        }
+    });
+
     return { memberId };
+};
+
+// Tự rời khỏi workspace (Leave Workspace)
+export const leaveWorkspaceService = async (workspaceId: string, userId: string) => {
+    const workspace = await WorkspaceModel.findById(workspaceId);
+    if (!workspace) {
+        throw new NotFoundException("Không tìm thấy workspace");
+    }
+
+    // Không cho phép OWNER của workspace tự rời đi trực tiếp
+    if (workspace.owner.toString() === userId) {
+        throw new BadRequestException("Chủ sở hữu không thể tự rời khỏi workspace. Hãy chuyển quyền hoặc xóa workspace.");
+    }
+
+    // Tìm bản ghi member
+    const member = await MemberModel.findOne({ workspaceId, userId, joined: { $ne: false } });
+    if (!member) {
+        throw new NotFoundException("Bạn không phải là thành viên trong workspace này hoặc đã rời đi trước đó");
+    }
+
+    // Cập nhật trạng thái sang joined = false (Soft Delete)
+    member.joined = false;
+    await member.save();
+
+    // Dọn dẹp currentWorkspace cho user
+    const user = await UserModel.findById(userId);
+    if (user && user.currentWorkspace?.toString() === workspaceId) {
+        const nextMembership = await MemberModel.findOne({
+            userId: userId,
+            workspaceId: { $ne: workspaceId },
+            joined: { $ne: false }
+        });
+        user.currentWorkspace = nextMembership ? nextMembership.workspaceId : null;
+        await user.save();
+    }
+
+    // Ghi nhật ký hành động rời đi
+    await logActivity({
+        workspaceId: workspaceId,
+        userId: userId,
+        action: ActivityActionEnum.MEMBER_LEFT,
+        entityType: ActivityEntityTypeEnum.MEMBER,
+        entityId: userId,
+        details: {
+            summary: `đã tự rời khỏi không gian làm việc`
+        }
+    });
+
+    return user ? user.currentWorkspace : null;
 };
 
 /**

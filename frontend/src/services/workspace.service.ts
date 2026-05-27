@@ -128,6 +128,11 @@ export const workspaceService = {
     return response.data;
   },
 
+  leaveWorkspace: async (workspaceId: string) => {
+    const response = await api.post(`/workspace/${workspaceId}/leave`);
+    return response.data;
+  },
+
   resetInviteCode: async (workspaceId: string) => {
     const response = await api.put(`/workspace/${workspaceId}/invite-code`);
     return response.data as { inviteCode: string };

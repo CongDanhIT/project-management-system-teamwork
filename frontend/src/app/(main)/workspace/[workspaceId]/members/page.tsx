@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workspaceService } from '@/services/workspace.service';
 import { 
@@ -12,7 +12,8 @@ import {
   Mail,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { cn } from '@/lib/utils';
 
 export default function MembersPage() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.workspaceId as string;
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
@@ -69,6 +71,26 @@ export default function MembersPage() {
       toast.success("Đã xóa thành viên khỏi workspace");
     },
     onError: () => toast.error("Lỗi khi xóa thành viên")
+  });
+
+  const leaveWorkspaceMutation = useMutation({
+    mutationFn: () => workspaceService.leaveWorkspace(workspaceId),
+    onSuccess: (res: any) => {
+      toast.success("Bạn đã rời khỏi workspace thành công");
+      const nextWorkspaceId = res.currentWorkspace;
+      if (nextWorkspaceId) {
+        router.push(`/workspace/${nextWorkspaceId}`);
+      } else {
+        router.push('/');
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || "Lỗi khi rời khỏi workspace";
+      toast.error(message);
+    }
   });
 
   const resetInviteCodeMutation = useMutation({
@@ -175,6 +197,23 @@ export default function MembersPage() {
                   </div>
 
                   <div className="flex items-center gap-4">
+                    {member.userId?._id === currentUser?.id && member.role?.name !== 'OWNER' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm("Bạn có chắc chắn muốn rời khỏi không gian làm việc này?")) {
+                            leaveWorkspaceMutation.mutate();
+                          }
+                        }}
+                        className="text-red-500 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 border-red-200 dark:border-red-900/30 hover:border-red-500 dark:hover:border-red-600 rounded-xl font-bold transition-all duration-200 flex items-center gap-1.5 h-9 text-xs px-3 shadow-sm active:scale-95 mr-2"
+                        disabled={leaveWorkspaceMutation.isPending}
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Rời khỏi nhóm
+                      </Button>
+                    )}
+
                     <div className="flex justify-end min-w-[100px]">
                       <RoleBadge roleName={member.role?.name} />
                     </div>
