@@ -1,4 +1,4 @@
-fix(frontend): chỉnh sửa nhãn mức độ ưu tiên công việc thành Thấp, Trung bình, Cao
+fix(frontend): sửa lỗi cache deleteMutation trả về project không có ID làm lỗi unique key prop
 
-- [CreateTaskModal] Thay thế nhãn hiển thị mức độ ưu tiên từ "Tiêu chuẩn" -> "Thấp" (LOW) và "Khẩn cấp" -> "Cao" (HIGH).
-- Đồng bộ giao diện dropdown chọn ưu tiên khi tạo task mới với các phần còn lại của ứng dụng.
+- [ProjectsPage] Trong onSuccess của deleteMutation, thay đổi việc đưa `deletedProject` (là response.data có cấu trúc { success, message, project }) vào cache thành `deletedProject.project`.
+- Khắc phục lỗi khi xóa dự án và truy cập thùng rác ngay lập tức bị ném cảnh báo missing key prop do `project._id` bị undefined.

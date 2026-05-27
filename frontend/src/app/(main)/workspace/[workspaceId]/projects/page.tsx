@@ -469,8 +469,8 @@ export default function ProjectsPage() {
 
       // 2. Thêm vào danh sách projects trong thùng rác
       queryClient.setQueryData(['workspace-deleted-projects', workspaceId], (oldData: any) => {
-        if (!oldData) return [deletedProject];
-        return [deletedProject, ...oldData];
+        if (!oldData) return [deletedProject.project];
+        return [deletedProject.project, ...oldData];
       });
 
       // 3. Cập nhật analytics
