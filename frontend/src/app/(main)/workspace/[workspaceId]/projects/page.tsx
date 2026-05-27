@@ -768,97 +768,103 @@ export default function ProjectsPage() {
           )}
 
           {(activeTab === 'active' || trashType === 'PROJECT') ? (
-            (filtered as Project[]).map((project: Project) => (
-              <ProjectCard
-                key={project._id}
-                project={project}
-                workspaceId={workspaceId}
-                onEdit={handleEdit}
-                onDelete={setDeletingProject}
-                onRestore={(id) => restoreMutation.mutate(id)}
-                onPermanentDelete={setHardDeletingProject}
-                isAdminOrOwner={isAdminOrOwner}
-                activeTab={activeTab}
-              />
-            ))
+            <React.Fragment key="project-list">
+              {(filtered as Project[]).map((project: Project) => (
+                <ProjectCard
+                  key={project._id}
+                  project={project}
+                  workspaceId={workspaceId}
+                  onEdit={handleEdit}
+                  onDelete={setDeletingProject}
+                  onRestore={(id) => restoreMutation.mutate(id)}
+                  onPermanentDelete={setHardDeletingProject}
+                  isAdminOrOwner={isAdminOrOwner}
+                  activeTab={activeTab}
+                />
+              ))}
+            </React.Fragment>
           ) : trashType === 'TASK' ? (
-            (filtered as any[]).map((task: any) => (
-              <Card key={task._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
-                <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
-                  <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
-                    T
+            <React.Fragment key="task-list">
+              {(filtered as any[]).map((task: any) => (
+                <Card key={task._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
+                  <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
+                      T
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
+                        }
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
+                        <DropdownMenuItem onClick={() => restoreTaskMutation.mutate(task)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                          Khôi phục công việc
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                        <DropdownMenuItem onClick={() => setDeletingTask(task)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                          Xoá vĩnh viễn
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
-                      }
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
-                      <DropdownMenuItem onClick={() => restoreTaskMutation.mutate(task)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
-                        Khôi phục công việc
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                      <DropdownMenuItem onClick={() => setDeletingTask(task)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
-                        Xoá vĩnh viễn
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{task.title}</h4>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                    Dự án: <span className="text-brand-primary">{task.projectId?.name || 'Không xác định'}</span>
-                  </p>
-                </div>
-                <div className="pt-6 mt-auto">
-                  <Badge variant="outline" className="text-[10px] uppercase font-bold py-1.5 px-3.5 rounded-full border-none bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 shadow-sm">
-                    Đã xoá tạm thời
-                  </Badge>
-                </div>
-              </Card>
-            ))
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{task.title}</h4>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                      Dự án: <span className="text-brand-primary">{task.projectId?.name || 'Không xác định'}</span>
+                    </p>
+                  </div>
+                  <div className="pt-6 mt-auto">
+                    <Badge variant="outline" className="text-[10px] uppercase font-bold py-1.5 px-3.5 rounded-full border-none bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 shadow-sm">
+                      Đã xoá tạm thời
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </React.Fragment>
           ) : (
-            (filtered as any[]).map((phase: any) => (
-              <Card key={phase._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
-                <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
-                  <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
-                    <Layers className="w-6 h-6" />
+            <React.Fragment key="phase-list">
+              {(filtered as any[]).map((phase: any) => (
+                <Card key={phase._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
+                  <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
+                      <Layers className="w-6 h-6" />
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
+                        }
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
+                        <DropdownMenuItem onClick={() => restorePhaseMutation.mutate(phase)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                          Khôi phục giai đoạn
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                        <DropdownMenuItem onClick={() => setDeletingPhase(phase)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                          Xoá vĩnh viễn
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
-                      }
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
-                      <DropdownMenuItem onClick={() => restorePhaseMutation.mutate(phase)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
-                        Khôi phục giai đoạn
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                      <DropdownMenuItem onClick={() => setDeletingPhase(phase)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
-                        Xoá vĩnh viễn
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{phase.name}</h4>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                    Dự án: <span className="text-brand-primary">{phase.projectId?.name || 'Không xác định'}</span>
-                  </p>
-                </div>
-                <div className="pt-6 mt-auto">
-                  <Badge variant="outline" className="text-[10px] uppercase font-bold py-1.5 px-3.5 rounded-full border-none bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 shadow-sm">
-                    Đã xoá tạm thời
-                  </Badge>
-                </div>
-              </Card>
-            ))
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{phase.name}</h4>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                      Dự án: <span className="text-brand-primary">{phase.projectId?.name || 'Không xác định'}</span>
+                    </p>
+                  </div>
+                  <div className="pt-6 mt-auto">
+                    <Badge variant="outline" className="text-[10px] uppercase font-bold py-1.5 px-3.5 rounded-full border-none bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 shadow-sm">
+                      Đã xoá tạm thời
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </React.Fragment>
           )}
         </div>
       )}

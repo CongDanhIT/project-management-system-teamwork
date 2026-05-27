@@ -33,7 +33,7 @@ export function AdvancedInsightsDrawer({
   const { data: projectData } = useQuery({
     queryKey: ['project', workspaceId, projectId],
     queryFn: async () => {
-      const response = await api.get(`/projects/workspace/${workspaceId}/${projectId}`);
+      const response = await api.get(`/project/workspace/${workspaceId}/${projectId}`);
       return response.data;
     },
     enabled: !!workspaceId && !!projectId && isOpen,
@@ -67,7 +67,7 @@ export function AdvancedInsightsDrawer({
     queryKey: ['advanced-insights', workspaceId, projectId],
     queryFn: async () => {
       const response = await api.get(
-        `/analytics/workspace/${workspaceId}/projects/${projectId}/advanced-insights`
+        `/analytics/workspace/${workspaceId}/project/${projectId}/advanced-insights`
       );
       return response.data;
     },

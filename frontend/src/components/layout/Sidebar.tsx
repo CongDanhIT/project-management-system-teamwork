@@ -152,8 +152,13 @@ export default function Sidebar() {
               ] : []),
             ]
           }
-        ].map((section) => (
+        ].map((section, index) => (
           <div key={section.group} className="space-y-1.5">
+            {index > 0 && (
+              <div className="relative h-[1.5px] -mx-4 mb-6 mt-2">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-400/30 dark:via-brand-secondary/10 to-transparent" />
+              </div>
+            )}
             <span className="px-5 text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] mb-2 block">
               {section.group}
             </span>

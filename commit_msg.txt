@@ -1,10 +1,5 @@
-feat(workspace): tich hop tinh nang Roi khoi Workspace & Soft Delete Member
+fix(frontend): sửa lỗi API phân tích AI và cảnh báo React key prop trong thùng rác
 
-- [Backend] Bo sung thuoc tinh `joined: boolean` (mac dinh la true) vao Member Schema de ho tro co che Soft Delete.
-- [Backend] Cap nhat cac service (member, workspace, task, slack, email, announcement, ai) de loc thanh vien hoat dong bang query dieu kien { joined: { $ne: false } }, bao toan du lieu lich su cua thanh vien da roi di.
-- [Backend] Viet moi service va controller leaveWorkspace xu ly cho phep thanh vien tu roi khoi Workspace va don dep currentWorkspace cho ho.
-- [Frontend] Bo sung API client `leaveWorkspace` trong workspaceService.
-- [Frontend] Tich hop tinh nang roi nhom trong trang danh sach thanh vien:
-  + Hien thi truc tiep nut "Roi khoi nhom" mau do dang outline cho chinh ban than nguoi dung thay vi giau trong menu ba cham.
-  + Day nut "Roi khoi nhom" sang ben trai cua badge vai tro va can le thang hang voi cac thanh vien khac bang khoang trong w-10.
-  + Tich hop mutation goi API va tu dong chuyen huong trang mot cach thong minh kem theo reload de cap nhat Sidebar.
+- [AdvancedInsightsDrawer] Sửa URL lấy chi tiết dự án từ `/projects/workspace/...` (số nhiều) thành `/project/workspace/...` (số ít) để khớp với route backend và tránh lỗi 404 làm sập tính năng Phân tích AI.
+- [ProjectsPage] Bọc các mảng map dự án, công việc và giai đoạn bằng `React.Fragment` kèm unique key để giải quyết triệt để cảnh báo 'Each child in a list should have a unique key prop' trong thùng rác.
+- [Sidebar] Bổ sung làn phân cách gradient mờ phân tách các phân mục menu chính (Thực thi & quản lý, Hệ thống) theo thiết kế tổng quan.
