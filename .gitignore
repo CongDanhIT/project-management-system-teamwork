@@ -1,6 +1,11 @@
 # AI Agent & Tools
 .agents/
 .agent/
+.claude/
+.kiro/
+.windsurf/
+skills-lock.json
+scratch/
 
 # Editor directories
 .vscode/
