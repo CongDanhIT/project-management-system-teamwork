@@ -15,7 +15,7 @@ const PRESET_COLORS = [
 
 export function TagManagerWidget() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const queryClient = useQueryClient();
 
   const { data: tags = [], isLoading } = useQuery({

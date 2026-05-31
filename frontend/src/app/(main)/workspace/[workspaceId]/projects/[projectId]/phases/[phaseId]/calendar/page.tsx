@@ -22,9 +22,9 @@ import { TaskCalendar } from '@/components/project/TaskCalendar';
 
 export default function ProjectCalendarPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
-  const projectId = params.projectId as string;
-  const phaseId = params.phaseId as string;
+  const workspaceId = params?.workspaceId as string;
+  const projectId = params?.projectId as string;
+  const phaseId = params?.phaseId as string;
   const router = useRouter();
   const { currentWorkspaceId } = useWorkspaceStore();
   const { isPrivileged } = useRole();
@@ -166,10 +166,11 @@ export default function ProjectCalendarPage() {
           </div>
           <Link 
             href={`/workspace/${workspaceId}/projects/${projectId}/phases/${phaseId}/analytics`}
-            className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-all text-[11px] font-black uppercase tracking-widest flex items-center rounded-2xl hover:bg-white dark:hover:bg-white/5"
+            className="px-4 py-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary transition-all text-xs font-bold uppercase tracking-wider flex items-center rounded-lg hover:bg-white/80 dark:hover:bg-white/5"
           >
             <BarChart3 className="w-4 h-4 mr-2" /> Analytics
           </Link>
+          <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 mx-1" />
         </div>
       </div>
 

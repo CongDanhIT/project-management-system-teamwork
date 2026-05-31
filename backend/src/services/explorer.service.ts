@@ -23,7 +23,7 @@ export const getWorkspaceExplorerService = async (workspaceId: string) => {
     const assets = await ProjectAssetModel.find({
         workspaceId: workspaceIdObj,
         deletedAt: null
-    }).select("_id name fileUrl fileSize fileType projectId folderId category status storageKey").lean();
+    }).select("_id name fileUrl fileSize fileType projectId folderId category status storageKey createdAt createdBy").lean();
 
     // Thêm Signed URL cho mỗi file
     const assetsWithSignedUrls = await Promise.all(assets.map(async (asset) => {

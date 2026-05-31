@@ -68,6 +68,7 @@ export const chatV2Controller = asyncHandler(
                 userId: userId || "",
                 workspaceId: workspaceId?.toString(),
                 projectId: projectId?.toString(),
+                phaseId: context.phaseId?.toString(),
                 modelId
             });
 

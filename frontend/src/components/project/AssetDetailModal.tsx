@@ -200,7 +200,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onDelete, onRename }:
                                 Ngày tải lên
                             </div>
                             <div className="text-sm font-semibold">
-                                {format(new Date(asset.createdAt), 'dd MMM yyyy', { locale: vi })}
+                                {asset.createdAt ? format(new Date(asset.createdAt), 'dd MMM yyyy', { locale: vi }) : 'N/A'}
                             </div>
                         </div>
                         <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-3">
@@ -240,15 +240,15 @@ export function AssetDetailModal({ asset, isOpen, onClose, onDelete, onRename }:
                     <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-900 mt-4">
                         <div className="flex items-center gap-3">
                             <UserAvatar 
-                                user={typeof asset.createdBy === 'object' ? asset.createdBy : undefined}
-                                name={typeof asset.createdBy === 'string' ? `User ${asset.createdBy.substring(0, 4)}` : asset.createdBy.name}
+                                user={asset.createdBy && typeof asset.createdBy === 'object' ? asset.createdBy : undefined}
+                                name={typeof asset.createdBy === 'string' ? `User ${asset.createdBy.substring(0, 4)}` : asset.createdBy?.name || 'N/A'}
                                 size="sm" 
                                 className="ring-2 ring-zinc-100 dark:ring-zinc-800"
                             />
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Người tải lên</span>
                                 <span className="text-sm font-bold text-zinc-900 dark:text-white leading-none">
-                                    {typeof asset.createdBy === 'object' ? asset.createdBy.name : `ID: ${asset.createdBy.substring(0, 8)}...`}
+                                    {asset.createdBy && typeof asset.createdBy === 'object' ? asset.createdBy.name : asset.createdBy ? `ID: ${asset.createdBy.substring(0, 8)}...` : 'N/A'}
                                 </span>
                             </div>
                         </div>

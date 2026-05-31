@@ -143,7 +143,7 @@ Tên Subtask 3
             .map((line: string) => line.replace(/^[\s\d\.\-\*]+/, "").trim()) // Xóa slug, số, dấu gạch đầu dòng nếu có
             .filter((line: string) => line.length > 0)
             .slice(0, 5);
-        
+
         logger.info("[AI-Groq] Đã gợi ý subtasks thành công", { parentTitle, count: subtasks.length });
         return subtasks;
     } catch (error: any) {
@@ -217,7 +217,7 @@ ${contextLines.length > 0 ? contextLines.join("\n") : "Không có context cụ t
         logger.info("[AI-Service] Chat phản hồi thành công", { provider: type, model: modelId });
         return responseText;
     } catch (error: any) {
-        logger.error("[AI-Service] Lỗi trong quá trình chat", { 
+        logger.error("[AI-Service] Lỗi trong quá trình chat", {
             errorMessage: error?.message,
             errorStack: error?.stack,
             errorDetails: error?.response?.data || error
@@ -307,13 +307,13 @@ Ngôn ngữ: Tiếng Việt.
         // Validate lại bằng Zod để đảm bảo an toàn
         const validated = ProjectStructureSchema.parse(object);
 
-        logger.info("[AI-Groq] Đã phân rã dự án thành công (Safe Mode)", { 
-            phasesCount: validated.phases.length 
+        logger.info("[AI-Groq] Đã phân rã dự án thành công (Safe Mode)", {
+            phasesCount: validated.phases.length
         });
 
         return validated;
     } catch (error: any) {
-        logger.error("[AI-Groq] Lỗi khi phân rã dự án", { 
+        logger.error("[AI-Groq] Lỗi khi phân rã dự án", {
             message: error?.message,
             stack: error?.stack,
             rawText: error?.text // Nếu có
@@ -372,7 +372,7 @@ export const applyAIProjectPlanService = async (
 
                 // Tránh trùng mã
                 let isExists = await TaskModel.exists({ taskCode, projectId }).session(session);
-                while(isExists) {
+                while (isExists) {
                     topLevelCount++;
                     taskCode = `${prefix}-${topLevelCount}`;
                     isExists = await TaskModel.exists({ taskCode, projectId }).session(session);
@@ -410,9 +410,9 @@ export const applyAIProjectPlanService = async (
         });
 
         await session.commitTransaction();
-        logger.info("[AI-Apply] Đã áp dụng kế hoạch AI thành công", { 
-            phasesCreated: createdPhases.length, 
-            tasksCreated: createdTasks.length 
+        logger.info("[AI-Apply] Đã áp dụng kế hoạch AI thành công", {
+            phasesCreated: createdPhases.length,
+            tasksCreated: createdTasks.length
         });
 
         return {
@@ -438,15 +438,17 @@ export const streamAgentChatService = async ({
     userId,
     workspaceId,
     projectId,
+    phaseId,
     modelId = AI_MODELS.GROQ_LLAMA_3_3_70B
 }: {
     messages: any[];
     userId: string;
     workspaceId?: string;
     projectId?: string;
+    phaseId?: string;
     modelId?: string;
 }) => {
-    logger.info("[AI-Agent] Khởi chạy streamAgentChatService", { userId, workspaceId, projectId, modelId });
+    logger.info("[AI-Agent] Khởi chạy streamAgentChatService", { userId, workspaceId, projectId, phaseId, modelId });
     logger.debug("[AI-Agent] Kiểm tra messages", { count: messages?.length, lastMessage: messages?.[messages.length - 1] });
 
     // 1. Khởi tạo System Prompt cực kỳ chi tiết để AI hiểu vai trò và các Tool hiện có
@@ -464,6 +466,7 @@ BỐI CẢNH HIỆN TẠI:
 - User ID: ${userId}
 - Workspace ID: ${workspaceId || "Chưa xác định"}
 - Project ID: ${projectId || "Chưa chọn dự án cụ thể"}
+- Phase ID (Giai đoạn hiện tại): ${phaseId || "Chưa chọn giai đoạn cụ thể"}
 
 ⚠️ QUY TẮC XỬ LÝ LỖI & THIẾU THÔNG TIN (ERROR HANDLING):
 1. Nếu người dùng yêu cầu một chức năng mà bộ Tools hiện tại không hỗ trợ (ví dụ: xóa dự án, thay đổi mật khẩu): Hãy lịch sự thông báo rằng "Tính năng này hiện chưa được hỗ trợ thông qua AI Agent, vui lòng thực hiện trực tiếp trong phần cài đặt".
@@ -473,8 +476,11 @@ BỐI CẢNH HIỆN TẠI:
 5. Nếu sau khi gọi các công cụ tìm kiếm mà vẫn không tìm thấy thông tin hoặc có nhiều kết quả trùng tên gây mơ hồ: Báo lại cho người dùng để yêu cầu làm rõ, tuyệt đối KHÔNG được tự ý đoán bừa ID hoặc nhập thiếu thông tin gây ra lỗi dữ liệu ma (Data integrity).
 
 QUY TẮC VẬN HÀNH:
-1. LUÔN LUÔN gọi tool "getProjectPhases" hoặc "searchPhasesByName" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể để có phaseId chuẩn xác.
-2. Trả lời bằng tiếng Việt, văn phong Senior Project Manager.
+1. LUÔN LUÔN gọi tool "getProjectPhases" hoặc "searchPhasesByName" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể mà trong BỐI CẢNH HIỆN TẠI không có Phase ID chuẩn xác.
+2. NẾU người dùng yêu cầu tạo công việc (task) mà không nhắc đến giai đoạn cụ thể HOẶC nói "ở phase này", "giai đoạn này": BẮT BUỘC kiểm tra thông tin "Phase ID" trong BỐI CẢNH HIỆN TẠI. Nếu đã có Phase ID, hãy SỬ DỤNG NGAY Phase ID đó để tạo công việc mà KHÔNG ĐƯỢC HỎI LẠI người dùng.
+3. LUÔN LUÔN gọi tool "getWorkspaceMembers" để lấy chính xác ID của thành viên (userId) TRƯỚC KHI tạo hoặc gán công việc cho bất kỳ ai. TUYỆT ĐỐI KHÔNG dùng tên người để điền vào trường assignedTo.
+4. Trả lời bằng tiếng Việt, văn phong Senior Project Manager.
+5. ⚠️ QUAN TRỌNG: KHÔNG ĐƯỢC PHÉP trả về các thẻ XML như <function> hay <tool_call> trong văn bản chat. Tất cả việc gọi hàm phải sử dụng cơ chế Native JSON Tool Calling ngầm của API. Chỉ trả về kết quả bằng ngôn ngữ tự nhiên.
 `;
 
     // 2. Định nghĩa bộ Tool (Sử dụng raw object để tương thích tốt nhất với SDK)
@@ -519,11 +525,11 @@ QUY TẮC VẬN HÀNH:
                     logger.info("[AI-Tool] getWorkspaceMembers invoked", { workspaceId });
                     if (!workspaceId) return { error: "Không tìm thấy Workspace ID." };
                     const members = await MemberModel.find({ workspaceId, joined: { $ne: false } }).populate("userId", "name email").lean();
-                    const result = members.map((m: any) => ({ 
-                        memberId: m._id, 
-                        userId: m.userId?._id, 
-                        name: m.userId?.name, 
-                        email: m.userId?.email 
+                    const result = members.map((m: any) => ({
+                        memberId: m._id,
+                        userId: m.userId?._id,
+                        name: m.userId?.name,
+                        email: m.userId?.email
                     }));
                     logger.info("[AI-Tool] getWorkspaceMembers result", { count: result.length });
                     return result;
@@ -534,32 +540,37 @@ QUY TẮC VẬN HÀNH:
             }
         },
         getTasksList: {
-            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId, status hoặc người được gán (assignedTo/member).",
-            parameters: z.object({ 
+            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId, status, người được gán (assignedTo) hoặc mã công việc (taskCode).",
+            parameters: z.object({
                 phaseId: z.string().optional().describe("ID giai đoạn để lọc."),
                 status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...)."),
-                assignedTo: z.string().optional().describe("ID của thành viên được gán để lọc (userId - lấy từ getWorkspaceMembers).")
+                assignedTo: z.string().optional().describe("ID của thành viên được gán để lọc (userId - lấy từ getWorkspaceMembers)."),
+                taskCode: z.string().optional().describe("Mã công việc để tìm kiếm chính xác (VD: PROJ-1).")
             }),
-            execute: async ({ phaseId, status, assignedTo }: any) => {
+            execute: async ({ phaseId, status, assignedTo, taskCode }: any) => {
                 try {
                     logger.info("[AI-Tool] getTasksList invoked", { projectId, phaseId, status, assignedTo });
                     if (!projectId) return { error: "⚠️ Hiện tại bạn chưa chọn dự án cụ thể. Vui lòng chọn một dự án để tôi có thể liệt kê công việc." };
-                    
+
                     const query: any = { projectId, deletedAt: null };
                     if (phaseId) query.phaseId = phaseId;
                     if (status) query.status = status;
-                    if (assignedTo) query.assignedTo = assignedTo;
-                    
+                    if (assignedTo) {
+                        if (assignedTo.length === 24) query.assignedTo = assignedTo;
+                        else return { error: "assignedTo không hợp lệ. Vui lòng gọi getWorkspaceMembers để lấy ID thật." };
+                    }
+                    if (taskCode) query.taskCode = { $regex: taskCode, $options: "i" };
+
                     const tasks = await TaskModel.find(query)
                         .select("title status priority dueDate taskCode assignedTo")
                         .populate("assignedTo", "name")
                         .limit(30)
                         .sort({ updatedAt: -1 })
                         .lean();
-                    
+
                     logger.info("[AI-Tool] getTasksList result", { count: tasks?.length });
                     if (tasks.length === 0) return { message: "Tôi không tìm thấy công việc nào khớp với bộ lọc của bạn." };
-                    
+
                     return tasks;
                 } catch (error: any) {
                     logger.error("[AI-Tool] Lỗi trong getTasksList", { error: error.message, stack: error.stack });
@@ -573,27 +584,28 @@ QUY TẮC VẬN HÀNH:
                 tasks: z.array(z.object({
                     title: z.string().describe("Tiêu đề công việc."),
                     description: z.string().optional().describe("Mô tả chi tiết."),
-                    phaseId: z.string().describe("ID của giai đoạn (lấy từ getProjectPhases)."),
-                    assignedTo: z.string().optional().describe("ID của người được gán (userId)."),
-                    priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional().default("MEDIUM"),
+                    phaseId: z.string().describe("ID của giai đoạn (lấy từ getProjectPhases HOẶC lấy trực tiếp từ BỐI CẢNH HIỆN TẠI nếu có)."),
+                    assignedTo: z.string().optional().describe("ID của người được gán (userId lấy từ getWorkspaceMembers). Tuyệt đối KHÔNG truyền tên người vào đây, BẮT BUỘC phải truyền ObjectId 24 ký tự."),
+                    priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH'). Nếu dùng tiếng Việt hãy tự dịch sang 3 từ này."),
+                    status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
                     dueDate: z.string().optional().describe("Hạn chót (ISO date).")
                 })).describe("Danh sách các công việc cần tạo. Luôn truyền dạng mảng kể cả khi chỉ tạo 1 công việc.")
             }),
             execute: async ({ tasks }: { tasks: any[] }) => {
                 try {
                     logger.info("[AI-Tool] createTask (batch) invoked", { projectId, count: tasks?.length });
-                    
+
                     if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
                         return { error: "Danh sách công việc cần tạo không hợp lệ hoặc rỗng." };
                     }
                     if (!projectId || !workspaceId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước khi tạo công việc mới." };
-                    
+
                     const project = await ProjectModel.findById(projectId);
                     if (!project) return { error: "Dự án không tồn tại hoặc đã bị xóa." };
-                    
+
                     const prefix = project.name.split(' ').filter(w => w.length > 0).map((w: string) => w[0]?.toUpperCase()).join('').substring(0, 3) || 'TSK';
                     let currentCount = await TaskModel.countDocuments({ projectId, parentId: null });
-                    
+
                     const createdTasksInfo = [];
                     for (const taskData of tasks) {
                         if (!taskData.title) {
@@ -615,19 +627,39 @@ QUY TẮC VẬN HÀNH:
                             isExists = await TaskModel.exists({ taskCode, projectId });
                         }
 
-                        const task = await TaskModel.create({ 
+                        let finalPriority = "MEDIUM";
+                        if (taskData.priority) {
+                            const p = String(taskData.priority).toUpperCase().trim();
+                            if (["LOW", "MEDIUM", "HIGH"].includes(p)) finalPriority = p;
+                            else if (p === "THẤP" || p === "THAP") finalPriority = "LOW";
+                            else if (p === "CAO") finalPriority = "HIGH";
+                        }
+
+                        let finalStatus = "TODO";
+                        if (taskData.status) {
+                            const s = String(taskData.status).toUpperCase().trim();
+                            if (["TODO", "IN_PROGRESS", "INREVIEW", "DONE", "COMPLETED"].includes(s)) finalStatus = s;
+                            else if (s.includes("ĐANG LÀM") || s.includes("DANG LAM") || s.includes("IN PROGRESS")) finalStatus = "IN_PROGRESS";
+                            else if (s.includes("ĐANG DUYỆT") || s.includes("DANG DUYET") || s.includes("REVIEW")) finalStatus = "INREVIEW";
+                            else if (s.includes("HOÀN THÀNH") || s.includes("HOAN THANH") || s.includes("XONG")) finalStatus = "DONE";
+                        }
+
+                        if (finalStatus === "COMPLETED") finalStatus = "DONE";
+
+                        const task = await TaskModel.create({
                             title: taskData.title,
                             description: taskData.description,
                             phaseId: taskData.phaseId,
-                            priority: taskData.priority || "MEDIUM",
+                            priority: finalPriority,
+                            status: finalStatus,
                             dueDate: taskData.dueDate,
-                            taskCode, 
-                            projectId, 
-                            workspaceId, 
+                            taskCode,
+                            projectId,
+                            workspaceId,
                             createdBy: userId,
                             assignedTo: taskData.assignedTo ? [taskData.assignedTo] : []
                         });
-                        
+
                         await logActivityService({
                             userId, workspaceId, projectId,
                             action: ActivityActionEnum.CREATE_TASK,
@@ -638,12 +670,12 @@ QUY TẮC VẬN HÀNH:
 
                         createdTasksInfo.push({ success: true, taskCode: task.taskCode, title: task.title });
                     }
-                    
+
                     const succeeded = createdTasksInfo.filter(t => t.success);
                     const failed = createdTasksInfo.filter(t => !t.success);
 
-                    return { 
-                        success: true, 
+                    return {
+                        success: true,
                         message: `✅ Đã xử lý tạo hàng loạt: Thành công ${succeeded.length}/${tasks.length} công việc.`,
                         createdTasks: succeeded,
                         errors: failed.length > 0 ? failed : undefined
@@ -662,9 +694,9 @@ QUY TẮC VẬN HÀNH:
                     taskCode: z.string().optional().describe("Mã công việc (ví dụ: PRO-1)."),
                     updates: z.object({
                         title: z.string().optional(),
-                        status: z.string().optional(),
-                        priority: z.string().optional(),
-                        assignedTo: z.string().optional().describe("ID người được gán mới (userId)."),
+                        status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
+                        priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH')."),
+                        assignedTo: z.string().optional().describe("ID người được gán (userId). Tuyệt đối KHÔNG truyền tên, BẮT BUỘC phải là chuỗi ID."),
                         phaseId: z.string().optional(),
                         description: z.string().optional()
                     })
@@ -673,7 +705,7 @@ QUY TẮC VẬN HÀNH:
             execute: async ({ tasks }: { tasks: any[] }) => {
                 try {
                     logger.info("[AI-Tool] updateTask (batch) invoked", { workspaceId, count: tasks?.length });
-                    
+
                     if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
                         return { error: "Danh sách công việc cần cập nhật không hợp lệ hoặc rỗng." };
                     }
@@ -692,11 +724,40 @@ QUY TẮC VẬN HÀNH:
                         }
 
                         const query: any = { workspaceId, deletedAt: null };
-                        if (taskId) query._id = taskId;
+                        if (taskId && taskId.length === 24) query._id = taskId;
                         else if (taskCode) query.taskCode = taskCode;
+                        else {
+                            updatedTasksInfo.push({ success: false, error: "Định danh không hợp lệ." });
+                            continue;
+                        }
 
-                        const updatePayload = { ...updates };
-                        if (updates.assignedTo) updatePayload.assignedTo = [updates.assignedTo];
+                        const updatePayload: any = { ...updates };
+                        if (updates.assignedTo) {
+                            if (updates.assignedTo.length === 24) {
+                                updatePayload.assignedTo = [updates.assignedTo];
+                            } else {
+                                delete updatePayload.assignedTo;
+                            }
+                        }
+
+                        if (updates.priority) {
+                            const p = String(updates.priority).toUpperCase().trim();
+                            if (["LOW", "MEDIUM", "HIGH"].includes(p)) updatePayload.priority = p;
+                            else if (p === "THẤP" || p === "THAP") updatePayload.priority = "LOW";
+                            else if (p === "CAO") updatePayload.priority = "HIGH";
+                            else delete updatePayload.priority; // Ignore invalid values
+                        }
+
+                        if (updates.status) {
+                            const s = String(updates.status).toUpperCase().trim();
+                            if (["TODO", "IN_PROGRESS", "INREVIEW", "DONE", "COMPLETED"].includes(s)) updatePayload.status = s;
+                            else if (s.includes("ĐANG LÀM") || s.includes("DANG LAM") || s.includes("IN PROGRESS")) updatePayload.status = "IN_PROGRESS";
+                            else if (s.includes("ĐANG DUYỆT") || s.includes("DANG DUYET") || s.includes("REVIEW")) updatePayload.status = "INREVIEW";
+                            else if (s.includes("HOÀN THÀNH") || s.includes("HOAN THANH") || s.includes("XONG")) updatePayload.status = "DONE";
+                            else delete updatePayload.status;
+
+                            if (updatePayload.status === "COMPLETED") updatePayload.status = "DONE";
+                        }
 
                         const task = await TaskModel.findOneAndUpdate(query, { $set: updatePayload }, { new: true });
                         if (!task) {
@@ -710,8 +771,8 @@ QUY TẮC VẬN HÀNH:
                     const succeeded = updatedTasksInfo.filter(t => t.success);
                     const failed = updatedTasksInfo.filter(t => !t.success);
 
-                    return { 
-                        success: true, 
+                    return {
+                        success: true,
                         message: `✅ Đã xử lý cập nhật hàng loạt: Thành công ${succeeded.length}/${tasks.length} công việc.`,
                         updatedTasks: succeeded,
                         errors: failed.length > 0 ? failed : undefined
@@ -911,15 +972,19 @@ QUY TẮC VẬN HÀNH:
         searchTasksByName: {
             description: "Tìm kiếm các công việc (tasks) trong dự án hiện tại theo tên để lấy taskId hoặc taskCode.",
             parameters: z.object({
-                title: z.string().describe("Tiêu đề hoặc một phần tiêu đề của công việc để tìm kiếm.")
+                title: z.string().optional().describe("Tiêu đề hoặc một phần tiêu đề của công việc để tìm kiếm."),
+                name: z.string().optional().describe("Tên công việc để tìm kiếm (tương đương với title).")
             }),
-            execute: async ({ title }: any) => {
+            execute: async ({ title, name }: any) => {
                 try {
-                    logger.info("[AI-Tool] searchTasksByName invoked", { projectId, title });
+                    const searchStr = title || name;
+                    if (!searchStr) return { error: "Vui lòng cung cấp title hoặc name để tìm kiếm." };
+                    
+                    logger.info("[AI-Tool] searchTasksByName invoked", { projectId, searchStr });
                     if (!projectId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước." };
                     const tasks = await TaskModel.find({
                         projectId,
-                        title: { $regex: title, $options: "i" },
+                        title: { $regex: searchStr, $options: "i" },
                         deletedAt: null
                     }).select("title taskCode status priority assignedTo").populate("assignedTo", "name").limit(15).lean();
                     logger.info("[AI-Tool] searchTasksByName result", { count: tasks?.length });
@@ -955,8 +1020,14 @@ QUY TẮC VẬN HÀNH:
             });
         },
         onError({ error }: any) {
+            let errorMsg = String(error);
+            try {
+                if (error instanceof Error) errorMsg = error.message;
+                else if (typeof error === 'object') errorMsg = JSON.stringify(error, Object.getOwnPropertyNames(error));
+            } catch (e) {}
+
             logger.error("[AI-Agent-Stream] Lỗi phát sinh trong quá trình stream", {
-                error: error instanceof Error ? error.message : String(error),
+                error: errorMsg,
                 stack: error instanceof Error ? error.stack : undefined
             });
         }
@@ -1043,7 +1114,7 @@ Ngôn ngữ: Tiếng Việt chuyên nghiệp, sắc bén, mang tính xây dựng
         return validated;
 
     } catch (error: any) {
-        logger.error("[AI-Groq] Lỗi khi phân tích chuyên sâu", { 
+        logger.error("[AI-Groq] Lỗi khi phân tích chuyên sâu", {
             message: error?.message,
             stack: error?.stack
         });

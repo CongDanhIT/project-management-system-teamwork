@@ -28,9 +28,9 @@ export default function ProjectBoardPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const workspaceId = params.workspaceId as string;
-  const projectId = params.projectId as string;
-  const phaseId = params.phaseId as string;
+  const workspaceId = params?.workspaceId as string;
+  const projectId = params?.projectId as string;
+  const phaseId = params?.phaseId as string;
   const { currentWorkspaceId } = useWorkspaceStore();
   const { isPrivileged } = useRole();
   const queryClient = useQueryClient();
@@ -69,7 +69,7 @@ export default function ProjectBoardPage() {
 
   // Auto open task from URL
   useEffect(() => {
-    const taskId = searchParams.get('taskId');
+    const taskId = searchParams?.get('taskId');
     if (taskId && workspaceId && projectId) {
       const fetchTask = async () => {
         try {
@@ -108,11 +108,11 @@ export default function ProjectBoardPage() {
     }
   }, [workspaceId, projectId]);
 
-  const isProjectCompleted = project?.status === 'COMPLETED';
+  const isProjectLocked = project?.status === 'COMPLETED' || project?.status === 'ON_HOLD';
 
   const handleTaskClick = (task: Task) => {
-    if (isProjectCompleted) {
-      toast.info('Dự án đã hoàn thành. Bạn chỉ có thể xem thông tin ở chế độ đọc.');
+    if (isProjectLocked) {
+      toast.info('Dự án đang tạm dừng hoặc đã hoàn thành. Chế độ xem chỉ đọc.');
       return;
     }
     setSelectedTask(task);
@@ -270,12 +270,12 @@ export default function ProjectBoardPage() {
           phaseId={phaseId}
           onTaskClick={handleTaskClick}
           onAddTaskClick={(status) => {
-            if (isProjectCompleted) return;
+            if (isProjectLocked) return;
             setCreateModalStatus(status);
             setIsCreateModalOpen(true);
           }}
           isAdminOrOwner={isPrivileged}
-          isProjectCompleted={isProjectCompleted}
+          isProjectCompleted={isProjectLocked}
         />
       </div>
 

@@ -7,7 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell
+  Cell,
+  LabelList
 } from 'recharts';
 import { Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -78,7 +79,7 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+            margin={{ top: 5, right: 40, left: 40, bottom: 5 }}
             barSize={12}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(203, 213, 225, 0.2)" />
@@ -100,6 +101,14 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={color} />
               ))}
+              <LabelList 
+                dataKey={dataKey} 
+                position="right" 
+                fill="#94a3b8" 
+                fontSize={10} 
+                fontWeight={700}
+                formatter={(value: any) => suffix === "%" ? `${value}%` : value}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

@@ -21,7 +21,8 @@ import {
   Megaphone,
   Briefcase,
   Map,
-  Files
+  Files,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -141,6 +142,7 @@ export default function Sidebar() {
               { label: 'Dự án', icon: FolderKanban, href: `/workspace/${workspaceId}/projects`, hasDropdown: true },
               { label: 'Tài liệu', icon: Files, href: `/workspace/${workspaceId}/documents` },
               { label: 'Công việc của tôi', icon: CheckSquare, href: `/workspace/${workspaceId}/tasks` },
+              { label: 'Tự động hóa', icon: Zap, href: `/workspace/${workspaceId}/automation` },
             ]
           },
           {
@@ -163,7 +165,7 @@ export default function Sidebar() {
               {section.group}
             </span>
             {section.items.map((item: any) => {
-              const isActive = pathname === item.href || (item.href !== `/workspace/${workspaceId}` && pathname.startsWith(item.href));
+              const isActive = pathname === item.href || (item.href !== `/workspace/${workspaceId}` && pathname?.startsWith(item.href));
               
               if (item.hasDropdown) {
                 return (
@@ -202,7 +204,7 @@ export default function Sidebar() {
 
                         {allProjects.map((project: any) => {
                           const projectHref = `/workspace/${workspaceId}/projects/${project._id}/phases`;
-                          const isProjectActive = pathname.startsWith(projectHref);
+                          const isProjectActive = pathname?.startsWith(projectHref);
                           const isExpanded = expandedProjectId === project._id;
                           const projectPhases = allPhases.filter((p: any) => p.projectId === project._id);
 
@@ -233,7 +235,7 @@ export default function Sidebar() {
                                 <div className="ml-3 pl-3 border-l border-slate-100 dark:border-white/10 space-y-0.5 py-1">
                                   {projectPhases.map((phase: any) => {
                                     const phaseHref = `/workspace/${workspaceId}/projects/${project._id}/phases/${phase._id}/board`;
-                                    const isPhaseActive = pathname.startsWith(`/workspace/${workspaceId}/projects/${project._id}/phases/${phase._id}`);
+                                    const isPhaseActive = pathname?.startsWith(`/workspace/${workspaceId}/projects/${project._id}/phases/${phase._id}`);
                                     return (
                                       <Link
                                         key={phase._id}
@@ -306,7 +308,7 @@ export default function Sidebar() {
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
                 {favoriteProjects.map((project) => {
                   const projectHref = `/workspace/${workspaceId}/projects/${project._id}/phases`;
-                  const isActive = pathname.startsWith(projectHref);
+                  const isActive = pathname?.startsWith(projectHref);
                   return (
                     <Link
                       key={project._id}

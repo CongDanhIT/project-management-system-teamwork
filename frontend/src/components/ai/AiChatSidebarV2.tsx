@@ -21,6 +21,7 @@ import {
 import { useChat } from '@ai-sdk/react';
 import { toast } from 'sonner';
 import { AiAgentContext } from '@/services/ai.service';
+import { useParams } from 'next/navigation';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -48,21 +49,25 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
     { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', name: 'Llama 3.3', provider: 'Together' },
   ];
 
+  const params = useParams();
+  const dynamicContext = {
+    workspaceId: context?.workspaceId || params?.workspaceId as string,
+    projectId: context?.projectId || params?.projectId as string,
+    phaseId: context?.phaseId || params?.phaseId as string,
+  };
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: `${API_BASE_URL}/ai/v2/chat`,
     credentials: 'include',
     body: {
-      context: {
-        workspaceId: context?.workspaceId,
-        projectId: context?.projectId,
-      },
+      context: dynamicContext,
       modelId: selectedModel
     },
     initialMessages: [
       {
         id: 'welcome',
         role: 'assistant',
-        content: `Xin chào! Tôi là **AI Agent V2** ⚡\n\nTôi đã sẵn sàng hỗ trợ bạn quản lý dòng chảy công việc với các tính năng:\n- 📂 **Dự án & Lộ trình**: Liệt kê dự án và các giai đoạn (Phases).\n- 👥 **Thành viên**: Tra cứu và gán việc cho đồng nghiệp.\n- 🔍 **Tra cứu thông minh**: Liệt kê công việc theo trạng thái hoặc **từng thành viên**.\n- 📝 **Thao tác trực tiếp**: Tạo mới và Cập nhật Task ngay tại đây.\n\nTôi có thể giúp gì cho bạn ngay bây giờ?`,
+        content: `Xin chào! Tôi là **AI Agent V2**\n\nTôi đã sẵn sàng hỗ trợ bạn quản lý dòng chảy công việc với các tính năng:\n- **Dự án & Lộ trình**: Liệt kê dự án và các giai đoạn (Phases).\n- **Thành viên**: Tra cứu và gán việc cho đồng nghiệp.\n- **Tra cứu thông minh**: Liệt kê công việc theo trạng thái hoặc **từng thành viên**.\n- **Thao tác trực tiếp**: Tạo mới và Cập nhật Task ngay tại đây.\n\nTôi có thể giúp gì cho bạn ngay bây giờ?`,
       }
     ],
     onResponse: (response) => {

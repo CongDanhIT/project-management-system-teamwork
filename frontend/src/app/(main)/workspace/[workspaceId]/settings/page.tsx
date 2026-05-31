@@ -44,7 +44,7 @@ interface WorkspaceSettingsForm {
 
 export default function WorkspaceSettingsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user: currentUser, updateUser } = useAuthStore();

@@ -65,7 +65,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, al
             {tasks.length}
           </span>
         </div>
-        {isAdminOrOwner && !isProjectCompleted && (
+        {!isProjectCompleted && (
           <button 
             className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all text-slate-400 hover:text-brand-primary shadow-sm opacity-0 group-hover:opacity-100 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
             onClick={() => onAddTaskClick?.(id)}

@@ -18,6 +18,7 @@ export interface ProjectAiContext {
 export interface AiAgentContext {
   workspaceId?: string;
   projectId?: string;
+  phaseId?: string;
 }
 
 export interface AiTask {

@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleAuthFailure = () => {
       logout();
+      if (!pathname) return;
       // Chỉ redirect nếu không phải là route công khai
       const isPublic = PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
       if (!isPublic) {

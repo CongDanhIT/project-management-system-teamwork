@@ -29,7 +29,8 @@ interface FeedEditModalProps {
 }
 
 export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoading }: FeedEditModalProps) {
-  const { workspaceId } = useParams();
+  const params = useParams();
+  const workspaceId = params?.workspaceId as string;
   const [formData, setFormData] = useState({ 
     title: announcement.title || '', 
     content: announcement.content || '',

@@ -45,7 +45,8 @@ interface FeedCardProps {
 
 export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highlightCommentId }: FeedCardProps) {
   const { user } = useAuthStore();
-  const { workspaceId } = useParams();
+  const params = useParams();
+  const workspaceId = params?.workspaceId as string;
   const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

@@ -21,7 +21,8 @@ interface FeedComposerProps {
 
 export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
   const { user } = useAuthStore();
-  const { workspaceId } = useParams();
+  const params = useParams();
+  const workspaceId = params?.workspaceId as string;
   const [isExpanded, setIsExpanded] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '', type: 'GENERAL' });
   const [attachments, setAttachments] = useState<Attachment[]>([]);

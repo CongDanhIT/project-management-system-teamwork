@@ -543,7 +543,10 @@ export const getAllTasksService = async (
     }
 
     if (filters.keyword) {
-        query.title = { $regex: filters.keyword, $options: "i" };
+        query.$or = [
+            { title: { $regex: filters.keyword, $options: "i" } },
+            { taskCode: { $regex: filters.keyword, $options: "i" } }
+        ];
     }
 
     if (filters.tags && filters.tags.length > 0) {

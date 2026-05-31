@@ -68,8 +68,8 @@ export default function ProjectPhasesHub() {
     const params = useParams();
     const router = useRouter();
     const queryClient = useQueryClient();
-    const workspaceId = params.workspaceId as string;
-    const projectId = params.projectId as string;
+    const workspaceId = params?.workspaceId as string;
+    const projectId = params?.projectId as string;
     
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);

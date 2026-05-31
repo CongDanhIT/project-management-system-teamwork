@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 export default function WorkspaceSelector() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const { setCurrentWorkspaceId } = useWorkspaceStore();
   const [mounted, setMounted] = React.useState(false);
 

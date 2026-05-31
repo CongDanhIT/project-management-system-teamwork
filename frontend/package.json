@@ -19,6 +19,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tabler/icons-react": "^3.40.0",
     "@tanstack/react-query": "^5.90.21",
+    "@xyflow/react": "^12.10.2",
     "ai": "^4.1.0",
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",

@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 export default function MembersPage() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [copied, setCopied] = useState(false);

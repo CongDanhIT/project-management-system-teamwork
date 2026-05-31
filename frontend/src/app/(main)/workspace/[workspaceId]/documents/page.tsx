@@ -2,8 +2,10 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorkspaceExplorer } from "@/services/explorer.service";
+import { AssetService } from "@/services/asset.service";
+import { toast } from "sonner";
 import { 
   Files, 
   Folder, 
@@ -26,7 +28,9 @@ import {
   FileArchive,
   Star,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Edit2,
+  ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -37,8 +41,12 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AssetFolderModal } from '@/components/project/AssetFolderModal';
+import { AssetDetailModal } from '@/components/project/AssetDetailModal';
 import Loader from "@/components/ui/Loader";
 import { cn } from "@/lib/utils";
 
@@ -61,15 +69,62 @@ const formatSize = (bytes: number) => {
 export default function DocumentsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedProjectId, setSelectedProjectId] = useState<string | "all">(searchParams.get("projectId") || "all");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(searchParams.get("folderId") || null);
+  const queryClient = useQueryClient();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | "all">(searchParams?.get("projectId") || "all");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(searchParams?.get("folderId") || null);
+
+  const [editingFolder, setEditingFolder] = useState<any | null>(null);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<any | null>(null);
+  const [renamingFile, setRenamingFile] = useState<any | null>(null);
+  const [renameFileName, setRenameFileName] = useState("");
 
   useEffect(() => {
-    const projectId = searchParams.get("projectId");
-    const folderId = searchParams.get("folderId");
+      if (renamingFile) {
+          setRenameFileName(renamingFile.name);
+      }
+  }, [renamingFile]);
+
+  const renameAssetMutation = useMutation({
+      mutationFn: ({ assetId, name }: { assetId: string, name: string }) => AssetService.updateAsset(assetId, { name }),
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["workspace-explorer", workspaceId] });
+          toast.success('Đã đổi tên tài liệu');
+          setRenamingFile(null);
+      },
+      onError: (error: any) => {
+          toast.error(error.message || 'Không thể đổi tên tài liệu');
+      }
+  });
+
+  const deleteAssetMutation = useMutation({
+    mutationFn: (assetId: string) => AssetService.deleteAsset(assetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-explorer", workspaceId] });
+      toast.success("Đã xóa tài liệu");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể xóa tài liệu");
+    }
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (folderId: string) => AssetService.deleteFolder(folderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-explorer", workspaceId] });
+      toast.success("Đã xóa thư mục");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể xóa thư mục");
+    }
+  });
+
+  useEffect(() => {
+    const projectId = searchParams?.get("projectId");
+    const folderId = searchParams?.get("folderId");
     if (projectId) setSelectedProjectId(projectId);
     if (folderId) setSelectedFolderId(folderId);
   }, [searchParams]);
@@ -294,32 +349,55 @@ export default function DocumentsPage() {
                 <div className="h-px flex-1 bg-border/50" />
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                 {filteredFolders.map((folder: any) => (
-                  <motion.div 
+                  <div 
                     key={folder._id}
-                    whileHover={{ y: -4 }}
                     onClick={() => handleFolderClick(folder)}
-                    className="p-4 bg-card border border-border rounded-2xl hover:bg-muted/50 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all group cursor-pointer"
+                    className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-4 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative"
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <div className="p-2.5 bg-amber-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                        <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" />
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+                        <Folder className="w-5 h-5 fill-amber-500/20" />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-foreground">
-                              <MoreVertical className="w-4 h-4" />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4 text-slate-400" />
                             </Button>
                           }
                         />
-                        <DropdownMenuContent align="end" className="bg-popover border-border text-popover-foreground">
-                           <DropdownMenuItem className="gap-2">
+                       <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                           <DropdownMenuItem 
+                               className="rounded-xl font-bold cursor-pointer"
+                               onClick={(e) => {
+                                   e.stopPropagation();
+                                   setEditingFolder(folder);
+                                   setIsFolderModalOpen(true);
+                               }}
+                           >
+                               <Edit2 className="w-4 h-4 mr-2" />
+                               Đổi tên thư mục
+                           </DropdownMenuItem>
+                           <DropdownMenuSeparator />
+                           <DropdownMenuItem className="rounded-xl font-bold cursor-pointer gap-2">
                              <Share2 className="w-4 h-4" /> Chia sẻ
                            </DropdownMenuItem>
-                           <DropdownMenuItem className="gap-2 text-rose-500 focus:text-rose-500 focus:bg-rose-500/10">
-                             <Trash2 className="w-4 h-4" /> Xóa
+                           <DropdownMenuSeparator />
+                           <DropdownMenuItem 
+                             className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               deleteFolderMutation.mutate(folder._id);
+                             }}
+                           >
+                             <Trash2 className="w-4 h-4 mr-2" /> Xóa
                            </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -335,7 +413,7 @@ export default function DocumentsPage() {
                         </span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -349,21 +427,20 @@ export default function DocumentsPage() {
             </div>
 
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                 {filteredAssets.map((asset: any) => (
-                  <motion.div 
+                  <div 
                     key={asset._id}
-                    whileHover={{ y: -4 }}
                     onClick={() => handleOpenFile(asset.fileUrl)}
-                    className="flex flex-col bg-card border border-border rounded-2xl hover:bg-muted/50 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all group cursor-pointer"
+                    className="group h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden relative flex flex-col"
                   >
-                    <div className="aspect-[4/3] bg-muted/30 rounded-t-2xl flex items-center justify-center overflow-hidden relative group-hover:bg-muted/50 transition-colors">
+                    <div className="aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center relative group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
                        {asset.fileType.includes("image") ? (
                          <img src={asset.fileUrl} alt={asset.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                        ) : (
                          <div className="scale-[2] opacity-40">{getFileIcon(asset.fileType)}</div>
                        )}
-                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                           <Button 
                             size="icon" 
                             onClick={(e) => handleDownload(e, asset.fileUrl, asset.name)}
@@ -371,34 +448,67 @@ export default function DocumentsPage() {
                           >
                             <Download className="w-4 h-4" />
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger 
+                              render={
+                                <Button 
+                                  size="icon" 
+                                  className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                              <DropdownMenuItem 
+                                  className="rounded-xl font-bold cursor-pointer"
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRenamingFile(asset);
+                                  }}
+                              >
+                                  <Edit2 className="w-4 h-4 mr-2" />
+                                  Đổi tên tài liệu
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                  className="rounded-xl font-bold cursor-pointer"
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedFile(asset);
+                                  }}
+                              >
+                                  <ArrowRight className="w-4 h-4 mr-2" />
+                                  Xem chi tiết
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteAssetMutation.mutate(asset._id);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" /> Xóa tài liệu
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                        </div>
                     </div>
-                    <div className="p-4">
-                       <div className="flex items-center gap-2 mb-1">
-                         {getFileIcon(asset.fileType)}
-                         <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-sm truncate group-hover:text-primary transition-colors">{asset.name}</span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] text-muted-foreground/40 font-medium">{formatSize(asset.fileSize)}</span>
-                              <div className="w-1 h-1 rounded-full bg-border" />
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px]">
-                                  {projects.find((p: any) => p._id === asset.projectId)?.emoji}
-                                </span>
-                                <span className="text-[10px] text-primary/60 font-bold uppercase tracking-tight">
-                                  {projects.find((p: any) => p._id === asset.projectId)?.name}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                       </div>
-                       <div className="flex items-center justify-between">
-                         <Badge variant="outline" className="text-[9px] uppercase bg-muted border-none text-muted-foreground/60">
-                           {asset.category}
-                         </Badge>
+                    <div className="p-4 flex flex-col flex-1">
+                       <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-sm">{asset.name}</h4>
+                       <div className="flex items-center justify-between mt-2 gap-2">
+                           <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={asset.fileType}>
+                               {asset.fileType.includes('spreadsheetml') ? 'XLSX' : 
+                                asset.fileType.includes('wordprocessingml') ? 'DOCX' : 
+                                asset.fileType.includes('presentationml') ? 'PPTX' :
+                                asset.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
+                           </p>
+                           <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(asset.fileSize / 1024).toFixed(2)} KB</p>
                        </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -448,7 +558,54 @@ export default function DocumentsPage() {
                                <Download className="w-4 h-4 text-muted-foreground" />
                              </Button>
                              <Button variant="ghost" size="icon" className="h-8 w-8"><Share2 className="w-4 h-4 text-muted-foreground" /></Button>
-                             <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="w-4 h-4 text-muted-foreground" /></Button>
+                             
+                             <DropdownMenu>
+                                <DropdownMenuTrigger 
+                                  render={
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                                    </Button>
+                                  }
+                                />
+                                <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                                  <DropdownMenuItem 
+                                      className="rounded-xl font-bold cursor-pointer"
+                                      onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRenamingFile(asset);
+                                      }}
+                                  >
+                                      <Edit2 className="w-4 h-4 mr-2" />
+                                      Đổi tên tài liệu
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                      className="rounded-xl font-bold cursor-pointer"
+                                      onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedFile(asset);
+                                      }}
+                                  >
+                                      <ArrowRight className="w-4 h-4 mr-2" />
+                                      Xem chi tiết
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteAssetMutation.mutate(asset._id);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" /> Xóa tài liệu
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                             </DropdownMenu>
                            </div>
                         </td>
                       </tr>
@@ -470,6 +627,94 @@ export default function DocumentsPage() {
           </section>
         </div>
       </ScrollArea>
+
+            {/* Create & Edit Folder Modal */}
+            <AssetFolderModal 
+                isOpen={isFolderModalOpen}
+                onClose={() => {
+                    setIsFolderModalOpen(false);
+                    setEditingFolder(null);
+                }}
+                folder={editingFolder}
+                projectId={editingFolder?.projectId || ""}
+                workspaceId={workspaceId}
+                phaseId={null}
+                parentFolderId={editingFolder?.parentFolderId || null}
+            />
+            {/* File Detail Modal */}
+            {selectedFile && (
+                <AssetDetailModal 
+                    asset={selectedFile}
+                    isOpen={!!selectedFile}
+                    onClose={() => setSelectedFile(null)}
+                    onDelete={(id) => deleteAssetMutation.mutate(id)}
+                    onRename={(id, newName) => {
+                        if (selectedFile && selectedFile._id === id) {
+                            setSelectedFile({
+                                ...selectedFile,
+                                name: newName
+                            });
+                        }
+                    }}
+                />
+            )}
+
+            {/* Rename File Modal */}
+            <Dialog open={!!renamingFile} onOpenChange={(v) => !v && setRenamingFile(null)}>
+                <DialogContent className="sm:max-w-[425px] rounded-[32px] p-8 border-none bg-white dark:bg-slate-900 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                <Edit2 className="w-6 h-6" />
+                            </div>
+                            Đổi tên tài liệu
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-6 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
+                                Tên tài liệu
+                            </label>
+                            <Input 
+                                value={renameFileName}
+                                onChange={(e) => setRenameFileName(e.target.value)}
+                                placeholder="Nhập tên tài liệu mới..."
+                                className="h-12 rounded-2xl bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus:ring-brand-primary/20"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        const val = renameFileName.trim();
+                                        if (val && renamingFile) {
+                                            renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-3 sm:gap-0">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setRenamingFile(null)}
+                            className="rounded-2xl h-12 px-6 font-bold text-slate-500"
+                        >
+                            Hủy
+                        </Button>
+                        <Button 
+                            onClick={() => {
+                                const val = renameFileName.trim();
+                                if (val && renamingFile) {
+                                    renameAssetMutation.mutate({ assetId: renamingFile._id, name: val });
+                                }
+                            }}
+                            disabled={renameAssetMutation.isPending}
+                            className="rounded-2xl h-12 px-8 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold shadow-lg shadow-brand-primary/20"
+                        >
+                            {renameAssetMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
       {/* Footer Info */}
       <footer className="h-12 px-8 border-t border-border bg-background flex items-center justify-between text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">

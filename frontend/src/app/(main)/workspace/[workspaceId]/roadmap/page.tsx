@@ -54,7 +54,7 @@ const ROW_HEIGHT = 48;
 export default function RoadmapPage() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   

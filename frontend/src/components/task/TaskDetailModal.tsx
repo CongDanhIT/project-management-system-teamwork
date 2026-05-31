@@ -101,7 +101,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   isAdminOrOwner = false,
 }) => {
   const searchParams = useSearchParams();
-  const targetCommentId = searchParams.get('commentId');
+  const targetCommentId = searchParams?.get('commentId');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

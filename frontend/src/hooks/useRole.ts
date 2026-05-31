@@ -6,7 +6,7 @@ import { RoleEnum } from '@/types/role';
 
 export const useRole = () => {
     const params = useParams();
-    const workspaceId = params.workspaceId as string;
+    const workspaceId = params?.workspaceId as string;
     const { user: currentUser } = useAuthStore();
 
     const { data } = useQuery({

@@ -1,4 +1,10 @@
-fix(frontend): sửa lỗi cache deleteMutation trả về project không có ID làm lỗi unique key prop
+feat(automation): tích hợp hệ thống tự động hóa và nâng cấp AI chatbot v2
 
-- [ProjectsPage] Trong onSuccess của deleteMutation, thay đổi việc đưa `deletedProject` (là response.data có cấu trúc { success, message, project }) vào cache thành `deletedProject.project`.
-- Khắc phục lỗi khi xóa dự án và truy cập thùng rác ngay lập tức bị ném cảnh báo missing key prop do `project._id` bị undefined.
+- Backend (Automation & AI Agent V2):
+  * Thêm Models, Controllers, Routes, Listeners cho động cơ tự động hóa (Workflow Engine).
+  * Nâng cấp AI Service và AI Controller lên phiên bản V2 hỗ trợ Multi-steps Tool Calling.
+  * Cập nhật các service (Project, Task, Explorer) phục vụ tương tác của AI Agent.
+- Frontend (Giao diện & Tính năng mới):
+  * Thêm màn hình quản lý Automation và xây dựng các Component tương ứng.
+  * Nâng cấp AI Chat Sidebar V2 cho phép giao tiếp thời gian thực mượt mà.
+  * Cập nhật Workspace Dashboard, Kanban Board, Calendar, Newsfeed, Members và Settings để đồng bộ trạng thái.

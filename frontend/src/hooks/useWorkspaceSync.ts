@@ -11,7 +11,7 @@ import { userService } from '@/services/user.service';
 export const useWorkspaceSync = () => {
   const params = useParams();
   const { user, updateUser } = useAuthStore();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const lastSyncedId = useRef<string | null>(null);
 
   useEffect(() => {

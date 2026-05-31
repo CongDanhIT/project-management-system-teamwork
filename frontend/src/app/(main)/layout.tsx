@@ -28,8 +28,9 @@ export default function MainLayout({
   const queryClient = useQueryClient();
   const [activeDraft, setActiveDraft] = React.useState<IInboxDraft | null>(null);
 
-  const workspaceId = params.workspaceId as string;
-  const projectId = params.projectId as string;
+  const workspaceId = params?.workspaceId as string;
+  const projectId = params?.projectId as string;
+  const phaseId = params?.phaseId as string;
 
   // Tự động đồng bộ currentWorkspaceId khi URL thay đổi
   useWorkspaceSync();
@@ -108,7 +109,7 @@ export default function MainLayout({
         <InboxSidebar />
         {/* AI Chat Floating Button - hiển thị trên tất cả các trang */}
         <AiChatButton />
-        <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId }} />
+        <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId, phaseId: phaseId }} />
       </div>
 
       {typeof document !== 'undefined' && createPortal(

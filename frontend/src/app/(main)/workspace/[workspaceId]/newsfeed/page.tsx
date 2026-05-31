@@ -18,8 +18,8 @@ export default function NewsfeedPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const workspaceId = params?.workspaceId as string;
-  const targetAnnouncementId = searchParams.get('announcementId');
-  const targetCommentId = searchParams.get('commentId');
+  const targetAnnouncementId = searchParams?.get('announcementId');
+  const targetCommentId = searchParams?.get('commentId');
   
   const queryClient = useQueryClient();
   const { isAdminOrOwner } = useWorkspaceRole();

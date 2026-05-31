@@ -71,10 +71,10 @@ import {
 export default function ProjectTablePage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const workspaceId = params.workspaceId as string;
-  const projectId = params.projectId as string;
-  const phaseId = params.phaseId as string;
-  const targetTaskId = searchParams.get('taskId');
+  const workspaceId = params?.workspaceId as string;
+  const projectId = params?.projectId as string;
+  const phaseId = params?.phaseId as string;
+  const targetTaskId = searchParams?.get('taskId');
   const queryClient = useQueryClient();
   const router = useRouter();
   const { isPrivileged } = useRole();
@@ -913,7 +913,7 @@ export default function ProjectTablePage() {
         onClose={() => {
           setIsTaskModalOpen(false);
           // Xóa taskId và commentId khỏi URL khi đóng
-          const params = new URLSearchParams(searchParams.toString());
+          const params = new URLSearchParams(searchParams?.toString());
           params.delete('taskId');
           params.delete('commentId');
           const newQuery = params.toString();

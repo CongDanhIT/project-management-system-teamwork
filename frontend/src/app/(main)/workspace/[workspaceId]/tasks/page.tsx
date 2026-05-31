@@ -23,8 +23,8 @@ import { useAuthStore } from '@/stores/auth.store';
 export default function TaskListPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const workspaceId = params.workspaceId as string;
-  const targetTaskId = searchParams.get('taskId');
+  const workspaceId = params?.workspaceId as string;
+  const targetTaskId = searchParams?.get('taskId');
   const queryClient = useQueryClient();
   const router = useRouter();
   const { isAdminOrOwner } = useWorkspaceRole();
@@ -826,7 +826,7 @@ export default function TaskListPage() {
         onClose={() => {
           setIsDrawerOpen(false);
           // Xóa taskId và commentId khỏi URL khi đóng
-          const params = new URLSearchParams(searchParams.toString());
+          const params = new URLSearchParams(searchParams?.toString() || '');
           params.delete('taskId');
           params.delete('commentId');
           const newQuery = params.toString();

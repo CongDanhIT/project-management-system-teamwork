@@ -254,7 +254,7 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
                         }
                     },
                     { $sort: { dueDate: 1 } },
-                    { $limit: 5 },
+                    { $limit: 50 },
                     {
                         $lookup: {
                             from: "users",
@@ -278,7 +278,7 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
                         }
                     },
                     { $sort: { dueDate: 1 } },
-                    { $limit: 5 },
+                    { $limit: 50 },
                     {
                         $lookup: {
                             from: "users",

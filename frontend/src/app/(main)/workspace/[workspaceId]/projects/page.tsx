@@ -222,43 +222,45 @@ function ProjectCard({
               </div>
             )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full glass border border-white/20 text-slate-800 hover:bg-white/20 transition-all border-none outline-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                }
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-depth-3 p-1.5 min-w-[200px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-                {activeTab === 'active' ? (
-                  <>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }} className="rounded-xl font-bold text-slate-800 dark:text-slate-200 gap-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                      <Pencil className="w-4 h-4 text-brand-primary" /> Sửa thông tin
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(project); }} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
-                      <Trash2 className="w-4 h-4" /> Đưa vào thùng rác
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRestore?.(project._id); }} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
-                      Khôi phục dự án
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPermanentDelete?.(project); }} className="rounded-xl font-bold text-red-600 gap-3 py-3 hover:bg-red-500 hover:text-white transition-colors">
-                      Xoá vĩnh viễn
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {isAdminOrOwner && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full glass border border-white/20 text-slate-800 hover:bg-white/20 transition-all border-none outline-none"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  }
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-depth-3 p-1.5 min-w-[200px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+                  {activeTab === 'active' ? (
+                    <>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }} className="rounded-xl font-bold text-slate-800 dark:text-slate-200 gap-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <Pencil className="w-4 h-4 text-brand-primary" /> Sửa thông tin
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(project); }} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                        <Trash2 className="w-4 h-4" /> Đưa vào thùng rác
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRestore?.(project._id); }} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                        Khôi phục dự án
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPermanentDelete?.(project); }} className="rounded-xl font-bold text-red-600 gap-3 py-3 hover:bg-red-500 hover:text-white transition-colors">
+                        Xoá vĩnh viễn
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>
@@ -333,7 +335,7 @@ function ProjectCard({
                 <div className="flex -space-x-2 pl-1 border-l border-slate-100 dark:border-white/10 ml-1">
                   {project.members.slice(0, 3).map((member: any, i: number) => (
                     <UserAvatar
-                      key={member.userId?._id || i}
+                      key={member.userId?._id || `member-${i}`}
                       user={member.userId}
                       className="h-8 w-8 border-2 border-card ring-0 shadow-sm"
                       showShadow={false}
@@ -381,7 +383,7 @@ function CreateProjectPlaceholder({ onClick }: { onClick: () => void }) {
  */
 export default function ProjectsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const queryClient = useQueryClient();
   const { isAdminOrOwner } = useWorkspaceRole();
   const { user } = useAuthStore();
@@ -485,6 +487,10 @@ export default function ProjectsPage() {
       toast.success('Dự án đã được đưa vào thùng rác!');
       setDeletingProject(null);
     },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error.message || 'Bạn không có quyền đưa dự án này vào thùng rác!');
+      setDeletingProject(null);
+    }
   });
 
 
@@ -564,6 +570,10 @@ export default function ProjectsPage() {
       toast.success('Dự án đã bị xoá vĩnh viễn!');
       setHardDeletingProject(null);
     },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error.message || 'Bạn không có quyền xoá vĩnh viễn dự án này!');
+      setHardDeletingProject(null);
+    }
   });
 
 
@@ -604,6 +614,10 @@ export default function ProjectsPage() {
       toast.success('Công việc đã bị xoá vĩnh viễn!');
       setDeletingTask(null);
     },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || error.message || 'Bạn không có quyền xoá vĩnh viễn công việc này!');
+      setDeletingTask(null);
+    }
   });
 
   const hardDeletePhaseMutation = useMutation({
@@ -769,9 +783,9 @@ export default function ProjectsPage() {
 
           {(activeTab === 'active' || trashType === 'PROJECT') ? (
             <React.Fragment key="project-list">
-              {(filtered as Project[]).map((project: Project) => (
+              {(filtered as Project[]).map((project: Project, index: number) => (
                 <ProjectCard
-                  key={project._id}
+                  key={project._id || `project-${index}`}
                   project={project}
                   workspaceId={workspaceId}
                   onEdit={handleEdit}
@@ -785,30 +799,32 @@ export default function ProjectsPage() {
             </React.Fragment>
           ) : trashType === 'TASK' ? (
             <React.Fragment key="task-list">
-              {(filtered as any[]).map((task: any) => (
-                <Card key={task._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
+              {(filtered as any[]).map((task: any, index: number) => (
+                <Card key={task._id || `task-${index}`} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
                   <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
                       T
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
-                        }
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
-                        <DropdownMenuItem onClick={() => restoreTaskMutation.mutate(task)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
-                          Khôi phục công việc
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                        <DropdownMenuItem onClick={() => setDeletingTask(task)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
-                          Xoá vĩnh viễn
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {isAdminOrOwner && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
+                          }
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
+                          <DropdownMenuItem onClick={() => restoreTaskMutation.mutate(task)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                            Khôi phục công việc
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                          <DropdownMenuItem onClick={() => setDeletingTask(task)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                            Xoá vĩnh viễn
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   <div className="flex-1 space-y-2">
                     <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{task.title}</h4>
@@ -826,30 +842,32 @@ export default function ProjectsPage() {
             </React.Fragment>
           ) : (
             <React.Fragment key="phase-list">
-              {(filtered as any[]).map((phase: any) => (
-                <Card key={phase._id} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
+              {(filtered as any[]).map((phase: any, index: number) => (
+                <Card key={phase._id || `phase-${index}`} className="p-8 rounded-[32px] border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900/40 backdrop-blur-sm shadow-depth-1 hover:shadow-depth-2 transition-all duration-500 opacity-85 hover:opacity-100 flex flex-col h-[280px]">
                   <div className="flex items-center justify-between mb-8" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 dark:bg-brand-primary/20 flex items-center justify-center text-brand-primary dark:text-brand-secondary font-black shadow-sm">
                       <Layers className="w-6 h-6" />
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
-                        }
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
-                        <DropdownMenuItem onClick={() => restorePhaseMutation.mutate(phase)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
-                          Khôi phục giai đoạn
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
-                        <DropdownMenuItem onClick={() => setDeletingPhase(phase)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
-                          Xoá vĩnh viễn
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {isAdminOrOwner && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" />
+                          }
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-2xl border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-depth-3 p-1.5 min-w-[200px]">
+                          <DropdownMenuItem onClick={() => restorePhaseMutation.mutate(phase)} className="rounded-xl font-bold text-brand-primary gap-3 py-3 hover:bg-brand-primary/10 transition-colors">
+                            Khôi phục giai đoạn
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px] my-1" />
+                          <DropdownMenuItem onClick={() => setDeletingPhase(phase)} className="rounded-xl font-bold text-red-600 hover:text-white hover:bg-red-500 transition-colors gap-3 py-3">
+                            Xoá vĩnh viễn
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   <div className="flex-1 space-y-2">
                     <h4 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2">{phase.name}</h4>

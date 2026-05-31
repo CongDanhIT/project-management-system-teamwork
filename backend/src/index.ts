@@ -35,6 +35,8 @@ import webhookRoutes from './routes/webhook.route';
 import { createServer } from 'http';
 import { initSocket } from './config/socket';
 import { initExternalListeners } from './listeners/external.listener';
+import { initWorkflowListeners } from './listeners/workflow.listener';
+import workflowRoutes from './routes/workflow.routes';
 
 dotenv.config();
 
@@ -125,6 +127,7 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/phase`, phaseRoutes); // 🚀 Quản lý giai đoạn dự án
         app.use(`${BASE_PATH}/asset`, isAuthenticated, assetRoutes); // 🚀 Quản lý tài nguyên & R2
         app.use(`${BASE_PATH}/analytics`, isAuthenticated, analyticsRoutes); // 🚀 Báo cáo chuyên sâu
+        app.use(`${BASE_PATH}/workflow`, isAuthenticated, workflowRoutes); // 🚀 Automation Workflow
         logger.info(">>> INTERACTION ROUTES LOADED <<<");
 
         // Catch-all 404: Bắt các request không khớp bất kỳ route nào
@@ -144,6 +147,7 @@ const startServer = async () => {
             
             // Kích hoạt External Listeners (Slack, v.v.)
             initExternalListeners();
+            initWorkflowListeners();
             
             // Kích hoạt Cron dọn dẹp thùng rác sau 30 ngày
             startCronService();

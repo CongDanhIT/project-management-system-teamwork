@@ -1077,8 +1077,8 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
             </div>
 
             {/* Right Column (4 cols) - Task Deadlines (Overdue & Upcoming) */}
-            <div className="lg:col-span-4 h-full">
-              <div className="h-full relative bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[40px] border border-white/40 dark:border-white/5 p-8 flex flex-col shadow-ambient">
+            <div className="lg:col-span-4 lg:relative">
+              <div className="lg:absolute lg:inset-0 h-[600px] lg:h-auto relative bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[40px] border border-white/40 dark:border-white/5 p-8 flex flex-col shadow-ambient">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-xl font-black text-[#035D5B] dark:text-[#C7F964] uppercase tracking-tight flex items-center gap-2">
                      <Calendar className="w-5 h-5" />

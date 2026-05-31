@@ -42,9 +42,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function ProjectAnalyticsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
-  const projectId = params.projectId as string;
-  const phaseId = params.phaseId as string;
+  const workspaceId = params?.workspaceId as string;
+  const projectId = params?.projectId as string;
+  const phaseId = params?.phaseId as string;
   const [project, setProject] = useState<Project | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const router = useRouter();
@@ -265,7 +265,6 @@ export default function ProjectAnalyticsPage() {
               <BarChart3 className="w-4 h-4 mr-2" /> Analytics
             </div>
           </div>
-          
           <div className="flex items-center gap-2">
             <Button 
               variant="outline" 

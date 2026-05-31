@@ -30,7 +30,7 @@ import { toast } from 'sonner';
 
 export default function NotificationsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);

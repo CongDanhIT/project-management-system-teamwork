@@ -98,7 +98,7 @@ export default function WorkspaceDashboardPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const workspaceId = params.workspaceId as string;
+  const workspaceId = params?.workspaceId as string;
   const { isAdminOrOwner } = useWorkspaceRole();
   const { user } = useAuthStore();
   const [isExporting, setIsExporting] = React.useState(false);
@@ -710,10 +710,10 @@ export default function WorkspaceDashboardPage() {
   );
 
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'overview';
+  const activeTab = searchParams?.get('tab') || 'overview';
 
   const handleTabChange = (value: string) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    const current = new URLSearchParams(Array.from(searchParams?.entries() || []));
     current.set('tab', value);
     const search = current.toString();
     const query = search ? `?${search}` : "";
