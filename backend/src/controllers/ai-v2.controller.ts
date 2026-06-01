@@ -14,9 +14,9 @@ export const chatV2Controller = asyncHandler(
         const workspaceId = context.workspaceId;
         const projectId = context.projectId;
 
-        logger.info("[AI-V2-Controller] Nhận yêu cầu chat Agent", { 
-            userId, 
-            workspaceId, 
+        logger.info("[AI-V2-Controller] Nhận yêu cầu chat Agent", {
+            userId,
+            workspaceId,
             projectId,
             messagesCount: messages?.length,
             modelId
@@ -54,9 +54,9 @@ export const chatV2Controller = asyncHandler(
             };
         });
 
-        logger.info("[AI-V2-Controller] Đang xử lý yêu cầu Chat Agent với lịch sử tinh giản", { 
-            userId, 
-            workspaceId: workspaceId || "N/A", 
+        logger.info("[AI-V2-Controller] Đang xử lý yêu cầu Chat Agent với lịch sử tinh giản", {
+            userId,
+            workspaceId: workspaceId || "N/A",
             projectId: projectId || "N/A",
             messagesCount: sanitizedMessages.length
         });
@@ -73,16 +73,16 @@ export const chatV2Controller = asyncHandler(
             });
 
             // Tránh Unhandled Promise Rejection từ các Promise ngầm của Vercel AI SDK
-            result.text.catch((err: any) => {
-                logger.error("[AI-V2-Controller] Bắt được lỗi từ result.text Promise", { 
+            Promise.resolve(result.text).catch((err: any) => {
+                logger.error("[AI-V2-Controller] Bắt được lỗi từ result.text Promise", {
                     message: err?.message || String(err),
                     stack: err?.stack
                 });
             });
 
             if (result.response) {
-                result.response.catch((err: any) => {
-                    logger.error("[AI-V2-Controller] Bắt được lỗi từ result.response Promise", { 
+                Promise.resolve(result.response).catch((err: any) => {
+                    logger.error("[AI-V2-Controller] Bắt được lỗi từ result.response Promise", {
                         message: err?.message || String(err),
                         stack: err?.stack
                     });
@@ -90,14 +90,14 @@ export const chatV2Controller = asyncHandler(
             }
 
             // Ghi nhận phản hồi stream vào response Express
-            // pipeDataStreamToResponse là method trực tiếp trên StreamTextResult (ai v4.3)
+            // pipeDataStreamToResponse là method trực tiếp trên StreamTextResult (ai v4.1)
             (result as any).pipeDataStreamToResponse(res, {
                 onError: (error: any) => {
                     logger.error("[AI-V2-Controller] Lỗi trong quá trình stream response", {
                         message: error instanceof Error ? error.message : String(error),
                         stack: error instanceof Error ? error.stack : undefined
                     });
-                    
+
                     if (!res.writableEnded) {
                         const fallbackText = `\n\n⚠️ *(Lỗi kết nối Stream: ${error instanceof Error ? error.message : String(error)}. Vui lòng thử lại.)*`;
                         try {
@@ -111,7 +111,7 @@ export const chatV2Controller = asyncHandler(
             });
 
         } catch (error: any) {
-            logger.error("[AI-V2-Controller] Lỗi nghiêm trọng khi xử lý Agent Chat", { 
+            logger.error("[AI-V2-Controller] Lỗi nghiêm trọng khi xử lý Agent Chat", {
                 message: error.message,
                 stack: error.stack,
                 userId
@@ -121,14 +121,14 @@ export const chatV2Controller = asyncHandler(
                 try {
                     res.setHeader("Content-Type", "text/plain; charset=utf-8");
                     res.setHeader("x-vercel-ai-data-stream", "v1");
-                    
+
                     const friendlyMessage = `🤖 Rất tiếc, AI Agent gặp sự cố kết nối máy chủ AI: ${error.message || "Lỗi không xác định"}. Vui lòng thử lại hoặc đổi mô hình khác.`;
                     res.write(`0:${JSON.stringify(friendlyMessage)}\n`);
                     res.end();
                 } catch (writeErr: any) {
-                    logger.error("[AI-V2-Controller] Lỗi khi gửi stream lỗi fallback", { 
+                    logger.error("[AI-V2-Controller] Lỗi khi gửi stream lỗi fallback", {
                         message: writeErr.message,
-                        stack: writeErr.stack 
+                        stack: writeErr.stack
                     });
                     if (!res.headersSent) {
                         res.status(500).json({ success: false, message: error.message });

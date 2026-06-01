@@ -41,12 +41,15 @@ interface AiChatSidebarV2Props {
 }
 
 export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClose, context = {} }) => {
-  const [selectedModel, setSelectedModel] = React.useState('llama-3.3-70b-versatile');
+  const [selectedModel, setSelectedModel] = React.useState('google/gemma-4-31b-it:free');
 
   const MODELS = [
     { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3', provider: 'Groq' },
     { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq' },
     { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', name: 'Llama 3.3', provider: 'Together' },
+    { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'OpenRouter' },
+    { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B', provider: 'OpenRouter' },
+    { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 80B', provider: 'OpenRouter' },
   ];
 
   const params = useParams();
@@ -178,10 +181,32 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
     setTimeout(checkScroll, 100);
   }, [messages]);
 
+  // Kiểm tra xem có tin nhắn nào chứa code block (```) hoặc bảng (|) không
+  const hasCodeOrTable = React.useMemo(() => {
+    return messages.some(msg => 
+      msg.role === 'assistant' && 
+      (msg.content.includes('```') || msg.content.includes('|') || msg.content.includes('  |') || msg.content.includes('+-'))
+    );
+  }, [messages]);
+
+  // Trạng thái thu phóng thủ công
+  const [isManuallyExpanded, setIsManuallyExpanded] = React.useState(false);
+
+  // Tự động phình to khi có code/table (chỉ kích hoạt một lần khi nhận diện được tin nhắn phù hợp)
+  useEffect(() => {
+    if (hasCodeOrTable) {
+      setIsManuallyExpanded(true);
+    } else {
+      setIsManuallyExpanded(false);
+    }
+  }, [hasCodeOrTable]);
+
   if (!isOpen) return null;
 
+  const sidebarWidth = isManuallyExpanded ? 'w-[800px]' : 'w-[450px]';
+
   return (
-    <div className="fixed right-4 bottom-4 top-4 w-[420px] bg-white/85 dark:bg-[#0f0f10]/85 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] z-50 flex flex-col border border-gray-200/40 dark:border-white/10 rounded-[28px] overflow-hidden transition-all duration-300 transform animate-in slide-in-from-right-12">
+    <div className={`fixed right-4 bottom-4 top-4 ${sidebarWidth} bg-white/85 dark:bg-[#0f0f10]/85 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] z-50 flex flex-col border border-gray-200/40 dark:border-white/10 rounded-[28px] overflow-hidden transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) transform animate-in slide-in-from-right-12`}>
       {/* Header - Minimalist Premium Style */}
       <div className="p-5 border-b border-gray-200/30 dark:border-white/5 flex items-center justify-between bg-white/40 dark:bg-black/10 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -200,12 +225,28 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
             </div>
           </div>
         </div>
-        <button 
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all duration-200 hover:rotate-90 group cursor-pointer border border-transparent hover:border-gray-200/50 dark:hover:border-white/5"
-        >
-          <X className="w-4 h-4 text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white" />
-        </button>
+        
+        <div className="flex items-center gap-1">
+          {/* Nút thu phóng thủ công */}
+          <button
+            onClick={() => setIsManuallyExpanded(!isManuallyExpanded)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-200/50 dark:hover:border-white/5 text-gray-400 hover:text-gray-800 dark:hover:text-white"
+            title={isManuallyExpanded ? "Thu nhỏ giao diện" : "Mở rộng giao diện"}
+          >
+            {isManuallyExpanded ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </button>
+
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all duration-200 hover:rotate-90 group cursor-pointer border border-transparent hover:border-gray-200/50 dark:hover:border-white/5"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white" />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

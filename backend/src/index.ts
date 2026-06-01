@@ -50,7 +50,7 @@ const startServer = async () => {
 
         const PORT = env.PORT;
         const httpServer = createServer(app);
-        
+
         // Khởi tạo Socket.io
         initSocket(httpServer);
 
@@ -144,11 +144,11 @@ const startServer = async () => {
         httpServer.listen(PORT, () => {
             logger.info(`⚡️[server]: Server is running at http://localhost:${PORT} in ${env.NODE_ENV} mode`);
             logger.info(`📝[session]: Socket.io initialized.`);
-            
+
             // Kích hoạt External Listeners (Slack, v.v.)
             initExternalListeners();
             initWorkflowListeners();
-            
+
             // Kích hoạt Cron dọn dẹp thùng rác sau 30 ngày
             startCronService();
         });
@@ -162,16 +162,16 @@ startServer();
 
 // Lá chắn bảo vệ ứng dụng khỏi bị crash do lỗi unhandled
 process.on('uncaughtException', (error) => {
-    logger.error('💥 CRITICAL: Uncaught Exception', { 
-        message: error.message, 
-        stack: error.stack 
+    logger.error('💥 CRITICAL: Uncaught Exception', {
+        message: error.message,
+        stack: error.stack
     });
 });
 
 process.on('unhandledRejection', (reason: any) => {
-    logger.error('💥 CRITICAL: Unhandled Rejection', { 
-        message: reason?.message || String(reason), 
-        stack: reason?.stack 
+    logger.error('💥 CRITICAL: Unhandled Rejection', {
+        message: reason?.message || String(reason),
+        stack: reason?.stack
     });
 });
- 
+

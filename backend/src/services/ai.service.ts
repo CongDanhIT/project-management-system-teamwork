@@ -25,6 +25,10 @@ export const AI_MODELS = {
     GROQ_LLAMA_3_1_8B: "llama-3.1-8b-instant",
     NVIDIA_DEEPSEEK_V4: "deepseek-ai/deepseek-v4-pro",
     TOGETHER_LLAMA_3_3_70B: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    // OpenRouter Free Models
+    OPENROUTER_GEMMA_4_31B: "google/gemma-4-31b-it:free",
+    OPENROUTER_GPT_OSS_120B: "openai/gpt-oss-120b:free",
+    OPENROUTER_QWEN3_80B: "qwen/qwen3-next-80b-a3b-instruct:free",
 };
 
 // Cấu hình Vercel AI SDK Provider cho Groq
@@ -38,8 +42,22 @@ const togetherProvider = createOpenAI({
     baseURL: "https://api.together.ai/v1",
 });
 
+// Cấu hình Vercel AI SDK Provider cho OpenRouter (Tương thích OpenAI API)
+const openRouterProvider = createOpenAI({
+    apiKey: env.OPENROUTER_API_KEY || "",
+    baseURL: "https://openrouter.ai/api/v1",
+});
+
+// Danh sách các model thuộc OpenRouter để routing tự động
+const OPENROUTER_MODEL_IDS = [
+    AI_MODELS.OPENROUTER_GEMMA_4_31B,
+    AI_MODELS.OPENROUTER_GPT_OSS_120B,
+    AI_MODELS.OPENROUTER_QWEN3_80B,
+];
+
 logger.info(`[AI-Init] Groq Provider initialized. Key present: ${!!env.GROQ_API_KEY}`);
 logger.info(`[AI-Init] Together Provider initialized. Key present: ${!!env.TOGETHER_API_KEY}`);
+logger.info(`[AI-Init] OpenRouter Provider initialized. Key present: ${!!env.OPENROUTER_API_KEY}`);
 
 // Khởi tạo Groq SDK client (cho các logic cũ dùng chat completion truyền thống)
 const getGroqClient = () => {
@@ -439,7 +457,7 @@ export const streamAgentChatService = async ({
     workspaceId,
     projectId,
     phaseId,
-    modelId = AI_MODELS.GROQ_LLAMA_3_3_70B
+    modelId = AI_MODELS.OPENROUTER_GEMMA_4_31B
 }: {
     messages: any[];
     userId: string;
@@ -450,6 +468,45 @@ export const streamAgentChatService = async ({
 }) => {
     logger.info("[AI-Agent] Khởi chạy streamAgentChatService", { userId, workspaceId, projectId, phaseId, modelId });
     logger.debug("[AI-Agent] Kiểm tra messages", { count: messages?.length, lastMessage: messages?.[messages.length - 1] });
+
+    // Tạo bản sao sâu (deep copy) của messages để tránh thay đổi trực tiếp tin nhắn hiển thị ở Frontend
+    let processedMessages = JSON.parse(JSON.stringify(messages));
+    
+    // Nếu sử dụng Together AI, tự động append System Context và TINH GIẢN chỉ gửi 1 tin nhắn cuối để tránh crash API do lịch sử tin nhắn
+    if (modelId === AI_MODELS.TOGETHER_LLAMA_3_3_70B && processedMessages.length > 0) {
+        const lastMessage = processedMessages[processedMessages.length - 1];
+        if (lastMessage && lastMessage.role === "user") {
+            const contextLines: string[] = [];
+            if (workspaceId) contextLines.push(`Workspace ID: "${workspaceId}"`);
+            if (projectId) contextLines.push(`Project ID: "${projectId}"`);
+            if (phaseId) contextLines.push(`Phase ID: "${phaseId}"`);
+            if (userId) contextLines.push(`User ID: "${userId}"`);
+
+            if (contextLines.length > 0) {
+                lastMessage.content = `${lastMessage.content}\n\n[Bối cảnh hệ thống - Trích xuất các ID này để làm tham số cho các tool tương ứng khi cần thiết:\n${contextLines.join("\n")}]`;
+                logger.info("[AI-Agent] Đã append System Context vào user message cho Together AI");
+            }
+        }
+        processedMessages = [lastMessage];
+        logger.info("[AI-Agent] Đã cắt giảm lịch sử tin nhắn chỉ giữ lại 1 tin nhắn cuối cho Together AI");
+    } else {
+        // Đối với Groq và các model khác, ta vẫn append System Context để cả hai đều dùng chung bộ Tool bắt buộc tham số, nhưng vẫn giữ nguyên đầy đủ lịch sử hội thoại!
+        if (processedMessages.length > 0) {
+            const lastMessage = processedMessages[processedMessages.length - 1];
+            if (lastMessage && lastMessage.role === "user") {
+                const contextLines: string[] = [];
+                if (workspaceId) contextLines.push(`Workspace ID: "${workspaceId}"`);
+                if (projectId) contextLines.push(`Project ID: "${projectId}"`);
+                if (phaseId) contextLines.push(`Phase ID: "${phaseId}"`);
+                if (userId) contextLines.push(`User ID: "${userId}"`);
+
+                if (contextLines.length > 0) {
+                    lastMessage.content = `${lastMessage.content}\n\n[Bối cảnh hệ thống - Trích xuất các ID này để làm tham số cho các tool tương ứng khi cần thiết:\n${contextLines.join("\n")}]`;
+                    logger.info("[AI-Agent] Đã append System Context vào user message cho Groq");
+                }
+            }
+        }
+    }
 
     // 1. Khởi tạo System Prompt cực kỳ chi tiết để AI hiểu vai trò và các Tool hiện có
     const systemPrompt = `BẠN LÀ MỘT AI PROJECT MANAGEMENT AGENT (HỆ THỐNG TEAMFLOW) PHIÊN BẢN V2.
@@ -487,12 +544,17 @@ QUY TẮC VẬN HÀNH:
     const tools: any = {
         getWorkspaceProjects: {
             description: "Lấy danh sách các dự án trong Workspace hiện tại bao gồm ID, tên và mô tả.",
-            parameters: z.object({}).nullable().optional(),
-            execute: async () => {
+            // API của Together AI (Llama 3.3) yêu cầu mọi tool phải có parameters không rỗng.
+            // Do đó chúng ta khai báo tham số optional để Together không crash, đồng thời bọc nullable().optional() để an toàn nếu đối số bị null/rỗng.
+            parameters: z.object({
+                workspaceId: z.string().optional().describe("ID của Workspace hiện tại. Lấy từ phần [Bối cảnh hệ thống] ở tin nhắn cuối cùng.")
+            }).nullable().optional(),
+            execute: async (args: any) => {
                 try {
-                    logger.info("[AI-Tool] getWorkspaceProjects invoked", { workspaceId });
-                    if (!workspaceId) return { error: "Không tìm thấy Workspace ID trong bối cảnh." };
-                    const projects = await ProjectModel.find({ workspaceId, deletedAt: null }).select("name description _id").lean();
+                    const targetWorkspaceId = args?.workspaceId || workspaceId;
+                    logger.info("[AI-Tool] getWorkspaceProjects invoked", { workspaceId: targetWorkspaceId });
+                    if (!targetWorkspaceId) return { error: "Không tìm thấy Workspace ID." };
+                    const projects = await ProjectModel.find({ workspaceId: targetWorkspaceId, deletedAt: null }).select("name description _id").lean();
                     logger.info("[AI-Tool] getWorkspaceProjects result", { count: projects?.length });
                     return projects;
                 } catch (error: any) {
@@ -503,13 +565,16 @@ QUY TẮC VẬN HÀNH:
         },
         getProjectPhases: {
             description: "Lấy danh sách các giai đoạn (phase) của dự án hiện tại. Bạn CẦN gọi tool này để lấy phaseId trước khi tạo task.",
-            parameters: z.object({}).nullable().optional(),
-            execute: async () => {
+            parameters: z.object({
+                projectId: z.string().optional().describe("ID của dự án hiện tại. Lấy từ phần [Bối cảnh hệ thống] ở tin nhắn cuối cùng.")
+            }).nullable().optional(),
+            execute: async (args: any) => {
                 try {
-                    logger.info("[AI-Tool] getProjectPhases invoked", { projectId });
-                    if (!projectId) return { error: "Bạn cần phải chọn một dự án cụ thể trước khi xem các giai đoạn." };
-                    const phases = await PhaseModel.find({ projectId, deletedAt: null }).select("name _id color").lean();
-                    logger.info("[AI-Tool] getProjectPhases result", { count: phases?.length, projectId });
+                    const targetProjectId = args?.projectId || projectId;
+                    logger.info("[AI-Tool] getProjectPhases invoked", { projectId: targetProjectId });
+                    if (!targetProjectId) return { error: "Không tìm thấy Project ID." };
+                    const phases = await PhaseModel.find({ projectId: targetProjectId, deletedAt: null }).select("name _id color").lean();
+                    logger.info("[AI-Tool] getProjectPhases result", { count: phases?.length, projectId: targetProjectId });
                     return phases;
                 } catch (error: any) {
                     logger.error("[AI-Tool] Lỗi trong getProjectPhases", { error: error.message, stack: error.stack });
@@ -519,12 +584,15 @@ QUY TẮC VẬN HÀNH:
         },
         getWorkspaceMembers: {
             description: "Lấy danh sách thành viên trong Workspace để gán task (assignee).",
-            parameters: z.object({}).nullable().optional(),
-            execute: async () => {
+            parameters: z.object({
+                workspaceId: z.string().optional().describe("ID của Workspace hiện tại. Lấy từ phần [Bối cảnh hệ thống] ở tin nhắn cuối cùng.")
+            }).nullable().optional(),
+            execute: async (args: any) => {
                 try {
-                    logger.info("[AI-Tool] getWorkspaceMembers invoked", { workspaceId });
-                    if (!workspaceId) return { error: "Không tìm thấy Workspace ID." };
-                    const members = await MemberModel.find({ workspaceId, joined: { $ne: false } }).populate("userId", "name email").lean();
+                    const targetWorkspaceId = args?.workspaceId || workspaceId;
+                    logger.info("[AI-Tool] getWorkspaceMembers invoked", { workspaceId: targetWorkspaceId });
+                    if (!targetWorkspaceId) return { error: "Không tìm thấy Workspace ID." };
+                    const members = await MemberModel.find({ workspaceId: targetWorkspaceId, joined: { $ne: false } }).populate("userId", "name email").lean();
                     const result = members.map((m: any) => ({
                         memberId: m._id,
                         userId: m.userId?._id,
@@ -785,13 +853,16 @@ QUY TẮC VẬN HÀNH:
         },
         getProjectProgress: {
             description: "Lấy báo cáo tiến độ chi tiết của dự án hiện tại bao gồm tỷ lệ hoàn thành, thời gian còn lại, các công việc trễ hạn và khối lượng công việc của từng thành viên.",
-            parameters: z.object({}).nullable().optional(),
-            execute: async () => {
+            parameters: z.object({
+                projectId: z.string().optional().describe("ID của dự án hiện tại. Lấy từ phần [Bối cảnh hệ thống] ở tin nhắn cuối cùng.")
+            }).nullable().optional(),
+            execute: async (args: any) => {
                 try {
-                    logger.info("[AI-Tool] getProjectProgress invoked", { projectId });
-                    if (!projectId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước khi xem tiến độ." };
+                    const targetProjectId = args?.projectId || projectId;
+                    logger.info("[AI-Tool] getProjectProgress invoked", { projectId: targetProjectId });
+                    if (!targetProjectId) return { error: "⚠️ Lỗi ngữ cảnh: Không tìm thấy Project ID." };
 
-                    const project = await ProjectModel.findById(projectId);
+                    const project = await ProjectModel.findById(targetProjectId);
                     if (!project) return { error: "Dự án không tồn tại hoặc đã bị xóa." };
 
                     // 1. Tính toán thời gian
@@ -803,7 +874,7 @@ QUY TẮC VẬN HÀNH:
                     }
 
                     // 2. Lấy danh sách tasks của dự án (loại trừ đã xóa)
-                    const tasks = await TaskModel.find({ projectId, deletedAt: null }).lean();
+                    const tasks = await TaskModel.find({ projectId: targetProjectId, deletedAt: null }).lean();
                     const total = tasks.length;
 
                     if (total === 0) {
@@ -1001,6 +1072,9 @@ QUY TẮC VẬN HÀNH:
     let modelInstance: any;
     if (modelId === AI_MODELS.TOGETHER_LLAMA_3_3_70B) {
         modelInstance = togetherProvider(modelId);
+    } else if (OPENROUTER_MODEL_IDS.includes(modelId)) {
+        modelInstance = openRouterProvider(modelId);
+        logger.info("[AI-Agent] Sử dụng OpenRouter Provider", { modelId });
     } else {
         modelInstance = groqProvider(modelId || AI_MODELS.GROQ_LLAMA_3_3_70B);
     }
@@ -1009,7 +1083,7 @@ QUY TẮC VẬN HÀNH:
     return streamText({
         model: modelInstance,
         system: systemPrompt,
-        messages,
+        messages: processedMessages,
         tools,
         maxSteps: 10, // Cho phép Agent suy nghĩ và gọi tool tối đa 10 bước
         onStepFinish({ text, toolCalls, toolResults }: any) {

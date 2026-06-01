@@ -41,6 +41,7 @@ const envSchema = z.object({
     SLACK_WEBHOOK_URL: z.string().optional(),
     SLACK_SIGNING_SECRET: z.string().optional(),
     TOGETHER_API_KEY: z.string().optional(),
+    OPENROUTER_API_KEY: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);
