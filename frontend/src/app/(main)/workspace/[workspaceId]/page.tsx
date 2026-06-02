@@ -190,6 +190,13 @@ export default function WorkspaceDashboardPage() {
     enabled: !!workspaceId,
   });
 
+  // Fetch All Projects without time filter for Overdue Command Center
+  const { data: allWorkspaceProjectsData } = useQuery({
+    queryKey: ['workspace-projects-all-unfiltered', workspaceId],
+    queryFn: () => projectService.getProjectsByWorkspace(workspaceId, 1, 1000),
+    enabled: !!workspaceId,
+  });
+
   // Fetch Recent Tasks
   const { data: tasksData, isLoading: isTasksLoading } = useQuery({
     queryKey: ['workspace-tasks-overdue', workspaceId],
@@ -1424,7 +1431,7 @@ export default function WorkspaceDashboardPage() {
         onOpenChange={setIsOverdueCenterOpen}
         workspaceId={workspaceId}
         onTaskClick={handleTaskClick}
-        projects={projectsData?.projects || []}
+        projects={allWorkspaceProjectsData?.projects || []}
       />
     </div>
   );

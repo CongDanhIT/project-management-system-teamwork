@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { FloatingVideoCall } from "@/components/video-call/FloatingVideoCall";
 
 const manrope = Manrope({
   subsets: ["latin", "vietnamese"],
@@ -52,6 +53,7 @@ export default function RootLayout({
               },
             }}
           />
+          <FloatingVideoCall />
         </Providers>
       </body>
     </html>

@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useParams, usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
+import { useCallStore } from "@/stores/useCallStore";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -174,6 +175,28 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       });
       // Invalidate notifications query
       queryClient.invalidateQueries({ queryKey: ["notifications", data.workspaceId] });
+    });
+
+    // --- SPRINT 4: Video Call ---
+    socketInstance.on("call-started", (data) => {
+      console.log("[Socket] Signal: Call Started", data);
+      const currentUser = useAuthStore.getState().user;
+      if (data.startedBy?._id !== currentUser?.id) {
+         toast.info(`📞 Có cuộc gọi video nhóm từ ${data.startedBy?.name}. Hãy tham gia!`, {
+            duration: 10000,
+            action: {
+              label: 'Tham gia',
+              onClick: () => {
+                useCallStore.getState().startCall(data.roomName, data);
+              }
+            }
+         });
+      }
+    });
+
+    socketInstance.on("call-ended", () => {
+      console.log("[Socket] Signal: Call Ended");
+      useCallStore.getState().endCall();
     });
 
     setSocket(socketInstance);

@@ -37,6 +37,7 @@ import { initSocket } from './config/socket';
 import { initExternalListeners } from './listeners/external.listener';
 import { initWorkflowListeners } from './listeners/workflow.listener';
 import workflowRoutes from './routes/workflow.routes';
+import personalNoteRoutes from './routes/personal-note.route';
 
 dotenv.config();
 
@@ -128,6 +129,7 @@ const startServer = async () => {
         app.use(`${BASE_PATH}/asset`, isAuthenticated, assetRoutes); // 🚀 Quản lý tài nguyên & R2
         app.use(`${BASE_PATH}/analytics`, isAuthenticated, analyticsRoutes); // 🚀 Báo cáo chuyên sâu
         app.use(`${BASE_PATH}/workflow`, isAuthenticated, workflowRoutes); // 🚀 Automation Workflow
+        app.use(`${BASE_PATH}/personal-note`, isAuthenticated, personalNoteRoutes); // 📝 Ghi chú cá nhân
         logger.info(">>> INTERACTION ROUTES LOADED <<<");
 
         // Catch-all 404: Bắt các request không khớp bất kỳ route nào

@@ -8,6 +8,11 @@ export interface WorkspaceDocument extends mongoose.Document {
     inviteCode: string;
     slackWebhookUrl?: string | null;
     dailyDigestEnabled: boolean;
+    activeCall?: {
+        roomName: string;
+        startedBy: mongoose.Types.ObjectId;
+        startTime: Date;
+    } | null;
     createdAt: Date;
     updatedAt: Date;
     resetInviteCode(): void;
@@ -35,6 +40,15 @@ const workspaceSchema = new Schema<WorkspaceDocument>({
     dailyDigestEnabled: {
         type: Boolean,
         default: true
+    },
+    activeCall: {
+        type: {
+            roomName: { type: String, required: true },
+            startedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+            startTime: { type: Date, default: Date.now }
+        },
+        default: null,
+        required: false
     },
 },
     {

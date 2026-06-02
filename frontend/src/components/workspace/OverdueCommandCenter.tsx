@@ -168,9 +168,13 @@ export function OverdueCommandCenter({
                 <div className="relative z-[9999]">
                   <Select value={projectFilter} onValueChange={(val) => val && setProjectFilter(val)}>
                     <SelectTrigger className="w-[150px] md:w-[180px] h-10 bg-white dark:bg-white/5 border-none rounded-xl focus:ring-teal-500/30 font-bold text-[10px] uppercase tracking-wider text-slate-600 dark:text-slate-300 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <Layout className="w-3.5 h-3.5 text-brand-primary" />
-                        <SelectValue placeholder="Dự án" />
+                      <div className="flex items-center gap-2 w-full min-w-0">
+                        <Layout className="w-3.5 h-3.5 text-brand-primary shrink-0" />
+                        <span className="flex-1 text-left truncate">
+                          {projectFilter === 'all' 
+                            ? 'Tất cả dự án' 
+                            : projects.find((p) => String(p._id) === projectFilter)?.name || 'Dự án'}
+                        </span>
                       </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-depth-4 bg-white dark:bg-[#1C2322] p-2 z-[9999]">
@@ -190,9 +194,15 @@ export function OverdueCommandCenter({
                 <div className="relative z-[9999]">
                   <Select value={priorityFilter} onValueChange={(val) => val && setPriorityFilter(val)}>
                     <SelectTrigger className="w-[130px] md:w-[160px] h-10 bg-white dark:bg-white/5 border-none rounded-xl focus:ring-teal-500/30 font-bold text-[10px] uppercase tracking-wider text-slate-600 dark:text-slate-300 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <Filter className="w-3.5 h-3.5 text-amber-500" />
-                        <SelectValue placeholder="Ưu tiên" />
+                      <div className="flex items-center gap-2 w-full min-w-0">
+                        <Filter className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="flex-1 text-left truncate">
+                          {priorityFilter === 'all' ? 'Mọi mức độ' :
+                           priorityFilter === 'URGENT' ? 'Khẩn cấp' :
+                           priorityFilter === 'HIGH' ? 'Mức độ Cao' :
+                           priorityFilter === 'MEDIUM' ? 'Trung bình' :
+                           priorityFilter === 'LOW' ? 'Mức độ Thấp' : 'Ưu tiên'}
+                        </span>
                       </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-depth-4 bg-white dark:bg-[#1C2322] p-2 z-[9999]">
@@ -211,9 +221,13 @@ export function OverdueCommandCenter({
                 <div className="relative z-[9999]">
                   <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
                     <SelectTrigger className="w-[130px] md:w-[160px] h-10 bg-white dark:bg-white/5 border-none rounded-xl focus:ring-teal-500/30 font-bold text-[10px] uppercase tracking-wider text-slate-600 dark:text-slate-300 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-red-500" />
-                        <SelectValue placeholder="Sắp xếp" />
+                      <div className="flex items-center gap-2 w-full min-w-0">
+                        <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                        <span className="flex-1 text-left truncate">
+                          {sortBy === 'date-desc' ? 'Trễ nhất' :
+                           sortBy === 'date-asc' ? 'Mới nhất' :
+                           sortBy === 'priority' ? 'Độ ưu tiên' : 'Sắp xếp'}
+                        </span>
                       </div>
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-depth-4 bg-white dark:bg-[#1C2322] p-2 z-[9999]">

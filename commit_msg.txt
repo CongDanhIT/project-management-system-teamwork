@@ -1,10 +1,10 @@
-feat(automation): tích hợp hệ thống tự động hóa và nâng cấp AI chatbot v2
+feat(workspace): tích hợp tính năng Video Call và tính năng bộ lọc dự án cho Roadmap
 
-- Backend (Automation & AI Agent V2):
-  * Thêm Models, Controllers, Routes, Listeners cho động cơ tự động hóa (Workflow Engine).
-  * Nâng cấp AI Service và AI Controller lên phiên bản V2 hỗ trợ Multi-steps Tool Calling.
-  * Cập nhật các service (Project, Task, Explorer) phục vụ tương tác của AI Agent.
-- Frontend (Giao diện & Tính năng mới):
-  * Thêm màn hình quản lý Automation và xây dựng các Component tương ứng.
-  * Nâng cấp AI Chat Sidebar V2 cho phép giao tiếp thời gian thực mượt mà.
-  * Cập nhật Workspace Dashboard, Kanban Board, Calendar, Newsfeed, Members và Settings để đồng bộ trạng thái.
+- Thêm Component `FloatingVideoCall` tích hợp `@jitsi/react-sdk` cho phép họp video nhóm Ad-hoc dạng Popup nổi.
+- Bổ sung `useCallStore` (Zustand) để quản lý state đóng/mở/resize của cửa sổ video.
+- Mở rộng Model `Workspace` để lưu trữ thông tin phòng gọi `activeCall`.
+- Cấu hình Socket.io (`SocketProvider`) nhận tín hiệu và thông báo real-time khi có cuộc gọi mới.
+- Xây dựng cụm APIs `startCall` và `endCall` trong `workspace.service` hỗ trợ tính năng Join lại phòng cũ khi vô tình đóng thông báo.
+- Nâng cấp Roadmap: Tích hợp chức năng Select Box để lọc nhanh công việc của từng dự án độc lập, giảm tải giao diện.
+- Bổ sung UI/UX cho Window Drag (React-rnd) với Custom Resize indicator.
+- Bổ sung luồng API cho Personal Note (Notes Module).

@@ -142,7 +142,9 @@ export default function Sidebar() {
               { label: 'Dự án', icon: FolderKanban, href: `/workspace/${workspaceId}/projects`, hasDropdown: true },
               { label: 'Tài liệu', icon: Files, href: `/workspace/${workspaceId}/documents` },
               { label: 'Công việc của tôi', icon: CheckSquare, href: `/workspace/${workspaceId}/tasks` },
-              { label: 'Tự động hóa', icon: Zap, href: `/workspace/${workspaceId}/automation` },
+              ...(workspaceId && isAdminOrOwner ? [
+                { label: 'Tự động hóa', icon: Zap, href: `/workspace/${workspaceId}/automation` }
+              ] : []),
             ]
           },
           {

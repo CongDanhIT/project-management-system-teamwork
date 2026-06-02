@@ -9,10 +9,13 @@ import {
   UserPlus,
   Building2,
   CheckSquare,
-  Inbox
+  Inbox,
+  Video
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/stores/ui.store';
+import { useCallStore } from '@/stores/useCallStore';
+import { workspaceService } from '@/services/workspace.service';
 import { projectService } from '@/services/project.service';
 import { taskService } from '@/services/task.service';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
@@ -92,6 +95,23 @@ export default function Header() {
   };
 
   const { isInboxSidebarOpen, toggleInboxSidebar } = useUiStore();
+  const { startCall, isCallActive, toggleWindow } = useCallStore();
+
+  const handleStartCall = async () => {
+    if (isCallActive) {
+      toggleWindow();
+      return;
+    }
+    try {
+      if (!workspaceId) return;
+      const res = await workspaceService.startVideoCall(workspaceId as string);
+      if (res.activeCall) {
+        startCall(res.activeCall.roomName, res.activeCall);
+      }
+    } catch (err) {
+      toast.error("Không thể khởi tạo cuộc gọi video.");
+    }
+  };
 
   return (
     <header className="h-20 bg-background/40 dark:bg-background/40 backdrop-blur-[20px] sticky top-0 z-40 flex items-center justify-between px-12 border-b border-border transition-all duration-300">
@@ -114,6 +134,24 @@ export default function Header() {
         </Button>
 
         {workspaceId && <NotificationCenter workspaceId={workspaceId} />}
+
+        {workspaceId && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleStartCall}
+            className={cn(
+              "group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11 transition-all duration-300",
+              isCallActive && "bg-brand-primary/10 text-brand-primary"
+            )}
+            title="Video Call"
+          >
+            <Video className="w-6 h-6 group-hover:text-brand-primary" />
+            {isCallActive && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white animate-pulse"></span>
+            )}
+          </Button>
+        )}
 
         <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
           <HelpCircle className="w-6 h-6 group-hover:text-brand-primary" />

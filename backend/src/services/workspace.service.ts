@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import logger from "../utils/logger";
+import { getIO } from "../config/socket";
+import { generateInviteCode } from "../utils/uuid";
 
 import { RoleEnum } from "../enums/role.enum";
 import MemberModel from "../models/member.model";
@@ -996,4 +998,52 @@ export const triggerEmailTestService = async (userId: string) => {
     await EmailService.sendDailyDigest(userId, true);
     
     return { success: true, message: "Đã gửi Email thành công" };
+};
+
+// [AI-ADDED] Bắt đầu cuộc gọi Video nội bộ Workspace
+export const startVideoCallService = async (workspaceId: string, userId: string) => {
+    const workspace = await WorkspaceModel.findById(workspaceId).populate("activeCall.startedBy", "name profilePicture");
+    if (!workspace) throw new NotFoundException("Không tìm thấy workspace");
+
+    // Nếu cuộc gọi CHƯA diễn ra thì tạo mới
+    if (!workspace.activeCall || !workspace.activeCall.roomName) {
+        const roomName = `teamflow-call-${generateInviteCode()}`;
+        
+        workspace.activeCall = {
+            roomName,
+            startedBy: new mongoose.Types.ObjectId(userId),
+            startTime: new Date()
+        };
+        await workspace.save();
+        await workspace.populate("activeCall.startedBy", "name profilePicture");
+    }
+
+    // Luôn phát socket cho toàn bộ workspace (Đóng vai trò "Ring/Nhắc nhở" kể cả phòng cũ)
+    try {
+        const io = getIO();
+        io.to(workspaceId.toString()).emit("call-started", workspace.activeCall);
+    } catch (e) {
+        logger.error("Không thể gửi Socket (call-started)", e);
+    }
+
+    return workspace.activeCall;
+};
+
+// [AI-ADDED] Kết thúc cuộc gọi Video nội bộ Workspace
+export const endVideoCallService = async (workspaceId: string) => {
+    const workspace = await WorkspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException("Không tìm thấy workspace");
+
+    workspace.activeCall = null;
+    await workspace.save();
+
+    // Phát socket cho toàn bộ workspace
+    try {
+        const io = getIO();
+        io.to(workspaceId.toString()).emit("call-ended");
+    } catch (e) {
+        logger.error("Không thể gửi Socket (call-ended)", e);
+    }
+
+    return true;
 };

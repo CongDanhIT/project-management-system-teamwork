@@ -19,6 +19,8 @@ import {
     leaveWorkspaceService,
     triggerSlackTestService,
     triggerEmailTestService,
+    startVideoCallService,
+    endVideoCallService,
 } from "../services/workspace.service";
 import { getDashboardTimeFilterMatch } from "../utils/date";
 import { roleGuard } from "../utils/roleGuard";
@@ -305,6 +307,42 @@ export const leaveWorkspaceController = asyncHandler(
             success: true,
             message: "Rời khỏi workspace thành công",
             currentWorkspace
+        });
+    }
+);
+
+// [AI-ADDED] Video Call Controllers
+export const startVideoCallController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(getRole.name, [Permissions.VIEW_ONLY]);
+
+        const activeCall = await startVideoCallService(workspaceId, userId);
+        
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Đã bắt đầu cuộc gọi video",
+            activeCall
+        });
+    }
+);
+
+export const endVideoCallController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id;
+
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(getRole.name, [Permissions.VIEW_ONLY]);
+
+        await endVideoCallService(workspaceId);
+        
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Đã kết thúc cuộc gọi video"
         });
     }
 );

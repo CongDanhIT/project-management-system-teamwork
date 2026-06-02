@@ -42,15 +42,27 @@ export const chatV2Controller = asyncHandler(
         }
 
         // 2. Tinh giản kết quả Tool cũ (Tool Call & Result Pruning):
-        // Chỉ giữ lại toolInvocations cho tin nhắn cuối cùng (nếu có) để tránh lặp lại dữ liệu JSON thô khổng lồ của các tool cũ.
+        // Chỉ giữ lại toolInvocations cho tin nhắn cuối cùng để tránh lặp lại dữ liệu JSON thô khổng lồ của các tool cũ.
+        // NHƯNG không được xóa thuộc tính toolInvocations (nếu có) vì AI Provider cần history đúng chuẩn. Thay vào đó xóa payload của result.
         const sanitizedMessages = prunedMessages.map((m: any, index: number) => {
             const isLastMessage = index === prunedMessages.length - 1;
-            const hasToolInvocations = !!m.toolInvocations;
+
+            if (m.toolInvocations && !isLastMessage) {
+                // Tinh giản result để tiết kiệm token
+                const prunedInvocations = m.toolInvocations.map((t: any) => ({
+                    ...t,
+                    result: { _pruned: true, message: "Data pruned to save context window" } // Trả về object thay vì string
+                }));
+                return {
+                    ...m,
+                    content: m.content || "",
+                    toolInvocations: prunedInvocations
+                };
+            }
 
             return {
-                role: m.role,
-                content: m.content || "",
-                ...(isLastMessage && hasToolInvocations ? { toolInvocations: m.toolInvocations } : {})
+                ...m,
+                content: m.content || ""
             };
         });
 
@@ -68,29 +80,10 @@ export const chatV2Controller = asyncHandler(
                 userId: userId || "",
                 workspaceId: workspaceId?.toString(),
                 projectId: projectId?.toString(),
-                phaseId: context.phaseId?.toString(),
+                phaseId: context?.phaseId?.toString(),
                 modelId
             });
 
-            // Tránh Unhandled Promise Rejection từ các Promise ngầm của Vercel AI SDK
-            Promise.resolve(result.text).catch((err: any) => {
-                logger.error("[AI-V2-Controller] Bắt được lỗi từ result.text Promise", {
-                    message: err?.message || String(err),
-                    stack: err?.stack
-                });
-            });
-
-            if (result.response) {
-                Promise.resolve(result.response).catch((err: any) => {
-                    logger.error("[AI-V2-Controller] Bắt được lỗi từ result.response Promise", {
-                        message: err?.message || String(err),
-                        stack: err?.stack
-                    });
-                });
-            }
-
-            // Ghi nhận phản hồi stream vào response Express
-            // pipeDataStreamToResponse là method trực tiếp trên StreamTextResult (ai v4.1)
             (result as any).pipeDataStreamToResponse(res, {
                 onError: (error: any) => {
                     logger.error("[AI-V2-Controller] Lỗi trong quá trình stream response", {

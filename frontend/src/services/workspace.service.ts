@@ -148,6 +148,16 @@ export const workspaceService = {
     return response.data;
   },
 
+  startVideoCall: async (workspaceId: string) => {
+    const response = await api.post(`/workspace/${workspaceId}/call/start`);
+    return response.data;
+  },
+
+  endVideoCall: async (workspaceId: string) => {
+    const response = await api.post(`/workspace/${workspaceId}/call/end`);
+    return response.data;
+  },
+
   triggerEmailTest: async () => {
     const response = await api.post(`/workspace/trigger-email-test`);
     return response.data;

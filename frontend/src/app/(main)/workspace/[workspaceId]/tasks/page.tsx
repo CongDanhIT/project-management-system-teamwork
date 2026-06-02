@@ -8,7 +8,7 @@ import { projectService } from '@/services/project.service';
 import { PhaseService } from '@/services/phase.service';
 import { TaskRow } from '@/components/task/TaskRow';
 import { TaskFilters } from '@/components/task/TaskFilters';
-import { Loader2, Inbox, Plus, TrendingUp, Clock, Zap } from 'lucide-react';
+import { Loader2, Inbox, Plus, TrendingUp, Clock, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import Loader from "@/components/ui/Loader";
 import { Button } from '@/components/ui/button';
 import { Task, TaskStatus } from '@/types/task';
@@ -59,6 +59,7 @@ export default function TaskListPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedFeaturedProjectId, setSelectedFeaturedProjectId] = useState<string | null>(null);
+  const [activeTaskPageIndex, setActiveTaskPageIndex] = useState(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ['workspace-tasks-list', workspaceId, filters],
@@ -371,8 +372,13 @@ export default function TaskListPage() {
     }
   }
 
+  // Reset trang về 0 khi đổi project hoặc số lượng task đang hoạt động thay đổi
+  useEffect(() => {
+    setActiveTaskPageIndex(0);
+  }, [featuredProject?._id, myActiveTasksInFeaturedProject.length]);
+
   // 3. Ô 3: Lấy tối đa 2 active tasks
-  const topActiveTasks = myActiveTasksInFeaturedProject.slice(0, 2);
+  const topActiveTasks = myActiveTasksInFeaturedProject.slice(activeTaskPageIndex * 2, activeTaskPageIndex * 2 + 2);
 
   // Danh sách công việc trễ hạn (của tôi)
   const overdueTasks = myTasksInFeaturedProject.filter((t: Task) => {
@@ -584,7 +590,35 @@ export default function TaskListPage() {
 
         {/* Khối bên phải dòng 2 (1 khối lớn, 4 cột) */}
         <div className="md:col-span-4 md:row-span-1 bg-white/70 dark:bg-[#071613]/80 backdrop-blur-[16px] rounded-[48px] p-8 flex flex-col justify-between shadow-[0_40px_60px_-10px_rgba(0,68,66,0.04),0_0_2px_rgba(0,68,66,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none min-h-[160px]">
-          <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] block mb-4 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-rose-500" />Công việc đang làm</span>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[#3F4948] dark:text-[#A8EFEC] font-bold text-[11px] uppercase tracking-[0.2em] flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-rose-500" />
+              Công việc đang làm
+            </span>
+            {myActiveTasksInFeaturedProject.length > 2 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveTaskPageIndex(prev => Math.max(0, prev - 1))}
+                  disabled={activeTaskPageIndex === 0}
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-transparent dark:border-none"
+                  title="Trước đó"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-650 dark:text-slate-350" />
+                </button>
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 min-w-[32px] text-center">
+                  {activeTaskPageIndex + 1} / {Math.ceil(myActiveTasksInFeaturedProject.length / 2)}
+                </span>
+                <button
+                  onClick={() => setActiveTaskPageIndex(prev => Math.min(Math.ceil(myActiveTasksInFeaturedProject.length / 2) - 1, prev + 1))}
+                  disabled={activeTaskPageIndex >= Math.ceil(myActiveTasksInFeaturedProject.length / 2) - 1}
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-transparent dark:border-none"
+                  title="Tiếp theo"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-650 dark:text-slate-350" />
+                </button>
+              </div>
+            )}
+          </div>
           
           <div className="flex-1 grid grid-cols-2 gap-4 items-center">
             {topActiveTasks.length > 0 ? (

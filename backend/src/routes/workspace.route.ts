@@ -15,6 +15,8 @@ import {
     triggerSlackTestController,
     triggerEmailTestController,
     leaveWorkspaceController,
+    startVideoCallController,
+    endVideoCallController,
 } from "../controllers/workspace.controller";
 import { getWorkspaceRoadmapController } from "../controllers/roadmap.controller";
 import { getWorkspaceExplorerController } from "../controllers/explorer.controller";
@@ -57,5 +59,8 @@ workspaceRoutes.post("/:id/leave", leaveWorkspaceController);
 workspaceRoutes.post("/:id/trigger-slack-test", triggerSlackTestController);
 workspaceRoutes.post("/trigger-email-test", triggerEmailTestController);
 
+// [AI-ADDED] Tính năng Video Call
+workspaceRoutes.post("/:id/call/start", startVideoCallController);
+workspaceRoutes.post("/:id/call/end", endVideoCallController);
 
 export default workspaceRoutes;

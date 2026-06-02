@@ -471,7 +471,7 @@ export const streamAgentChatService = async ({
 
     // Tạo bản sao sâu (deep copy) của messages để tránh thay đổi trực tiếp tin nhắn hiển thị ở Frontend
     let processedMessages = JSON.parse(JSON.stringify(messages));
-    
+
     // Nếu sử dụng Together AI, tự động append System Context và TINH GIẢN chỉ gửi 1 tin nhắn cuối để tránh crash API do lịch sử tin nhắn
     if (modelId === AI_MODELS.TOGETHER_LLAMA_3_3_70B && processedMessages.length > 0) {
         const lastMessage = processedMessages[processedMessages.length - 1];
@@ -529,7 +529,9 @@ BỐI CẢNH HIỆN TẠI:
 1. Nếu người dùng yêu cầu một chức năng mà bộ Tools hiện tại không hỗ trợ (ví dụ: xóa dự án, thay đổi mật khẩu): Hãy lịch sự thông báo rằng "Tính năng này hiện chưa được hỗ trợ thông qua AI Agent, vui lòng thực hiện trực tiếp trong phần cài đặt".
 2. Nếu người dùng thiếu thông tin đầu vào bắt buộc (ví dụ: yêu cầu tạo task nhưng không nói tiêu đề): Hãy yêu cầu họ cung cấp thông tin đó một cách rõ ràng.
 3. Nếu chưa có Workspace hoặc Project ID trong bối cảnh: LUÔN LUÔN nhắc người dùng "Bạn cần chọn một Dự án cụ thể trước khi thực hiện hành động này".
-4. Đối với các yêu cầu thay đổi (Update), tạo mới hoặc tra cứu mà thiếu ID (như phaseId, projectId, taskId/taskCode) nhưng người dùng có nhắc đến tên: LUÔN LUÔN gọi các công cụ tìm kiếm tương ứng (\`searchProjectsByName\`, \`searchPhasesByName\`, \`searchTasksByName\`) để lấy chính xác ID/Mã tương ứng trước khi tiến hành bước tiếp theo.
+4. Đối với các yêu cầu cập nhật (Update) hoặc tra cứu:
+   - Nếu người dùng cung cấp **MÃ công việc / mã task** trực tiếp (ví dụ: "M-14", "TSK-5", "task M-14"): Bạn **BẮT BUỘC gọi trực tiếp** tool "updateTask" (hoặc "getTasksList" để tra cứu) bằng cách truyền mã đó vào tham số "taskCode" của tool. **TUYỆT ĐỐI KHÔNG** được gọi tool tìm kiếm "searchTasksByName" trước để tránh lãng phí bước xử lý (redundant tool calls).
+   - Nếu người dùng chỉ cung cấp **TÊN công việc** bằng chữ (ví dụ: "cập nhật task Viết Unit Test", "tìm task Fix bug màn hình Home") mà không có mã cụ thể: Lúc này mới gọi tool "searchTasksByName" để tìm kiếm lấy "taskCode" hoặc "taskId" trước, sau đó mới thực hiện cập nhật.
 5. Nếu sau khi gọi các công cụ tìm kiếm mà vẫn không tìm thấy thông tin hoặc có nhiều kết quả trùng tên gây mơ hồ: Báo lại cho người dùng để yêu cầu làm rõ, tuyệt đối KHÔNG được tự ý đoán bừa ID hoặc nhập thiếu thông tin gây ra lỗi dữ liệu ma (Data integrity).
 
 QUY TẮC VẬN HÀNH:
@@ -608,29 +610,103 @@ QUY TẮC VẬN HÀNH:
             }
         },
         getTasksList: {
-            description: "Lấy danh sách công việc. Hỗ trợ lọc theo phaseId, status, người được gán (assignedTo) hoặc mã công việc (taskCode).",
+            description: "Lấy danh sách công việc. Hỗ trợ lọc linh hoạt theo phaseId, status, người được gán (assignedTo), mã công việc (taskCode), mức độ ưu tiên (priority), tìm kiếm theo tiêu đề (title), hoặc lọc theo khoảng thời gian của hạn chót và ngày tạo. Chỉ cần truyền 1 hoặc nhiều tham số bất kỳ để tìm kiếm.",
             parameters: z.object({
                 phaseId: z.string().optional().describe("ID giai đoạn để lọc."),
                 status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...)."),
                 assignedTo: z.string().optional().describe("ID của thành viên được gán để lọc (userId - lấy từ getWorkspaceMembers)."),
-                taskCode: z.string().optional().describe("Mã công việc để tìm kiếm chính xác (VD: PROJ-1).")
+                taskCode: z.string().optional().describe("Mã công việc để tìm kiếm chính xác (VD: PROJ-1)."),
+                priority: z.string().optional().describe("Mức độ ưu tiên để lọc (LOW, MEDIUM, HIGH, hoặc 'Cao', 'Thấp', 'Trung bình')."),
+                title: z.string().optional().describe("Tiêu đề hoặc từ khóa trong tiêu đề công việc để tìm kiếm mờ (VD: 'API', 'UI')."),
+                dueDateFrom: z.string().optional().describe("Hạn chót công việc từ ngày (định dạng YYYY-MM-DD hoặc ISO)."),
+                dueDateTo: z.string().optional().describe("Hạn chót công việc đến ngày (định dạng YYYY-MM-DD hoặc ISO)."),
+                createdFrom: z.string().optional().describe("Ngày tạo công việc từ ngày (định dạng YYYY-MM-DD hoặc ISO)."),
+                createdTo: z.string().optional().describe("Ngày tạo công việc đến ngày (định dạng YYYY-MM-DD hoặc ISO).")
             }),
-            execute: async ({ phaseId, status, assignedTo, taskCode }: any) => {
+            execute: async ({
+                phaseId,
+                status,
+                assignedTo,
+                taskCode,
+                priority,
+                title,
+                dueDateFrom,
+                dueDateTo,
+                createdFrom,
+                createdTo
+            }: any) => {
                 try {
-                    logger.info("[AI-Tool] getTasksList invoked", { projectId, phaseId, status, assignedTo });
+                    logger.info("[AI-Tool] getTasksList invoked", {
+                        projectId, phaseId, status, assignedTo, taskCode, priority, title,
+                        dueDateFrom, dueDateTo, createdFrom, createdTo
+                    });
                     if (!projectId) return { error: "⚠️ Hiện tại bạn chưa chọn dự án cụ thể. Vui lòng chọn một dự án để tôi có thể liệt kê công việc." };
 
                     const query: any = { projectId, deletedAt: null };
                     if (phaseId) query.phaseId = phaseId;
-                    if (status) query.status = status;
+
+                    if (status) {
+                        const s = String(status).toUpperCase().trim();
+                        if (["TODO", "IN_PROGRESS", "INREVIEW", "DONE", "COMPLETED"].includes(s)) {
+                            query.status = s === "COMPLETED" ? "DONE" : s;
+                        } else if (s.includes("ĐANG LÀM") || s.includes("DANG LAM") || s.includes("IN PROGRESS")) {
+                            query.status = "IN_PROGRESS";
+                        } else if (s.includes("ĐANG DUYỆT") || s.includes("DANG DUYET") || s.includes("REVIEW")) {
+                            query.status = "INREVIEW";
+                        } else if (s.includes("HOÀN THÀNH") || s.includes("HOAN THANH") || s.includes("XONG")) {
+                            query.status = "DONE";
+                        } else {
+                            query.status = status;
+                        }
+                    }
+
                     if (assignedTo) {
                         if (assignedTo.length === 24) query.assignedTo = assignedTo;
                         else return { error: "assignedTo không hợp lệ. Vui lòng gọi getWorkspaceMembers để lấy ID thật." };
                     }
                     if (taskCode) query.taskCode = { $regex: taskCode, $options: "i" };
 
+                    if (priority) {
+                        const p = String(priority).toUpperCase().trim();
+                        if (["LOW", "MEDIUM", "HIGH"].includes(p)) {
+                            query.priority = p;
+                        } else if (p === "THẤP" || p === "THAP") {
+                            query.priority = "LOW";
+                        } else if (p === "CAO") {
+                            query.priority = "HIGH";
+                        } else if (p === "TRUNG BÌNH" || p === "TRUNG BINH") {
+                            query.priority = "MEDIUM";
+                        }
+                    }
+
+                    if (title) {
+                        query.title = { $regex: title, $options: "i" };
+                    }
+
+                    if (dueDateFrom || dueDateTo) {
+                        const dateQuery: any = {};
+                        if (dueDateFrom) dateQuery.$gte = new Date(dueDateFrom);
+                        if (dueDateTo) {
+                            const endOfTo = new Date(dueDateTo);
+                            endOfTo.setHours(23, 59, 59, 999);
+                            dateQuery.$lte = endOfTo;
+                        }
+                        query.dueDate = dateQuery;
+                    }
+
+                    if (createdFrom || createdTo) {
+                        const dateQuery: any = {};
+                        if (createdFrom) dateQuery.$gte = new Date(createdFrom);
+                        if (createdTo) {
+                            const endOfTo = new Date(createdTo);
+                            endOfTo.setHours(23, 59, 59, 999);
+                            dateQuery.$lte = endOfTo;
+                        }
+                        query.createdAt = dateQuery;
+                    }
+
                     const tasks = await TaskModel.find(query)
-                        .select("title status priority dueDate taskCode assignedTo")
+                        .select("title status priority dueDate taskCode assignedTo createdAt")
                         .populate("assignedTo", "name")
                         .limit(30)
                         .sort({ updatedAt: -1 })
@@ -656,7 +732,8 @@ QUY TẮC VẬN HÀNH:
                     assignedTo: z.string().optional().describe("ID của người được gán (userId lấy từ getWorkspaceMembers). Tuyệt đối KHÔNG truyền tên người vào đây, BẮT BUỘC phải truyền ObjectId 24 ký tự."),
                     priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH'). Nếu dùng tiếng Việt hãy tự dịch sang 3 từ này."),
                     status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
-                    dueDate: z.string().optional().describe("Hạn chót (ISO date).")
+                    startDate: z.string().optional().describe("Ngày bắt đầu (ISO date)."),
+                    dueDate: z.string().optional().describe("Hạn chót/Ngày kết thúc (ISO date).")
                 })).describe("Danh sách các công việc cần tạo. Luôn truyền dạng mảng kể cả khi chỉ tạo 1 công việc.")
             }),
             execute: async ({ tasks }: { tasks: any[] }) => {
@@ -720,6 +797,7 @@ QUY TẮC VẬN HÀNH:
                             phaseId: taskData.phaseId,
                             priority: finalPriority,
                             status: finalStatus,
+                            startDate: taskData.startDate,
                             dueDate: taskData.dueDate,
                             taskCode,
                             projectId,
@@ -755,19 +833,19 @@ QUY TẮC VẬN HÀNH:
             }
         },
         updateTask: {
-            description: "Cập nhật thông tin cho một hoặc nhiều công việc cùng lúc. BẮT BUỘC phải truyền danh sách các công việc cần cập nhật dưới dạng mảng (tasks). Mỗi phần tử phải chứa định danh (taskId hoặc taskCode) và các thông tin cần thay đổi (updates).",
+            description: "Cập nhật thông tin cho một hoặc nhiều công việc cùng lúc. BẮT BUỘC phải truyền danh sách các công việc cần cập nhật dưới dạng mảng (tasks). Mỗi phần tử phải chứa định danh (taskId hoặc taskCode) và các thông tin cần thay đổi trực tiếp (ví dụ: status, priority, title,...).",
             parameters: z.object({
                 tasks: z.array(z.object({
                     taskId: z.string().optional().describe("ID của task."),
                     taskCode: z.string().optional().describe("Mã công việc (ví dụ: PRO-1)."),
-                    updates: z.object({
-                        title: z.string().optional(),
-                        status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
-                        priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH')."),
-                        assignedTo: z.string().optional().describe("ID người được gán (userId). Tuyệt đối KHÔNG truyền tên, BẮT BUỘC phải là chuỗi ID."),
-                        phaseId: z.string().optional(),
-                        description: z.string().optional()
-                    })
+                    title: z.string().optional().describe("Tiêu đề mới."),
+                    status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
+                    priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH')."),
+                    assignedTo: z.string().optional().describe("ID người được gán (userId). Tuyệt đối KHÔNG truyền tên, BẮT BUỘC phải là chuỗi ID."),
+                    phaseId: z.string().optional().describe("ID giai đoạn mới."),
+                    description: z.string().optional().describe("Mô tả mới."),
+                    startDate: z.string().optional().describe("Ngày bắt đầu (ISO date format YYYY-MM-DD)."),
+                    dueDate: z.string().optional().describe("Hạn chót/Ngày kết thúc (ISO date format YYYY-MM-DD).")
                 })).describe("Danh sách các công việc cần cập nhật. Luôn truyền dạng mảng kể cả khi chỉ cập nhật 1 công việc.")
             }),
             execute: async ({ tasks }: { tasks: any[] }) => {
@@ -780,7 +858,7 @@ QUY TẮC VẬN HÀNH:
 
                     const updatedTasksInfo = [];
                     for (const item of tasks) {
-                        const { taskId, taskCode, updates } = item;
+                        const { taskId, taskCode, ...updates } = item;
                         if (!taskId && !taskCode) {
                             updatedTasksInfo.push({ success: false, error: "Thiếu thông tin định danh (taskId hoặc taskCode)." });
                             continue;
@@ -825,6 +903,14 @@ QUY TẮC VẬN HÀNH:
                             else delete updatePayload.status;
 
                             if (updatePayload.status === "COMPLETED") updatePayload.status = "DONE";
+                        }
+                        
+                        if (updates.startDate) {
+                            updatePayload.startDate = new Date(updates.startDate);
+                        }
+                        
+                        if (updates.dueDate) {
+                            updatePayload.dueDate = new Date(updates.dueDate);
                         }
 
                         const task = await TaskModel.findOneAndUpdate(query, { $set: updatePayload }, { new: true });
@@ -1050,7 +1136,7 @@ QUY TẮC VẬN HÀNH:
                 try {
                     const searchStr = title || name;
                     if (!searchStr) return { error: "Vui lòng cung cấp title hoặc name để tìm kiếm." };
-                    
+
                     logger.info("[AI-Tool] searchTasksByName invoked", { projectId, searchStr });
                     if (!projectId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước." };
                     const tasks = await TaskModel.find({
@@ -1098,7 +1184,7 @@ QUY TẮC VẬN HÀNH:
             try {
                 if (error instanceof Error) errorMsg = error.message;
                 else if (typeof error === 'object') errorMsg = JSON.stringify(error, Object.getOwnPropertyNames(error));
-            } catch (e) {}
+            } catch (e) { }
 
             logger.error("[AI-Agent-Stream] Lỗi phát sinh trong quá trình stream", {
                 error: errorMsg,

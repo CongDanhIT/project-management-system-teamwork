@@ -23,6 +23,8 @@ import { toast } from 'sonner';
 import { AiAgentContext } from '@/services/ai.service';
 import { useParams } from 'next/navigation';
 
+import { useQueryClient } from '@tanstack/react-query';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const TOOL_NAME_MAP: Record<string, string> = {
@@ -42,6 +44,7 @@ interface AiChatSidebarV2Props {
 
 export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClose, context = {} }) => {
   const [selectedModel, setSelectedModel] = React.useState('google/gemma-4-31b-it:free');
+  const queryClient = useQueryClient();
 
   const MODELS = [
     { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3', provider: 'Groq' },
@@ -92,6 +95,40 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
       console.log('[AiChatV2] Hoàn tất phản hồi:', message.id);
     }
   });
+
+  // Track tool calls we have already refreshed for to prevent infinite refreshes
+  const processedToolCalls = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage.toolInvocations) return;
+    
+    let shouldRefresh = false;
+    
+    lastMessage.toolInvocations.forEach(tool => {
+      // Chỉ làm mới khi tool đã hoàn thành (state === 'result')
+      if ((tool.toolName === 'createTask' || tool.toolName === 'updateTask') && tool.state === 'result') {
+        if (!processedToolCalls.current.has(tool.toolCallId)) {
+          processedToolCalls.current.add(tool.toolCallId);
+          shouldRefresh = true;
+        }
+      }
+    });
+    
+    if (shouldRefresh) {
+      console.log('[AiChatV2] Auto-refreshing data on frontend from tool execution...');
+      const { workspaceId, projectId, phaseId } = dynamicContext;
+      if (workspaceId) {
+         queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
+         queryClient.invalidateQueries({ queryKey: ['project-root-tasks'] });
+         queryClient.invalidateQueries({ queryKey: ['workspace-tasks'] });
+         queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
+         queryClient.invalidateQueries({ queryKey: ['projectAnalytics'] });
+      }
+    }
+  }, [messages, queryClient, dynamicContext]);
 
   const QUICK_ACTIONS = [
     {

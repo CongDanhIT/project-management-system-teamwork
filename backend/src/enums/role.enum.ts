@@ -23,6 +23,8 @@ export const Permissions = {
 
     AI_PLANNING: "AI_PLANNING",
 
+    MANAGE_AUTOMATION: "MANAGE_AUTOMATION",
+
     VIEW_ONLY: "VIEW_ONLY",
 } as const;
 export type RoleEnumType = typeof RoleEnum[keyof typeof RoleEnum];

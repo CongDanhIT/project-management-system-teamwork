@@ -8,19 +8,30 @@ import { Zap, ArrowRight, FolderKanban } from 'lucide-react';
 import Loader from '@/components/ui/Loader';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 
 export default function AutomationIndexPage() {
   const params = useParams();
   const router = useRouter();
   const workspaceId = params?.workspaceId as string;
 
-  const { data: projectsData, isLoading } = useQuery({
+  const { isAdminOrOwner, isLoading: roleLoading } = useWorkspaceRole();
+
+  const { data: projectsData, isLoading: projectsLoading } = useQuery({
     queryKey: ['workspace-projects-automation', workspaceId],
     queryFn: () => projectService.getProjectsByWorkspace(workspaceId, 1, 100),
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && isAdminOrOwner,
   });
 
   const projects = projectsData?.projects || [];
+
+  React.useEffect(() => {
+    if (!roleLoading && !isAdminOrOwner) {
+      router.replace(`/workspace/${workspaceId}`);
+    }
+  }, [isAdminOrOwner, roleLoading, router, workspaceId]);
+
+  const isLoading = roleLoading || projectsLoading;
 
   if (isLoading) {
     return (
@@ -28,6 +39,10 @@ export default function AutomationIndexPage() {
         <Loader size="lg" />
       </div>
     );
+  }
+
+  if (!isAdminOrOwner) {
+    return null;
   }
 
   return (
