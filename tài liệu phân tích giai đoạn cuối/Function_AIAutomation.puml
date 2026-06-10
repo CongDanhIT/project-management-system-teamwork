@@ -49,15 +49,15 @@ rectangle "Hệ thống Quản lý Dự án - Phân hệ Vận hành AI và Tự
 }
 
 ' Liên kết giữa Actor con người và các ca sử dụng tương tác (Association - Đường liền nét)
-Member --> UC_AIChat
-Admin --> UC_AIPlanner
-Admin --> UC_RiskAnalysis
+Member -- UC_AIChat
+Admin -- UC_AIPlanner
+Admin -- UC_RiskAnalysis
 
 ' Liên kết kích hoạt từ Hệ thống Cron Job đến các tiến trình tự động chạy ngầm
-CronSystem --> UC_GarbageCollector
-CronSystem --> UC_DailySnapshot
-CronSystem --> UC_DailyEmail
-CronSystem --> UC_SlackNotify
+CronSystem -- UC_GarbageCollector
+CronSystem -- UC_DailySnapshot
+CronSystem -- UC_DailyEmail
+CronSystem -- UC_SlackNotify
 
 ' Quan hệ Bao gồm (<<include>>) - Nét đứt (..>), từ Base đến Included
 ' Cả AI Planner và Agent Chat đều cần parse & validate kết quả trả về từ LLM

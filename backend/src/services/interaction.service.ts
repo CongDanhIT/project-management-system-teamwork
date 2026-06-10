@@ -120,7 +120,7 @@ export const getTaskCommentsService = async (taskId: string) => {
 export const createSystemCommentService = async (
   workspaceId: string,
   taskId: string,
-  userId: string,
+  userId: string | null,
   message: string
 ) => {
   const comment = new TaskCommentModel({

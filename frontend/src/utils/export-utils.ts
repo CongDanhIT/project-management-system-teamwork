@@ -30,6 +30,7 @@ interface AIInsightsWordParams {
     team_performance: string[];
     risk_forecast: string;
     recommendations: string[];
+    deep_insights?: string;
   };
 }
 
@@ -508,6 +509,7 @@ export const exportAIInsightsToWord = async ({
             children: [
               new TextRun({
                 text: "TEAMFLOW",
+                font: "Arial",
                 bold: true,
                 size: 28,
                 color: BRAND_COLOR,
@@ -515,6 +517,7 @@ export const exportAIInsightsToWord = async ({
               }),
               new TextRun({
                 text: " | AI INTELLIGENCE REPORT",
+                font: "Arial",
                 size: 20,
                 color: TEXT_SECONDARY,
               }),
@@ -523,8 +526,15 @@ export const exportAIInsightsToWord = async ({
           }),
 
           new Paragraph({
-            text: "BÁO CÁO PHÂN TÍCH DỰ ÁN CHUYÊN SÂU",
-            heading: HeadingLevel.HEADING_1,
+            children: [
+              new TextRun({
+                text: "BÁO CÁO PHÂN TÍCH DỰ ÁN CHUYÊN SÂU",
+                font: "Arial",
+                bold: true,
+                size: 32,
+                color: SLATE_COLOR,
+              })
+            ],
             alignment: AlignmentType.LEFT,
             spacing: { after: 200 },
           }),
@@ -547,14 +557,14 @@ export const exportAIInsightsToWord = async ({
                     children: [
                       new Paragraph({
                         children: [
-                          new TextRun({ text: "DỰ ÁN: ", bold: true, size: 18, color: TEXT_SECONDARY }),
-                          new TextRun({ text: projectName.toUpperCase(), bold: true, size: 22, color: SLATE_COLOR }),
+                          new TextRun({ text: "DỰ ÁN: ", font: "Arial", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: projectName.toUpperCase(), font: "Arial", bold: true, size: 22, color: SLATE_COLOR }),
                         ],
                       }),
                       new Paragraph({
                         children: [
-                          new TextRun({ text: "WORKSPACE: ", bold: true, size: 18, color: TEXT_SECONDARY }),
-                          new TextRun({ text: workspaceName || "N/A", size: 20 }),
+                          new TextRun({ text: "WORKSPACE: ", font: "Arial", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: workspaceName || "N/A", font: "Arial", size: 20 }),
                         ],
                       }),
                     ],
@@ -572,15 +582,15 @@ export const exportAIInsightsToWord = async ({
                       new Paragraph({
                         alignment: AlignmentType.RIGHT,
                         children: [
-                          new TextRun({ text: "NGƯỜI XUẤT: ", bold: true, size: 18, color: TEXT_SECONDARY }),
-                          new TextRun({ text: reporterName || "N/A", size: 20, bold: true }),
+                          new TextRun({ text: "NGƯỜI XUẤT: ", font: "Arial", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: reporterName || "N/A", font: "Arial", size: 20, bold: true }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.RIGHT,
                         children: [
-                          new TextRun({ text: "KỲ PHÂN TÍCH: ", bold: true, size: 18, color: TEXT_SECONDARY }),
-                          new TextRun({ text: `${analysisPeriod.from} - ${analysisPeriod.to}`, size: 20 }),
+                          new TextRun({ text: "KỲ PHÂN TÍCH: ", font: "Arial", bold: true, size: 18, color: TEXT_SECONDARY }),
+                          new TextRun({ text: `${analysisPeriod.from} - ${analysisPeriod.to}`, font: "Arial", size: 20 }),
                         ],
                       }),
                     ],
@@ -595,28 +605,82 @@ export const exportAIInsightsToWord = async ({
             new Paragraph({
               spacing: { before: 200, after: 400 },
               children: [
-                new TextRun({ text: "Mục tiêu dự án: ", bold: true, color: SLATE_COLOR }),
-                new TextRun({ text: description, italics: true, color: TEXT_SECONDARY }),
+                new TextRun({ text: "Mục tiêu dự án: ", font: "Arial", bold: true, size: 22, color: SLATE_COLOR }),
+                new TextRun({ text: description, font: "Arial", italics: true, size: 22, color: TEXT_SECONDARY }),
               ],
             })
           ] : [new Paragraph({ spacing: { after: 400 } })]),
+
+          // 0. Deep Insights (Góc nhìn chuyên sâu - Hybrid Architecture) - Use Table for padding
+          ...(data.deep_insights ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "00. GÓC NHÌN CHUYÊN SÂU TỪ AI",
+                  font: "Arial",
+                  bold: true,
+                  size: 26,
+                  color: BRAND_COLOR,
+                }),
+              ],
+              spacing: { before: 300, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.SINGLE, size: 12, color: BRAND_COLOR },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      shading: { fill: "F0FDFA" }, // Teal 50 (đồng bộ với BRAND_COLOR)
+                      margins: { top: 200, bottom: 200, left: 200, right: 200 },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: data.deep_insights,
+                              font: "Arial",
+                              italics: true,
+                              color: SLATE_COLOR,
+                              bold: true,
+                              size: 22,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph({ spacing: { after: 400 } })
+          ] : []),
 
           // 1. Velocity Analysis
           new Paragraph({
             children: [
               new TextRun({
                 text: "01. ĐÁNH GIÁ NHỊP ĐỘ (VELOCITY)",
+                font: "Arial",
                 bold: true,
                 size: 26,
                 color: BRAND_COLOR,
               }),
             ],
-            spacing: { before: 300, after: 150 },
+            spacing: { before: 200, after: 150 },
           }),
           new Paragraph({
             children: [
               new TextRun({
                 text: data.velocity_analysis,
+                font: "Arial",
+                size: 22,
+                color: SLATE_COLOR,
               }),
             ],
             spacing: { after: 400 },
@@ -627,6 +691,7 @@ export const exportAIInsightsToWord = async ({
             children: [
               new TextRun({
                 text: "02. DỰ BÁO RỦI RO CHIẾN LƯỢC",
+                font: "Arial",
                 bold: true,
                 size: 26,
                 color: BRAND_COLOR,
@@ -638,6 +703,9 @@ export const exportAIInsightsToWord = async ({
             children: [
               new TextRun({
                 text: data.risk_forecast || "Chưa có dữ liệu rủi ro cụ thể.",
+                font: "Arial",
+                size: 22,
+                color: SLATE_COLOR,
               }),
             ],
             spacing: { after: 400 },
@@ -648,6 +716,7 @@ export const exportAIInsightsToWord = async ({
             children: [
               new TextRun({
                 text: "03. PHÁT HIỆN ĐIỂM NGHẼN",
+                font: "Arial",
                 bold: true,
                 size: 26,
                 color: BRAND_COLOR,
@@ -655,71 +724,105 @@ export const exportAIInsightsToWord = async ({
             ],
             spacing: { before: 200, after: 150 },
           }),
-          ...(Array.isArray(data.bottlenecks) ? data.bottlenecks : []).map(
+          ...(Array.isArray(data.bottlenecks) && data.bottlenecks.length > 0 ? data.bottlenecks : ["Không có điểm nghẽn nghiêm trọng nào được phát hiện."]).map(
             (item) =>
               new Paragraph({
-                bullet: { level: 0 },
+                indent: { left: 360, hanging: 360 }, // Proper bullet indent
                 children: [
-                  new TextRun({
-                    text: item,
-                  }),
+                  new TextRun({ text: "• ", font: "Arial", size: 22, color: BRAND_COLOR, bold: true }),
+                  new TextRun({ text: item, font: "Arial", size: 22, color: SLATE_COLOR }),
                 ],
-                spacing: { before: 80 },
+                spacing: { before: 120, after: 120 },
               })
           ),
+          new Paragraph({ spacing: { after: 300 } }),
 
           // 4. Team Performance
           new Paragraph({
             children: [
               new TextRun({
                 text: "04. PHÂN TÍCH HIỆU SUẤT ĐỘI NGŨ",
+                font: "Arial",
                 bold: true,
                 size: 26,
                 color: BRAND_COLOR,
               }),
             ],
-            spacing: { before: 400, after: 150 },
+            spacing: { before: 200, after: 150 },
           }),
-          ...(Array.isArray(data.team_performance) ? data.team_performance : []).map(
+          ...(Array.isArray(data.team_performance) && data.team_performance.length > 0 ? data.team_performance : ["Chưa có dữ liệu thành viên."]).map(
             (item) =>
               new Paragraph({
-                bullet: { level: 0 },
+                indent: { left: 360, hanging: 360 },
                 children: [
-                  new TextRun({
-                    text: item,
-                  }),
+                  new TextRun({ text: "• ", font: "Arial", size: 22, color: BRAND_COLOR, bold: true }),
+                  new TextRun({ text: item, font: "Arial", size: 22, color: SLATE_COLOR }),
                 ],
-                spacing: { before: 80 },
+                spacing: { before: 120, after: 120 },
               })
           ),
+          new Paragraph({ spacing: { after: 300 } }),
 
-          // 5. Recommendations
+          // 5. Recommendations (Using Table for Card-like UI)
           new Paragraph({
             children: [
               new TextRun({
                 text: "05. ĐỀ XUẤT HÀNH ĐỘNG CỤ THỂ",
+                font: "Arial",
                 bold: true,
                 size: 26,
                 color: BRAND_COLOR,
               }),
             ],
-            spacing: { before: 400, after: 150 },
+            spacing: { before: 200, after: 150 },
           }),
-          ...(Array.isArray(data.recommendations) ? data.recommendations : []).map(
-            (rec, index) =>
-              new Paragraph({
-                shading: { fill: "F1F5F9" },
-                indent: { left: 200 },
-                children: [
-                  new TextRun({
-                    text: `${index + 1}. ${rec}`,
-                    bold: true,
-                    color: SLATE_COLOR,
-                  }),
-                ],
-                spacing: { before: 200, after: 200 },
-              })
-          ),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" }, // Light divider
+            },
+            rows: (Array.isArray(data.recommendations) ? data.recommendations : []).map(
+              (rec, index) =>
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      shading: { fill: "F8FAFC" }, // Light slate background
+                      margins: { top: 200, bottom: 200, left: 200, right: 200 },
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                        left: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                        right: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+                      },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: `${index + 1}. `,
+                              font: "Arial",
+                              bold: true,
+                              size: 22,
+                              color: BRAND_COLOR,
+                            }),
+                            new TextRun({
+                              text: rec,
+                              font: "Arial",
+                              bold: true,
+                              size: 22,
+                              color: SLATE_COLOR,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                })
+            ),
+          }),
 
           // Footer info
           new Paragraph({
@@ -730,12 +833,14 @@ export const exportAIInsightsToWord = async ({
             children: [
               new TextRun({
                 text: "\nBáo cáo này được bảo mật và tạo ra bởi trí tuệ nhân tạo TeamFlow Intelligence.",
+                font: "Arial",
                 size: 18,
                 color: TEXT_SECONDARY,
                 italics: true,
               }),
               new TextRun({
                 text: `\nNgày tạo: ${new Date().toLocaleDateString('vi-VN')}`,
+                font: "Arial",
                 size: 16,
                 color: TEXT_SECONDARY,
               }),

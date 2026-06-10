@@ -1,6 +1,6 @@
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, generateText, tool } from "ai";
+import { streamText, generateText, tool, generateObject } from "ai";
 import { z } from "zod";
 import mongoose from "mongoose";
 import Groq from "groq-sdk";
@@ -1203,14 +1203,15 @@ export const AdvancedInsightsSchema = z.object({
     velocity_analysis: z.string().describe("Nhận định chung về tốc độ làm việc của team"),
     team_performance: z.array(z.string()).describe("Phân tích chi tiết về đóng góp và hiệu suất của từng thành viên"),
     risk_forecast: z.string().describe("Dự báo các rủi ro tiềm ẩn dựa trên xu hướng hiện tại"),
-    recommendations: z.array(z.string()).describe("Các đề xuất hành động cụ thể để cải thiện tình hình")
+    recommendations: z.array(z.string()).describe("Các đề xuất hành động cụ thể để cải thiện tình hình"),
+    deep_insights: z.string().describe("Góc nhìn chuyên sâu, tự do suy luận của AI về các vấn đề tiềm ẩn, vượt ra ngoài các chỉ số cứng nhắc (Kiến trúc Lai).")
 });
 
 export type AdvancedInsights = z.infer<typeof AdvancedInsightsSchema>;
 
-export const generateAdvancedInsightsService = async (logsData: any[]): Promise<AdvancedInsights> => {
+export const generateAdvancedInsightsService = async (logsData: any[], contextData?: any): Promise<AdvancedInsights> => {
     try {
-        logger.info("[AI-Groq] Đang phân tích chuyên sâu log dự án", { logCount: logsData.length });
+        logger.info("[AI-Groq] Đang phân tích chuyên sâu log dự án", { logCount: logsData.length, hasContext: !!contextData });
 
         if (!logsData || logsData.length === 0) {
             return {
@@ -1218,19 +1219,21 @@ export const generateAdvancedInsightsService = async (logsData: any[]): Promise<
                 velocity_analysis: "Dự án mới hoặc chưa có hoạt động nào được ghi nhận.",
                 team_performance: ["Chưa có dữ liệu thành viên để đánh giá."],
                 risk_forecast: "Dự án hiện tại ổn định do chưa có hoạt động rủi ro nào phát sinh.",
-                recommendations: ["Hãy bắt đầu tạo công việc và cập nhật tiến độ để AI có thể theo dõi."]
+                recommendations: ["Hãy bắt đầu tạo công việc và cập nhật tiến độ để AI có thể theo dõi."],
+                deep_insights: "Kiến trúc Lai hiện đang ở trạng thái chờ. Hãy hoạt động để AI kích hoạt khả năng suy luận chuyên sâu."
             };
         }
 
         const promptStr = JSON.stringify(logsData);
+        const contextStr = contextData ? `\nTHÔNG TIN BỐI CẢNH DỰ ÁN (BASELINE CONTEXT):\n${JSON.stringify(contextData, null, 2)}\n` : "";
 
         const { text } = await generateText({
             model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B) as any,
             prompt: `
 Bạn là một Chuyên gia Phân tích Dữ liệu Dự án Cao cấp (Senior Project Data Consultant).
-Nhiệm vụ: Dựa vào lịch sử hoạt động (Activity Logs) của dự án dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) toàn diện và đưa ra một "Báo cáo phân tích chuyên sâu" cực kỳ chi tiết.
-
-Dữ liệu log:
+Nhiệm vụ: Dựa vào thông tin bối cảnh dự án và lịch sử hoạt động (Activity Logs) dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) toàn diện và đưa ra một "Báo cáo phân tích chuyên sâu" cực kỳ chi tiết.
+${contextStr}
+Dữ liệu log (Lịch sử hoạt động 30 ngày qua):
 ${promptStr}
 
 YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
@@ -1238,26 +1241,31 @@ YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
 2. **Dẫn chứng**: Chỉ rõ ĐÂU là vấn đề, AI là người liên quan, hoặc MÃ CÔNG VIỆC nào đang bị đình trệ. Ví dụ: thay vì nói "Team làm chậm", hãy nói "Công việc PRO-12 đã bị đổi trạng thái 4 lần trong 2 ngày qua bởi User A, cho thấy sự lúng túng trong khâu thực thi".
 3. **Phân tích hiệu suất**: Soi kỹ hoạt động của từng người. Ai đang gánh vác nhiều nhất? Ai đang ít tương tác?
 4. **Dự báo rủi ro**: Dựa trên nhịp độ hiện tại, dự án có khả năng trễ hạn không? Có rủi ro về chất lượng hay sự thiếu hụt nhân sự không?
+5. **Góc nhìn Chuyên Sâu (Hybrid Architecture)**: LƯU Ý QUAN TRỌNG: Dữ liệu log trên ĐÃ ĐƯỢC LỌC qua thuật toán "Weighted Context Filtering". Các log xuất hiện có nghĩa là nó đã lặp lại nhiều lần hoặc mang trọng số rủi ro cao. Bạn hãy sử dụng không gian này để suy luận vượt ra khỏi cấu trúc thông thường, tìm ra các MỐI LIÊN HỆ NGẦM, hoặc CHUẨN ĐOÁN LÕI (Root-cause) mà dữ liệu rời rạc không thể hiện rõ.
 
 QUY TẮC TRẢ VỀ:
 - CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ.
 - KHÔNG giải thích ngoài lề.
-- Cấu trúc JSON bắt buộc:
+- Cấu trúc JSON bắt buộc (Lưu ý: Số lượng các mục trong các mảng như bottlenecks, team_performance, recommendations là KHÔNG GIỚI HẠN. Bạn có thể tự do tạo 1, 2, 3 hoặc N mục tùy theo mức độ phức tạp của dữ liệu, đừng chỉ tạo 2 mục như ví dụ):
 {
   "bottlenecks": [ 
-    "Đoạn văn phân tích chi tiết điểm nghẽn 1 kèm dẫn chứng và hệ quả...", 
-    "Đoạn văn phân tích chi tiết điểm nghẽn 2 kèm dẫn chứng và hệ quả..." 
+    "Đoạn văn phân tích điểm nghẽn 1...", 
+    "Đoạn văn phân tích điểm nghẽn 2...",
+    "Đoạn văn phân tích điểm nghẽn N... (Tùy số lượng vấn đề phát hiện)"
   ],
   "velocity_analysis": "Đoạn văn dài phân tích chi tiết về nhịp độ làm việc toàn đội, so sánh với các kỳ trước (nếu có) và xu hướng tiến độ.",
   "team_performance": [
-    "Phân tích chi tiết về đóng góp của thành viên A...",
-    "Phân tích chi tiết về đóng góp của thành viên B..."
+    "Phân tích đóng góp của thành viên A...",
+    "Phân tích đóng góp của thành viên B...",
+    "Phân tích đóng góp của thành viên N... (Hãy liệt kê đủ các thành viên nổi bật hoặc có vấn đề)"
   ],
   "risk_forecast": "Đoạn văn dài dự báo các rủi ro tiềm ẩn trong tương lai và cảnh báo sớm.",
   "recommendations": [ 
-    "Đề xuất hành động 1 (giải thích rõ lý do tại sao cần làm vậy)", 
-    "Đề xuất hành động 2 (giải thích rõ lý do tại sao cần làm vậy)" 
-  ]
+    "Đề xuất hành động 1...", 
+    "Đề xuất hành động 2...",
+    "Đề xuất hành động 3... (Tạo nhiều đề xuất tương ứng với các điểm nghẽn)"
+  ],
+  "deep_insights": "Một đoạn văn mang tính suy luận logic, phân tích các mẫu (patterns), xu hướng ngầm, kết hợp kiến trúc lai để đưa ra kết luận cực kỳ uyên thâm về thực trạng dự án."
 }
 
 Ngôn ngữ: Tiếng Việt chuyên nghiệp, sắc bén, mang tính xây dựng cao.
@@ -1282,3 +1290,56 @@ Ngôn ngữ: Tiếng Việt chuyên nghiệp, sắc bén, mang tính xây dựng
     }
 };
 
+export const autoTagTaskService = async (taskTitle: string, taskDescription: string, availableTags: { _id: string, name: string }[]): Promise<string[]> => {
+    try {
+        if (!availableTags || availableTags.length === 0) return [];
+        
+        const tagsString = availableTags.map(t => `- ${t.name} (ID: ${t._id})`).join("\n");
+        const prompt = `Bạn là một chuyên gia phân loại công việc. Nhiệm vụ của bạn là đọc Tiêu đề và Mô tả công việc, sau đó chọn ra các nhãn phù hợp nhất từ danh sách cho sẵn.
+
+Tiêu đề: "${taskTitle}"
+Mô tả: "${taskDescription || 'Không có'}"
+
+Danh sách các nhãn hiện có:
+${tagsString}
+
+YÊU CẦU BẮT BUỘC:
+- Chỉ chọn TỐI ĐA 3 nhãn.
+- CHỈ trả về duy nhất một chuỗi JSON hợp lệ, KHÔNG chứa markdown code block, KHÔNG chứa câu chào.
+- Định dạng JSON phải chính xác như sau:
+{
+  "selectedTagIds": ["id1", "id2"]
+}
+Nếu không có nhãn nào phù hợp, trả về:
+{
+  "selectedTagIds": []
+}`;
+
+        const result = await generateText({
+            model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B),
+            prompt,
+            temperature: 0.1,
+        });
+
+        let parsedObject: { selectedTagIds: string[] } = { selectedTagIds: [] };
+        try {
+            // Cố gắng parse JSON, loại bỏ markdown block nếu có
+            const jsonString = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
+            parsedObject = JSON.parse(jsonString);
+        } catch (parseError) {
+            logger.warn(`[AI-AutoTag] Không thể parse JSON từ AI. Raw text: ${result.text}`);
+        }
+
+        const selectedTagIds = Array.isArray(parsedObject?.selectedTagIds) ? parsedObject.selectedTagIds : [];
+
+        logger.info(`[AI-AutoTag] Đã chọn tags: ${JSON.stringify(selectedTagIds)}`);
+        return selectedTagIds;
+    } catch (error: any) {
+        logger.error("[AI-Groq] Lỗi khi auto tag", { 
+            error: error?.message || "Lỗi không xác định", 
+            taskTitle, 
+            stack: error?.stack 
+        });
+        return []; // Fail-safe
+    }
+};

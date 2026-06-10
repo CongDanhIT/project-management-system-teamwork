@@ -125,6 +125,7 @@ export const getWorkspaceMemberService = async (
     const members = await MemberModel.find({ workspaceId: workspaceId, joined: { $ne: false } })
         .populate("userId", "name email profilePicture") // Chỉ lấy các trường cần thiết của User
         .populate("role", "name") // Lấy tên của Role (Owner, Admin, Member)
+        .populate("skillTags", "name color") // Lấy thông tin tags
         .lean();
 
     // 2. Thống kê công việc cho từng user trong Workspace (Aggregation)
@@ -521,6 +522,32 @@ export const changeMemberRoleService = async (workspaceId: string, memberId: str
 
     // Trả về member kèm thông tin role mới đã được populate
     return member.populate("role");
+};
+
+export const updateMemberSkillsService = async (workspaceId: string, memberId: string, skillTags: string[], requesterId: string) => {
+    const member = await MemberModel.findOne({ workspaceId, userId: memberId });
+    if (!member) {
+        throw new NotFoundException("Thành viên không tồn tại trong workspace");
+    }
+
+    member.skillTags = skillTags as any;
+    await member.save();
+
+    // Có thể ghi nhật ký hoạt động nếu muốn
+    const userToUpdate = await UserModel.findById(memberId).select("name");
+    await logActivity({
+        workspaceId,
+        projectId: undefined,
+        userId: requesterId,
+        action: ActivityActionEnum.ROLE_CHANGED, // Dùng ROLE_CHANGED thay vì UPDATE_MEMBER_ROLE
+        entityType: ActivityEntityTypeEnum.MEMBER,
+        entityId: memberId,
+        details: {
+            summary: `đã cập nhật danh sách kỹ năng cho thành viên **${userToUpdate?.name || memberId}**`
+        }
+    });
+
+    return member;
 };
 
 //cập nhật workspace

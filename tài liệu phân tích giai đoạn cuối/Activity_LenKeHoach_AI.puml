@@ -1,0 +1,88 @@
+@startuml Activity_LenKeHoach_AI
+skinparam BackgroundColor white
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityBorderColor #2E7D32
+skinparam ActivityDiamondBackgroundColor #FFF3E0
+skinparam ActivityDiamondBorderColor #EF6C00
+skinparam ArrowColor #333333
+skinparam NoteBackgroundColor #E3F2FD
+skinparam NoteBorderColor #1565C0
+skinparam SwimlaneBorderColor #999999
+skinparam SwimlaneTitleBackgroundColor #F5F5F5
+skinparam ConditionEndStyle diamond
+skinparam DefaultFontName Arial
+skinparam wrapWidth 200
+
+|Người dùng (Quản lý dự án)|
+start
+:Mở giao diện AI Chatbot / Phân rã tự động;
+:Nhập Prompt yêu cầu phân rã dự án;
+:Bấm nút "Tạo kế hoạch";
+
+|Frontend (Client)|
+:Hiển thị màn hình chờ (AI processing);
+:Gửi HTTP POST Request yêu cầu tạo cấu trúc;
+note right
+  API: /api/ai/generate-plan
+  Body: { prompt, workspaceId, projectId }
+end note
+
+|Backend (AI Controller & Service)|
+:Nhận Request và Xác thực quyền truy cập;
+if (Quyền >= AI_PLANNING?) then (Không)
+  :Trang bị lỗi 403 (Forbidden);
+  |Frontend (Client)|
+  :Hiển thị lỗi "Không có quyền AI_PLANNING";
+  stop
+else (Có)
+  |Backend (AI Controller & Service)|
+  :Gọi hàm generateProjectStructureService;
+  
+  |AI Service (Llama 3 70B)|
+  :Phân tích ngữ nghĩa của Prompt;
+  :Áp dụng kỹ thuật Prompt Engineering;
+  :Sinh ra cấu trúc JSON (Phases và Tasks);
+  :Trả về cấu trúc dự án dự thảo;
+  
+  |Backend (AI Controller & Service)|
+  :Phản hồi dữ liệu JSON cho Frontend;
+endif
+
+|Frontend (Client)|
+:Render bản xem trước (Preview) cấu trúc dự án;
+
+|Người dùng (Quản lý dự án)|
+:Kiểm tra bản xem trước;
+if (Đồng ý áp dụng?) then (Từ chối / Hủy)
+  :Đóng giao diện hoặc yêu cầu AI tạo lại;
+  stop
+else (Đồng ý)
+  :Bấm nút "Áp dụng (Apply)";
+  |Frontend (Client)|
+  :Gửi HTTP POST Request lưu dữ liệu;
+  note right
+    API: /api/ai/apply-plan
+    Body: { structure }
+  end note
+  
+  |Backend (AI Controller & Service)|
+  :Xác thực quyền truy cập lần nữa;
+  :Gọi hàm applyAIProjectPlanService;
+  
+  |Database (MongoDB)|
+  :Lưu hàng loạt Giai đoạn (Phases) mới;
+  :Lưu hàng loạt Công việc (Tasks) tương ứng;
+  :Kích hoạt Trigger / Socket.io cập nhật UI;
+  
+  |Backend (AI Controller & Service)|
+  :Trả về kết quả thành công;
+  
+  |Frontend (Client)|
+  :Cập nhật Kanban Board / List View;
+  :Hiển thị thông báo "Tạo kế hoạch thành công";
+endif
+
+|Người dùng (Quản lý dự án)|
+:Bắt đầu làm việc với các Task mới;
+stop
+@enduml

@@ -8,11 +8,15 @@ import { Task, TaskPriority } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SmartAssignPopover } from './SmartAssignPopover';
 
 interface TaskCardProps {
   task: Task;
   subTasks?: Task[];
   onClick?: () => void;
+  isSmartScannerActive?: boolean;
+  workspaceId?: string;
+  projectId?: string;
 }
 
 const priorityColors = {
@@ -41,7 +45,7 @@ const generateGoogleCalendarUrl = (task: Task) => {
   return `${baseUrl}&text=${title}&details=${details}&dates=${formatDate(start)}/${formatDate(end)}`;
 };
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick, isSmartScannerActive, workspaceId, projectId }) => {
   const [isHovered, setIsHovered] = React.useState(false);
   const {
     attributes,
@@ -89,6 +93,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
         'shadow-glow-combined hover:shadow-glow-combined-strong'
       )}
     >
+      {isSmartScannerActive && workspaceId && projectId && (
+        <div className="absolute -top-3 -right-3 z-10" onClick={(e) => e.stopPropagation()}>
+          <SmartAssignPopover task={task} workspaceId={workspaceId} projectId={projectId} />
+        </div>
+      )}
+
       <div className="flex justify-between items-start mb-4">
         <span className="text-[10px] font-mono font-bold text-slate-400 bg-secondary/50 px-2 py-0.5 rounded-full">
           {task.taskCode}

@@ -5,22 +5,24 @@ export interface Tag {
   workspaceId: string;
   name: string;
   color: string;
+  type: 'TASK' | 'MEMBER';
+  taskTags?: Tag[]; // Populated by backend
   createdAt: string;
   updatedAt: string;
 }
 
 export const tagService = {
-  getTags: async (workspaceId: string): Promise<Tag[]> => {
-    const { data } = await api.get(`/workspace/${workspaceId}/tags`);
+  getTags: async (workspaceId: string, type?: 'TASK' | 'MEMBER'): Promise<Tag[]> => {
+    const { data } = await api.get(`/workspace/${workspaceId}/tags`, { params: { type } });
     return data.tags;
   },
 
-  createTag: async (workspaceId: string, data: { name: string; color: string }): Promise<Tag> => {
+  createTag: async (workspaceId: string, data: { name: string; color: string; type?: 'TASK' | 'MEMBER'; taskTags?: string[] }): Promise<Tag> => {
     const res = await api.post(`/workspace/${workspaceId}/tags`, data);
     return res.data.tag;
   },
 
-  updateTag: async (workspaceId: string, tagId: string, data: { name: string; color: string }): Promise<Tag> => {
+  updateTag: async (workspaceId: string, tagId: string, data: { name: string; color: string; type?: 'TASK' | 'MEMBER'; taskTags?: string[] }): Promise<Tag> => {
     const res = await api.put(`/workspace/${workspaceId}/tags/${tagId}`, data);
     return res.data.tag;
   },

@@ -17,6 +17,7 @@ import {
     leaveWorkspaceController,
     startVideoCallController,
     endVideoCallController,
+    updateMemberSkillsController,
 } from "../controllers/workspace.controller";
 import { getWorkspaceRoadmapController } from "../controllers/roadmap.controller";
 import { getWorkspaceExplorerController } from "../controllers/explorer.controller";
@@ -41,6 +42,9 @@ workspaceRoutes.get("/analytics/history/:id", getWorkspaceAnalyticsHistoryContro
 
 // thay đổi vai trò của thành viên trong workspace
 workspaceRoutes.put("/change/member/role/:id", changeWorkSpaceMemberRoleController);
+// cập nhật kỹ năng thành viên
+workspaceRoutes.put("/:id/member/:memberId/skills", updateMemberSkillsController);
+
 // update workspace
 workspaceRoutes.put("/update/:id", updateWorkspaceByIdController);
 // delete workspace

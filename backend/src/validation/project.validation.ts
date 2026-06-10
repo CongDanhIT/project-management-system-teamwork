@@ -40,6 +40,7 @@ export const createProjectSchemaV2 = z.object({
     coverUrl: z.any().optional().nullable(),
     coverPositionX: z.number().min(0).max(100).default(50).optional(),
     coverPositionY: z.number().min(0).max(100).default(50).optional(),
+    isAutoTaggingEnabled: z.boolean().optional(),
 });
 
 export const updateProjectSchemaV2 = z.object({
@@ -52,4 +53,5 @@ export const updateProjectSchemaV2 = z.object({
     coverUrl: z.any().optional().nullable(),
     coverPositionX: z.number().min(0).max(100).optional(),
     coverPositionY: z.number().min(0).max(100).optional(),
+    isAutoTaggingEnabled: z.boolean().optional(),
 });

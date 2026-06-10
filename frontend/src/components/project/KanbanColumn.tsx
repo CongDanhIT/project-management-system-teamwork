@@ -18,6 +18,9 @@ interface KanbanColumnProps {
   isAdminOrOwner?: boolean;
   isProjectCompleted?: boolean;
   phaseId?: string;
+  isSmartScannerActive?: boolean;
+  workspaceId?: string;
+  projectId?: string;
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
@@ -40,7 +43,7 @@ const statusBgMap: Record<TaskStatus, string> = {
   [TaskStatus.CANCELLED]: 'bg-rose-50/40 dark:bg-rose-900/10',
 };
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, allTasks, onTaskClick, onAddTaskClick, isAdminOrOwner, isProjectCompleted, phaseId }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, allTasks, onTaskClick, onAddTaskClick, isAdminOrOwner, isProjectCompleted, phaseId, isSmartScannerActive, workspaceId, projectId }) => {
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: {
@@ -96,6 +99,9 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, tasks, al
                 task={task} 
                 subTasks={subTasks}
                 onClick={() => onTaskClick?.(task)} 
+                isSmartScannerActive={isSmartScannerActive}
+                workspaceId={workspaceId}
+                projectId={projectId}
               />
             );
           })}

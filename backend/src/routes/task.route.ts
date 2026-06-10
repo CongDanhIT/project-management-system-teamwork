@@ -11,6 +11,7 @@ import {
     getDeletedTasksController,
     restoreTaskController,
     permanentDeleteTaskController,
+    getSmartAssignController,
 } from "../controllers/task.controller";
 
 const taskRoutes = Router();
@@ -37,5 +38,8 @@ taskRoutes.get("/workspace/:workspaceId/deleted/all", getDeletedTasksController)
 taskRoutes.patch("/workspace/:workspaceId/restore/:taskId", restoreTaskController);
 taskRoutes.delete("/workspace/:workspaceId/delete/:taskId", deleteTaskController);
 taskRoutes.delete("/workspace/:workspaceId/hard-delete/:taskId", permanentDeleteTaskController);
+
+// 6. Smart Allocation / AI
+taskRoutes.get("/workspace/:workspaceId/project/:projectId/task/:taskId/smart-assign", getSmartAssignController);
 
 export default taskRoutes;

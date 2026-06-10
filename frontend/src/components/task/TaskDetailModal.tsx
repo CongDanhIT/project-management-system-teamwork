@@ -284,7 +284,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const fetchAvailableTags = async () => {
       if (isOpen && task?.workspaceId) {
         try {
-          const tags = await tagService.getTags(task.workspaceId);
+          const tags = await tagService.getTags(task.workspaceId, 'TASK');
           setAvailableTags(tags);
         } catch (error) {
           console.error("Failed to fetch available tags", error);

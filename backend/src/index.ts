@@ -150,6 +150,10 @@ const startServer = async () => {
             // Kích hoạt External Listeners (Slack, v.v.)
             initExternalListeners();
             initWorkflowListeners();
+            
+            // Kích hoạt tính năng Auto-Tag bằng AI
+            const { initSmartAllocationListeners } = require('./listeners/smart-allocation.listener');
+            initSmartAllocationListeners();
 
             // Kích hoạt Cron dọn dẹp thùng rác sau 30 ngày
             startCronService();

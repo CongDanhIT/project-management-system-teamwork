@@ -19,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { RoleBadge } from '@/components/shared/RoleBadge';
+import { MemberSkillTagsModal } from './MemberSkillTagsModal';
+import { Tags } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -39,6 +41,8 @@ export default function MembersPage() {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [copied, setCopied] = useState(false);
+  const [skillModalOpen, setSkillModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{ id: string, name: string, tags: string[] } | null>(null);
 
   // Fetch Members & Roles
   const { data, isLoading } = useQuery({
@@ -193,6 +197,26 @@ export default function MembersPage() {
                         <Mail className="w-3 h-3" />
                         <p className="text-xs font-medium">{member.userId?.email}</p>
                       </div>
+                      
+                      {member.skillTags && member.skillTags.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="text-[10px] text-slate-400 font-medium mr-1">Vai trò:</span>
+                          {member.skillTags.map((tag: any) => (
+                            <span 
+                              key={tag._id} 
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm flex items-center gap-1"
+                              style={{ 
+                                backgroundColor: `${tag.color}15`, 
+                                color: tag.color, 
+                                borderColor: `${tag.color}30` 
+                              }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }}></span>
+                              {tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -218,7 +242,7 @@ export default function MembersPage() {
                       <RoleBadge roleName={member.role?.name} />
                     </div>
                     
-                    {isOwner && member.userId?._id !== currentUser?.id && member.role?.name !== 'OWNER' ? (
+                    {(isPrivileged || member.userId?._id === currentUser?.id) ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           className={cn(
@@ -229,35 +253,58 @@ export default function MembersPage() {
                           <MoreVertical className="w-4 h-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-2xl border-slate-200/60 dark:border-brand-primary/10 bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 py-1.5">Thay đổi vai trò</DropdownMenuLabel>
-                            {roles.map((role: any) => (
-                                role.name !== 'OWNER' && (
-                                  <DropdownMenuItem 
-                                      key={role._id} 
-                                      onClick={() => changeRoleMutation.mutate({ memberId: member.userId?._id, roleId: role._id })}
-                                      className={cn(
-                                          "rounded-xl font-bold cursor-pointer my-0.5 transition-colors",
-                                          member.role?._id === role._id && "bg-brand-primary/10 text-brand-primary focus:bg-brand-primary/10 focus:text-brand-primary dark:bg-brand-primary/20 dark:text-emerald-400"
-                                      )}
-                                  >
-                                      {role.name}
-                                  </DropdownMenuItem>
-                                )
-                            ))}
-                          </DropdownMenuGroup>
-                          <DropdownMenuSeparator className="bg-slate-100 dark:bg-brand-primary/10 my-2" />
+                          {isPrivileged && member.userId?._id !== currentUser?.id && member.role?.name !== 'OWNER' && (
+                            <>
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2 py-1.5">Thay đổi vai trò</DropdownMenuLabel>
+                                {roles.map((role: any) => (
+                                    role.name !== 'OWNER' && (
+                                      <DropdownMenuItem 
+                                          key={role._id} 
+                                          onClick={() => changeRoleMutation.mutate({ memberId: member.userId?._id, roleId: role._id })}
+                                          className={cn(
+                                              "rounded-xl font-bold cursor-pointer my-0.5 transition-colors",
+                                              member.role?._id === role._id && "bg-brand-primary/10 text-brand-primary focus:bg-brand-primary/10 focus:text-brand-primary dark:bg-brand-primary/20 dark:text-emerald-400"
+                                          )}
+                                      >
+                                          {role.name}
+                                      </DropdownMenuItem>
+                                    )
+                                ))}
+                              </DropdownMenuGroup>
+                              <DropdownMenuSeparator className="bg-slate-100 dark:bg-brand-primary/10 my-2" />
+                            </>
+                          )}
                           <DropdownMenuItem 
                             onClick={() => {
-                                if(window.confirm(`Bạn có chắc muốn xóa ${member.userId?.name} khỏi workspace?`)) {
-                                    removeMemberMutation.mutate(member.userId?._id);
-                                }
+                              setSelectedMember({
+                                id: member.userId?._id,
+                                name: member.userId?.name,
+                                tags: member.skillTags?.map((t: any) => t._id) || [],
+                              });
+                              setSkillModalOpen(true);
                             }}
-                            className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 rounded-xl font-bold cursor-pointer transition-colors"
+                            className="rounded-xl font-bold cursor-pointer my-0.5 transition-colors text-brand-tertiary focus:bg-brand-tertiary/10"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Xóa khỏi Workspace
+                            <Tags className="w-4 h-4 mr-2" />
+                            Gắn nhãn Kỹ năng
                           </DropdownMenuItem>
+                          {isPrivileged && member.userId?._id !== currentUser?.id && member.role?.name !== 'OWNER' && (
+                            <>
+                              <DropdownMenuSeparator className="bg-slate-100 dark:bg-brand-primary/10 my-2" />
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                    if(window.confirm(`Bạn có chắc muốn xóa ${member.userId?.name} khỏi workspace?`)) {
+                                        removeMemberMutation.mutate(member.userId?._id);
+                                    }
+                                }}
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 rounded-xl font-bold cursor-pointer transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Xóa khỏi Workspace
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
@@ -287,6 +334,17 @@ export default function MembersPage() {
         <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-black/20 rounded-full blur-[80px] group-hover:bg-black/30 transition-colors duration-700"></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.1)_100%)] pointer-events-none"></div>
       </div>
+
+      {selectedMember && (
+        <MemberSkillTagsModal
+          open={skillModalOpen}
+          onClose={() => setSkillModalOpen(false)}
+          workspaceId={workspaceId}
+          memberId={selectedMember.id}
+          memberName={selectedMember.name}
+          currentTags={selectedMember.tags}
+        />
+      )}
     </div>
   );
 }

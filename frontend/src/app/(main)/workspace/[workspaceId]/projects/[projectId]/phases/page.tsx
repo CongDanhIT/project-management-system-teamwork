@@ -63,6 +63,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { AssetDetailModal } from '@/components/project/AssetDetailModal';
 import { AssetFolderModal } from '@/components/project/AssetFolderModal';
+import { ProjectWhiteboard } from '@/components/project/ProjectWhiteboard';
 
 export default function ProjectPhasesHub() {
     const params = useParams();
@@ -73,7 +74,7 @@ export default function ProjectPhasesHub() {
     
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'phases' | 'files'>('phases');
+    const [activeTab, setActiveTab] = useState<'phases' | 'files' | 'whiteboard'>('phases');
     const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -280,6 +281,17 @@ export default function ProjectPhasesHub() {
                         >
                             Tài liệu
                         </button>
+                        <button
+                            onClick={() => setActiveTab('whiteboard')}
+                            className={cn(
+                                "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                activeTab === 'whiteboard' 
+                                ? "bg-white dark:bg-slate-800 text-brand-primary shadow-sm" 
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            )}
+                        >
+                            Bảng vẽ
+                        </button>
                     </div>
                     
                     {activeTab === 'phases' ? (
@@ -304,7 +316,7 @@ export default function ProjectPhasesHub() {
                                 </Button>
                             </div>
                         )
-                    ) : (
+                    ) : activeTab === 'files' ? (
                         <div className="flex items-center gap-2">
                             <input 
                                 type="file" 
@@ -321,7 +333,7 @@ export default function ProjectPhasesHub() {
                                 {isUploading ? 'Đang tải...' : 'Tải tài liệu'}
                             </Button>
                         </div>
-                    )}
+                    ) : null}
 
                 </div>
             </div>
@@ -527,7 +539,7 @@ export default function ProjectPhasesHub() {
                             </div>
                         )}
                     </motion.div>
-                ) : (
+                ) : activeTab === 'files' ? (
                     <motion.div
                         key="files-view"
                         initial={{ opacity: 0, x: 20 }}
@@ -803,6 +815,16 @@ export default function ProjectPhasesHub() {
                                 )}
                             </div>
                         </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="whiteboard-view"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        className="w-full h-full pt-4"
+                    >
+                        <ProjectWhiteboard workspaceId={workspaceId} projectId={projectId} />
                     </motion.div>
                 )}
             </AnimatePresence>

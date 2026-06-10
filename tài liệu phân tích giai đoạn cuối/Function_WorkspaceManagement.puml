@@ -28,15 +28,14 @@ rectangle "Quản lý Workspace và Thành viên" {
     usecase "Cập nhật danh sách thành viên" as UC_UpdateMemberList
 }
 
-Owner --> UC_CreateWS
-Owner --> UC_UpdateWS
-Owner --> UC_DeleteWS
-Owner --> UC_InviteMember
-Owner --> UC_ManageRole
+' Owner kế thừa Admin, nên chỉ cần nối với các chức năng ĐỘC QUYỀN của Owner
+Owner -- UC_CreateWS
+Owner -- UC_DeleteWS
 
-Admin --> UC_UpdateWS
-Admin --> UC_InviteMember
-Admin --> UC_ManageRole
+' Admin có các chức năng quản lý, Member không có quyền gì trong phân hệ này
+Admin -- UC_UpdateWS
+Admin -- UC_InviteMember
+Admin -- UC_ManageRole
 
 UC_CreateWS ..> UC_CheckPermission : "<<include>>"
 UC_UpdateWS ..> UC_CheckPermission : "<<include>>"
@@ -48,6 +47,6 @@ UC_InviteMember ..> UC_SendInvitation : "<<include>>"
 UC_InviteMember ..> UC_UpdateMemberList : "<<include>>"
 UC_ManageRole ..> UC_UpdateMemberList : "<<include>>"
 
-UC_SendInvitation --> EmailSystem
+UC_SendInvitation -- EmailSystem
 
 @enduml

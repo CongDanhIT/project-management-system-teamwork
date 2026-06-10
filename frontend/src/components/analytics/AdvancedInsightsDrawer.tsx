@@ -126,7 +126,7 @@ export function AdvancedInsightsDrawer({
                   </span>
                 </SheetTitle>
                 <SheetDescription className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                  Nhận định tự động từ Llama 3 70B dựa trên nhật ký hoạt động 7 ngày gần nhất và dữ liệu tiến độ từ snapshot.
+                  Nhận định tự động từ Llama 3 70B dựa trên nhật ký hoạt động 30 ngày gần nhất và dữ liệu tiến độ từ snapshot.
                 </SheetDescription>
               </div>
             </div>
@@ -173,103 +173,158 @@ export function AdvancedInsightsDrawer({
               </p>
             </div>
           ) : data && data.success && data.data ? (
-            <div className="grid grid-cols-1 gap-8 animate-in slide-in-from-bottom-8 duration-700">
+            <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-8 duration-700 pb-10">
               
-              {/* Velocity & Risk Forecast - Hai khối quan trọng nhất về xu hướng */}
-              <div className="grid grid-cols-2 gap-6">
-                {/* Velocity Analysis */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <Zap className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              {/* 1. DEEP INSIGHTS - Thẻ Tự do suy luận siêu việt (Nổi bật nhất) */}
+              {data.data.deep_insights && (
+                <div className="relative group">
+                  {/* Glow effect */}
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-fuchsia-600 via-violet-600 to-indigo-600 rounded-[32px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                  <div className="relative bg-white dark:bg-slate-950 rounded-[32px] p-8 border border-white/40 dark:border-white/10 shadow-2xl overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                      <Brain className="w-48 h-48" />
                     </div>
-                    <div>
-                      <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2">Nhịp độ (Velocity)</h3>
-                      <p className="text-[14px] leading-relaxed text-slate-600 dark:text-slate-300">
-                        {data.data.velocity_analysis}
+                    
+                    <div className="flex items-center gap-3 mb-6 relative z-10">
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
+                        <Sparkles className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 tracking-tight">
+                          Góc Nhìn Chuyên Sâu
+                        </h3>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Khám phá rủi ro ngầm & Xu hướng</p>
+                      </div>
+                    </div>
+                    
+                    <div className="relative z-10 text-[16px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
+                      <p className="italic border-l-4 border-violet-500 pl-4 py-1">
+                        "{data.data.deep_insights}"
                       </p>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Risk Forecast */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              {/* 2. VELOCITY & RISK FORECAST - Grid 2 cột */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Velocity */}
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-[32px] p-8 border border-slate-200 dark:border-white/5 shadow-ambient hover:border-emerald-500/30 transition-all group">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Zap className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2">Dự báo rủi ro</h3>
-                      <p className="text-[14px] leading-relaxed text-slate-600 dark:text-slate-300">
-                        {data.data.risk_forecast || "Chưa có đủ dữ liệu để dự báo rủi ro tiềm ẩn."}
-                      </p>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Nhịp Độ Dự Án</h3>
+                      <p className="text-xs text-slate-500">Velocity Analysis</p>
                     </div>
                   </div>
+                  <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                    {data.data.velocity_analysis}
+                  </p>
+                </div>
+
+                {/* Risk */}
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-[32px] p-8 border border-slate-200 dark:border-white/5 shadow-ambient hover:border-amber-500/30 transition-all group">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Dự Báo Rủi Ro</h3>
+                      <p className="text-xs text-slate-500">Risk Forecast</p>
+                    </div>
+                  </div>
+                  <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                    {data.data.risk_forecast || "Chưa có đủ dữ liệu để dự báo rủi ro tiềm ẩn."}
+                  </p>
                 </div>
               </div>
 
-              {/* Bottlenecks - Khối về vấn đề tồn đọng */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              {/* 3. BOTTLENECKS & TEAM PERFORMANCE - Grid 2 cột */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Bottlenecks */}
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-[32px] p-8 border border-slate-200 dark:border-white/5 shadow-ambient hover:border-rose-500/30 transition-all">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
+                      <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Điểm Nghẽn</h3>
+                      <p className="text-xs text-slate-500">Bottlenecks & Blockers</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider mb-3">Điểm nghẽn (Bottlenecks)</h3>
-                    <div className="space-y-4">
-                      {Array.isArray(data.data.bottlenecks) ? data.data.bottlenecks.map((item: string, i: number) => (
-                        <div key={i} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  <div className="space-y-4">
+                    {Array.isArray(data.data.bottlenecks) && data.data.bottlenecks.length > 0 ? (
+                      data.data.bottlenecks.map((item: string, i: number) => (
+                        <div key={i} className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
                           {item}
                         </div>
-                      )) : <p className="text-[15px] text-slate-500 italic">Không có điểm nghẽn nghiêm trọng nào được phát hiện.</p>}
-                    </div>
+                      ))
+                    ) : (
+                      <p className="text-[15px] text-slate-500 italic">Không có điểm nghẽn nghiêm trọng nào được phát hiện.</p>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              {/* Team Performance - Khối về con người */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                {/* Team Performance */}
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-[32px] p-8 border border-slate-200 dark:border-white/5 shadow-ambient hover:border-blue-500/30 transition-all">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Hiệu Suất Nhóm</h3>
+                      <p className="text-xs text-slate-500">Team Performance</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider mb-3">Hiệu suất nhóm (Team Performance)</h3>
-                    <div className="space-y-4">
-                      {Array.isArray(data.data.team_performance) ? data.data.team_performance.map((item: string, i: number) => (
-                        <div key={i} className="flex gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 flex-shrink-0" />
-                          <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  <div className="space-y-4">
+                    {Array.isArray(data.data.team_performance) && data.data.team_performance.length > 0 ? (
+                      data.data.team_performance.map((item: string, i: number) => (
+                        <div key={i} className="flex gap-4 items-start">
+                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                          <p className="text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
                             {item}
                           </p>
                         </div>
-                      )) : <p className="text-[15px] text-slate-500 italic">Chưa có đủ dữ liệu thành viên.</p>}
-                    </div>
+                      ))
+                    ) : (
+                      <p className="text-[15px] text-slate-500 italic">Chưa có đủ dữ liệu thành viên.</p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Actionable Recommendations */}
-              <div className="bg-gradient-to-br from-indigo-500/5 to-purple-600/5 dark:from-indigo-500/10 dark:to-purple-600/10 rounded-3xl p-8 border border-indigo-500/20 dark:border-indigo-500/20 shadow-inner">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-lg bg-indigo-500">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="text-sm font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-widest">Kế hoạch hành động đề xuất</h3>
-                </div>
-                <div className="grid grid-cols-1 gap-4">
-                  {(data.data.recommendations || []).map((rec: string, index: number) => (
-                    <div key={index} className="flex items-start gap-4 p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-white dark:border-slate-800 shadow-sm">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center flex-shrink-0 font-bold text-indigo-600 dark:text-indigo-400 text-xs">
-                        {index + 1}
+              {/* 4. RECOMMENDATIONS - Thẻ Action Plan chuyên nghiệp */}
+              <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-950 rounded-[32px] p-8 border border-slate-800 shadow-2xl">
+                {/* Decor elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-white" />
                       </div>
-                      <span className="text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{rec}</span>
+                      <div>
+                        <h3 className="text-lg font-black text-white uppercase tracking-widest">Kế Hoạch Hành Động</h3>
+                        <p className="text-sm text-slate-400">AI Recommendations & Next Steps</p>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {(data.data.recommendations || []).map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-5 p-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                          <span className="font-black text-white text-sm">{index + 1}</span>
+                        </div>
+                        <span className="text-[15px] text-slate-200 leading-relaxed font-medium mt-1">{rec}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

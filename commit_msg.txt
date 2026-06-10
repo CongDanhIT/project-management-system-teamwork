@@ -1,10 +1,9 @@
-feat(workspace): tích hợp tính năng Video Call và tính năng bộ lọc dự án cho Roadmap
+feat(analytics): nâng cấp hệ thống phân tích AI chuyên sâu và tối ưu xuất báo cáo Word
 
-- Thêm Component `FloatingVideoCall` tích hợp `@jitsi/react-sdk` cho phép họp video nhóm Ad-hoc dạng Popup nổi.
-- Bổ sung `useCallStore` (Zustand) để quản lý state đóng/mở/resize của cửa sổ video.
-- Mở rộng Model `Workspace` để lưu trữ thông tin phòng gọi `activeCall`.
-- Cấu hình Socket.io (`SocketProvider`) nhận tín hiệu và thông báo real-time khi có cuộc gọi mới.
-- Xây dựng cụm APIs `startCall` và `endCall` trong `workspace.service` hỗ trợ tính năng Join lại phòng cũ khi vô tình đóng thông báo.
-- Nâng cấp Roadmap: Tích hợp chức năng Select Box để lọc nhanh công việc của từng dự án độc lập, giảm tải giao diện.
-- Bổ sung UI/UX cho Window Drag (React-rnd) với Custom Resize indicator.
-- Bổ sung luồng API cho Personal Note (Notes Module).
+- Áp dụng kiến trúc lai (Hybrid Architecture) cho module phân tích dự án.
+- Bổ sung trường `deep_insights` để hỗ trợ AI phân tích luồng dữ liệu ngầm và phát hiện điểm nghẽn dựa trên thuật toán Weighted Context Filtering.
+- Gom nhóm dữ liệu Log theo `entityId` để theo dõi chính xác vòng đời của từng đối tượng.
+- Thay đổi cấu trúc Prompt để mở giới hạn suy luận cho Llama-3 (xoá bỏ giới hạn 2 dòng).
+- Thiết kế lại giao diện Góc nhìn chuyên sâu bằng phong cách Glassmorphism (Teal/Violet).
+- Cải thiện đáng kể chất lượng file Word xuất ra: đồng bộ font chữ Arial, đóng khung Table cho các vùng thông tin trọng điểm (Deep Insights, Kế hoạch hành động) kèm theo lề và khoảng cách chuyên nghiệp.
+- Cập nhật và bổ sung các bản vẽ sơ đồ kiến trúc, tài liệu phân tích bài báo khoa học.

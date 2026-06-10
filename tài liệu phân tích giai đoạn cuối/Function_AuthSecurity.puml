@@ -11,7 +11,6 @@ skinparam actor {
     BorderColor #333333
 }
 
-actor "Khách" as Guest
 actor "Thành viên\n(Member)" as Member
 actor "Quản trị viên\n(Admin)" as Admin
 actor "Chủ sở hữu\n(Owner)" as Owner
@@ -19,7 +18,6 @@ rectangle "Google OAuth\n<<system>>" as Google
 
 Owner -left-|> Admin : "<<kế thừa>>"
 Admin -left-|> Member : "<<kế thừa>>"
-Guest -left-|> Member : "<<kế thừa>>"
 
 rectangle "Xác thực và Bảo mật" {
     usecase "Đăng ký / Đăng nhập" as UC_Login
@@ -30,16 +28,16 @@ rectangle "Xác thực và Bảo mật" {
     usecase "Bảo mật Dữ liệu và Soft Delete" as UC_Security
 }
 
-Guest --> UC_Login
-Guest --> UC_GoogleLogin
-Member --> UC_Login
-Member --> UC_Account
-Admin --> UC_Account
-Admin --> UC_RBAC
-Owner --> UC_RBAC
-Owner --> UC_Security
+' Member (đại diện cho người dùng nói chung) thực hiện đăng nhập và quản lý tài khoản
+Member -- UC_Login
+Member -- UC_GoogleLogin
+Member -- UC_Account
 
-UC_GoogleLogin --> Google
+' Các Actor cấp cao tự động kế thừa quyền của cấp thấp
+Admin -- UC_RBAC
+Owner -- UC_Security
+
+UC_GoogleLogin -- Google
 UC_Login ..> UC_Session : "<<include>>"
 UC_GoogleLogin ..> UC_Session : "<<include>>"
 UC_Account ..> UC_Session : "<<include>>"

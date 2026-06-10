@@ -25,7 +25,7 @@ Owner -left-|> Admin : "<<kế thừa>>"
 Admin -left-|> Member : "<<kế thừa>>"
 
 ' Ranh giới hệ thống (System Boundary)
-rectangle "Hệ thống Quản lý Dự án - Phân hệ Quản lý Tài nguyên và File" {
+rectangle "Phân hệ Quản lý Tài nguyên và File" {
     
     ' Các Use Case nghiệp vụ chính (Base Use Cases)
     usecase "Tải lên tài liệu dự án" as UC_UploadFile
@@ -42,10 +42,10 @@ rectangle "Hệ thống Quản lý Dự án - Phân hệ Quản lý Tài nguyên
 }
 
 ' Liên kết giữa Actor và Base Use Cases (Association - Đường liền nét)
-Member --> UC_UploadFile
-Member --> UC_DownloadFile
-Member --> UC_ManageFilesTab
-Member --> UC_DeleteFile
+Member -- UC_UploadFile
+Member -- UC_DownloadFile
+Member -- UC_ManageFilesTab
+Member -- UC_DeleteFile
 
 ' Quan hệ Bao gồm (<<include>>) - Đường nét đứt (..>), mũi tên chỉ từ Base đến Included
 UC_UploadFile ..> UC_CheckPermission : "<<include>>"

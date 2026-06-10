@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 const EMOJI_LIST = [
   '📁', '💼', '📈', '📊', '🎯', '🛡️', 
@@ -63,6 +64,7 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
   const [coverPositionY, setCoverPositionY] = useState(project?.coverPositionY ?? 50);
   const [uploadType, setUploadType] = useState<'url' | 'file'>('url');
   const [isUploading, setIsUploading] = useState(false);
+  const [isAutoTaggingEnabled, setIsAutoTaggingEnabled] = useState(project?.isAutoTaggingEnabled ?? false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -75,6 +77,7 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
     setCoverUrl(project?.coverUrl ?? '');
     setCoverPositionX(project?.coverPositionX ?? 50);
     setCoverPositionY(project?.coverPositionY ?? 50);
+    setIsAutoTaggingEnabled(project?.isAutoTaggingEnabled ?? false);
   }, [project, open]);
 
   const isEdit = !!project;
@@ -82,7 +85,7 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
   const mutation = useMutation({
     mutationFn: async () => {
       const data: any = { 
-        name, description, emoji, status, coverUrl, coverPositionX, coverPositionY,
+        name, description, emoji, status, coverUrl, coverPositionX, coverPositionY, isAutoTaggingEnabled,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined
       };
@@ -379,6 +382,20 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
                 </div>
               )}
               <p className="text-[10px] text-slate-400 italic">Gợi ý: Ảnh có tỉ lệ 16:9 sẽ hiển thị đẹp nhất trên Dashboard.</p>
+            </div>
+
+            <div className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="space-y-1">
+                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Tính năng AI Auto-Tagging</Label>
+                <p className="text-[11px] text-slate-500 max-w-[280px]">
+                  Tự động phân tích và gắn nhãn kỹ năng cho công việc bằng trí tuệ nhân tạo (LLM).
+                </p>
+              </div>
+              <Switch
+                checked={isAutoTaggingEnabled}
+                onCheckedChange={setIsAutoTaggingEnabled}
+                className="data-[state=checked]:bg-brand-primary"
+              />
             </div>
 
             <div className="space-y-1.5">

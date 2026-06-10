@@ -36,11 +36,11 @@ rectangle "Phân hệ Quản trị viên - Hệ thống Quản lý Dự án" {
 }
 
 ' Nối Actor với Base Use Cases
-Admin --> UC_Project
-Admin --> UC_Phase
-Admin --> UC_Personnel
-Admin --> UC_Monitor
-Admin --> UC_News
+Admin -- UC_Project
+Admin -- UC_Phase
+Admin -- UC_Personnel
+Admin -- UC_Monitor
+Admin -- UC_News
 
 ' QUAN HỆ INCLUDE (Từ Base -> Included)
 ' Để Giám sát và tạo Báo cáo, hệ thống BẮT BUỘC phải Truy xuất Audit Log

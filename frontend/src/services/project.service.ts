@@ -32,6 +32,7 @@ export interface Project {
   coverPositionX: number;
   coverPositionY: number;
   favoritedBy?: string[];
+  isAutoTaggingEnabled?: boolean;
 }
 
 export const projectService = {
@@ -65,7 +66,7 @@ export const projectService = {
     return response.data.history;
   },
 
-  createProject: async (workspaceId: string, data: { name: string; description?: string; emoji?: string; startDate?: Date; endDate?: Date; status?: string; coverUrl?: string; coverPositionX?: number; coverPositionY?: number }) => {
+  createProject: async (workspaceId: string, data: { name: string; description?: string; emoji?: string; startDate?: Date; endDate?: Date; status?: string; coverUrl?: string; coverPositionX?: number; coverPositionY?: number; isAutoTaggingEnabled?: boolean }) => {
     const response = await api.post(`/project/workspace/${workspaceId}/create`, data);
     return response.data.project;
   },
@@ -103,5 +104,15 @@ export const projectService = {
   getFavoriteProjects: async (workspaceId: string) => {
     const response = await api.get(`/project/workspace/${workspaceId}/favorites/all`);
     return response.data.projects as Project[];
+  },
+
+  getProjectWhiteboard: async (workspaceId: string, projectId: string) => {
+    const response = await api.get(`/project/workspace/${workspaceId}/whiteboard/${projectId}`);
+    return response.data.data;
+  },
+
+  saveProjectWhiteboard: async (workspaceId: string, projectId: string, elements: any[], appState: any, files: any) => {
+    const response = await api.put(`/project/workspace/${workspaceId}/whiteboard/${projectId}`, { elements, appState, files });
+    return response.data.data;
   },
 };

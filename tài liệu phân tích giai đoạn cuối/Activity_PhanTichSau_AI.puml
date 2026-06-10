@@ -1,0 +1,73 @@
+@startuml Activity_PhanTichSau_AI
+skinparam BackgroundColor white
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityBorderColor #2E7D32
+skinparam ActivityDiamondBackgroundColor #FFF3E0
+skinparam ActivityDiamondBorderColor #EF6C00
+skinparam ArrowColor #333333
+skinparam NoteBackgroundColor #E3F2FD
+skinparam NoteBorderColor #1565C0
+skinparam SwimlaneBorderColor #999999
+skinparam SwimlaneTitleBackgroundColor #F5F5F5
+skinparam ConditionEndStyle diamond
+skinparam DefaultFontName Arial
+skinparam wrapWidth 200
+
+|Người dùng (Quản lý/Thành viên)|
+start
+:Mở Tab "Tiêu điểm" (Focus Tab) của Dự án;
+:Bấm nút "Phân tích AI" (Advanced Insights);
+
+|Frontend (AdvancedInsightsDrawer)|
+:Hiển thị màn hình Loading (AI đang phân tích...);
+:Gửi HTTP GET Request lấy phân tích chuyên sâu;
+note right
+  API: /analytics/workspace/
+  :workspaceId/project/
+  :projectId/advanced-insights
+end note
+
+|Backend (Analytics Controller & Service)|
+:Nhận Request và Xác thực quyền truy cập;
+if (Quyền >= VIEW_ONLY?) then (Không)
+  :Trang bị lỗi 403 (Forbidden);
+  |Frontend (AdvancedInsightsDrawer)|
+  :Hiển thị thông báo lỗi "Không có quyền";
+  stop
+else (Có)
+  |Backend (Analytics Controller & Service)|
+  fork
+    :Tổng hợp Activity Logs dự án
+    (30 ngày gần nhất);
+  fork again
+    :Trích xuất Context Baseline
+    (Số task hoàn thành, quá hạn...);
+  end fork
+  
+  |AI Service (Llama 3 70B)|
+  :Nhận Activity Logs và Context Baseline;
+  :Phân tích nhịp độ, rủi ro, điểm nghẽn;
+  :Sinh kế hoạch hành động đề xuất;
+  :Trả về JSON Insights;
+  
+  |Backend (Analytics Controller & Service)|
+  :Đóng gói Response trả về Frontend;
+endif
+
+|Frontend (AdvancedInsightsDrawer)|
+:Tắt màn hình Loading;
+:Hiển thị dữ liệu phân tích (Velocity, Risk, Bottlenecks...);
+
+|Người dùng (Quản lý/Thành viên)|
+if (Muốn xuất báo cáo Word?) then (Có)
+  :Bấm nút "Xuất báo cáo Word";
+  |Frontend (AdvancedInsightsDrawer)|
+  :Gọi hàm exportAIInsightsToWord();
+  :Tải xuống file .docx (Báo cáo tổng hợp);
+else (Không)
+endif
+
+|Người dùng (Quản lý/Thành viên)|
+:Đọc báo cáo và đóng Drawer;
+stop
+@enduml

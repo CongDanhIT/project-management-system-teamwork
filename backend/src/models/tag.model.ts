@@ -5,6 +5,8 @@ export interface TagDocument extends mongoose.Document {
     name: string;
     color: string;
     createdBy: mongoose.Types.ObjectId;
+    type: "TASK" | "MEMBER";
+    taskTags: mongoose.Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -14,6 +16,8 @@ const tagSchema = new Schema<TagDocument>({
     name: { type: String, required: true, trim: true },
     color: { type: String, required: true }, // Mã HEX color (#FFFFFF)
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    type: { type: String, enum: ["TASK", "MEMBER"], default: "TASK" },
+    taskTags: [{ type: Schema.Types.ObjectId, ref: "Tag" }]
 }, {
     timestamps: true
 });

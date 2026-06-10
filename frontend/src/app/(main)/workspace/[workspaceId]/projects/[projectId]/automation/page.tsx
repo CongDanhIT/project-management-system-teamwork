@@ -6,9 +6,9 @@ import WorkflowBuilder from '@/pages/Project/Automation/WorkflowBuilder';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import Loader from '@/components/ui/Loader';
 
-export default function AutomationPage({ params }: { params: { workspaceId: string, projectId: string } }) {
+export default function AutomationPage({ params }: { params: Promise<{ workspaceId: string, projectId: string }> }) {
   const router = useRouter();
-  const { workspaceId } = params;
+  const { workspaceId } = React.use(params);
   const { isAdminOrOwner, isLoading } = useWorkspaceRole();
 
   React.useEffect(() => {

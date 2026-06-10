@@ -128,6 +128,11 @@ export const workspaceService = {
     return response.data;
   },
 
+  updateMemberSkills: async (workspaceId: string, memberId: string, skillTags: string[]) => {
+    const response = await api.put(`/workspace/${workspaceId}/member/${memberId}/skills`, { skillTags });
+    return response.data;
+  },
+
   leaveWorkspace: async (workspaceId: string) => {
     const response = await api.post(`/workspace/${workspaceId}/leave`);
     return response.data;

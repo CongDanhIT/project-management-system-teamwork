@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createProjectController, deleteProjectController, getAllProjectsInWorkspaceController, getProjectAnalyticsController, getProjectByIdController, updateProjectController, restoreProjectController, getDeletedProjectsController, toggleFavoriteProjectController, getFavoriteProjectsController, getProjectAnalyticsHistoryController, permanentDeleteProjectController } from "../controllers/project.controller";
+import { WhiteboardController } from "../controllers/whiteboard.controller";
 import { isAuthenticated } from "../middlewares/isAuthenticated.middleware";
 
 const projectRoutes = Router();
@@ -27,5 +28,8 @@ projectRoutes.delete("/workspace/:workspaceId/hard-delete/:projectId", permanent
 projectRoutes.get("/workspace/:workspaceId/favorites/all", getFavoriteProjectsController);
 
 projectRoutes.patch("/workspace/:workspaceId/favorite/:projectId", toggleFavoriteProjectController);
+
+projectRoutes.get("/workspace/:workspaceId/whiteboard/:projectId", WhiteboardController.getWhiteboard);
+projectRoutes.put("/workspace/:workspaceId/whiteboard/:projectId", WhiteboardController.saveWhiteboard);
 
 export default projectRoutes;

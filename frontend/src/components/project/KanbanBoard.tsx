@@ -22,8 +22,10 @@ import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { taskService } from '@/services/task.service';
 import { toast } from "sonner";
-import { Loader2 } from 'lucide-react';
+import { Loader2, ScanSearch } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface KanbanBoardProps {
   workspaceId: string;
@@ -60,6 +62,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [isSmartScannerActive, setIsSmartScannerActive] = useState(false);
 
   useDndMonitor({
     onDragStart: (event: DragStartEvent) => {
@@ -236,7 +239,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }
 
   return (
-    <div className="flex gap-6 overflow-x-auto pb-8 min-h-[calc(100vh-200px)] custom-scrollbar">
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end pr-6">
+        <Button 
+          variant={isSmartScannerActive ? "default" : "outline"} 
+          className={cn("gap-2 rounded-full", isSmartScannerActive && "bg-brand-primary text-white shadow-glow hover:bg-brand-primary/90")}
+          onClick={() => setIsSmartScannerActive(!isSmartScannerActive)}
+        >
+          <ScanSearch className="w-4 h-4" />
+          Smart Scanner
+        </Button>
+      </div>
+      <div className="flex gap-6 overflow-x-auto pb-8 min-h-[calc(100vh-200px)] custom-scrollbar">
         <div className="flex gap-6">
           {defaultColumns.map((col) => (
             <KanbanColumn
@@ -250,6 +264,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               isAdminOrOwner={isAdminOrOwner}
               isProjectCompleted={isProjectCompleted}
               phaseId={phaseId}
+              isSmartScannerActive={isSmartScannerActive}
+              workspaceId={workspaceId}
+              projectId={projectId}
             />
           ))}
         </div>
@@ -264,6 +281,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </DragOverlay>,
             document.body
         )}
+      </div>
     </div>
   );
 };

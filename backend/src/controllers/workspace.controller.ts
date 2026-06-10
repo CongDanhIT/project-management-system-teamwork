@@ -192,6 +192,30 @@ export const changeWorkSpaceMemberRoleController = asyncHandler(
     }
 );
 
+export const updateMemberSkillsController = asyncHandler(
+    async (req, res, next) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.id);
+        const userId = req.user?._id as string;
+        const memberId = req.params.memberId as string;
+        const { skillTags } = req.body;
+
+        // Lấy Role Document
+        const getRole = await getMemberRoleInWorkspace(workspaceId, userId);
+
+        // Kiểm tra quyền (có thể admin mới được sửa, hoặc tự member đó được sửa, tạm cho ADMIN)
+        roleGuard(getRole.name, [Permissions.MANAGE_WORKSPACE_SETTINGS]);
+
+        const { updateMemberSkillsService } = await import("../services/workspace.service");
+        const member = await updateMemberSkillsService(workspaceId, memberId, skillTags || [], userId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Cập nhật kỹ năng thành viên thành công",
+            member
+        });
+    }
+);
+
 export const updateWorkspaceByIdController = asyncHandler(
     async (req, res, next) => {
         const workspaceId = WorkSpaceIdSchema.parse(req.params.id);

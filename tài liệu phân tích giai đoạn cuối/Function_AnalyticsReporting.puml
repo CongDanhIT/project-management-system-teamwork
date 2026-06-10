@@ -40,11 +40,11 @@ rectangle "Hệ thống Quản lý Dự án - Phân hệ Phân tích và Báo c�
 
 ' Liên kết giữa Actor con người và các ca sử dụng tương tác (Association - Đường liền nét)
 ' Member có quyền xem dashboard tiến độ của dự án/cá nhân mình
-Member --> UC_ViewDashboard
+Member -- UC_ViewDashboard
 
 ' Admin và Owner có đặc quyền xem nhật ký hoạt động của hệ thống và xuất báo cáo
-Admin --> UC_ViewAuditLog
-Admin --> UC_ExportReport
+Admin -- UC_ViewAuditLog
+Admin -- UC_ExportReport
 
 ' Quan hệ Bao gồm (<<include>>) - Nét đứt (..>), từ Base đến Included
 UC_ViewDashboard ..> UC_CheckPermission : "<<include>>"

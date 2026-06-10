@@ -46,7 +46,7 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
   const docInputRef = useRef<HTMLInputElement>(null);
   const { data: workspaceTags } = useQuery({
     queryKey: ['workspaceTags', workspaceId],
-    queryFn: () => tagService.getTags(workspaceId as string),
+    queryFn: () => tagService.getTags(workspaceId as string, 'TASK'),
     enabled: !!workspaceId && isOpen
   });
 

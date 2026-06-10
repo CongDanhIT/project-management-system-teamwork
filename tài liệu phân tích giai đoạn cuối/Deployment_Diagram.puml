@@ -1,0 +1,87 @@
+@startuml Deployment_Diagram
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 60
+
+' Định nghĩa màu sắc hiện đại cho các Node
+skinparam node {
+    BackgroundColor<<Client>> #EBF5FB
+    BorderColor<<Client>> #2980B9
+    
+    BackgroundColor<<Server>> #E8F8F5
+    BorderColor<<Server>> #117A65
+}
+
+skinparam rectangle {
+    BackgroundColor<<CloudService>> #FEF9E7
+    BorderColor<<CloudService>> #D4AC0D
+    roundCorner<<CloudService>> 15
+}
+
+skinparam database {
+    BackgroundColor #FDF2E9
+    BorderColor #E67E22
+}
+
+title Sơ đồ Triển khai Hệ thống (Deployment Diagram) - TeamFlow
+
+' Nút Client
+node "Thiết bị Người dùng\n(User Device)" as ClientNode <<Client>> {
+    node "Trình duyệt Web\n(Chrome, Safari, Edge)" as Browser {
+        artifact "Next.js Client Bundle\n(React 19 SPA, JS, CSS)" as ClientApp
+    }
+}
+
+' Lớp mạng trung gian
+rectangle "Cloudflare\n(DNS, CDN, WAF)" as CDN <<CloudService>>
+
+' Nút Frontend Server
+node "Hạ tầng Vercel\n(Frontend Hosting)" as VercelNode <<Server>> {
+    node "Vercel Edge Network" as EdgeEnv {
+        artifact "Next.js SSR Server\n(Server Components)" as SSRApp
+    }
+}
+
+' Nút Backend Server
+node "Máy chủ Ứng dụng\n(Render / VPS / AWS)" as BackendNode <<Server>> {
+    node "Node.js 20.x Runtime" as NodeEnv {
+        artifact "Express REST API Server" as APIServer
+        artifact "Socket.io Server" as SocketServer
+        artifact "Cron Job Scheduler" as CronWorker
+    }
+}
+
+' Dịch vụ Lưu trữ Đám mây
+rectangle "MongoDB Atlas Cloud\n(Database-as-a-Service)" as AtlasNode <<CloudService>> {
+    database "MongoDB Replica Set\n(Cluster0)" as MongoCluster {
+        artifact "teamflow_db" as DB
+    }
+}
+
+rectangle "Cloudflare R2 Cloud\n(Object Storage)" as R2Node <<CloudService>> {
+    database "R2 Bucket\n(S3-Compatible)" as R2Bucket {
+        artifact "Tài liệu & Hình ảnh dự án" as Assets
+    }
+}
+
+' Các dịch vụ của bên thứ 3
+rectangle "External Services\n(Dịch vụ API bên thứ 3)" as ThirdPartyNode <<CloudService>> {
+    artifact "Google OAuth 2.0" as GoogleAPI
+    artifact "SendGrid Mail API" as SendGridAPI
+    artifact "Slack API / Webhook" as SlackAPI
+}
+
+' Các luồng giao tiếp (Communication Paths)
+ClientNode =down=> CDN : HTTPS / WSS
+CDN =down=> VercelNode : HTTPS
+CDN =down=> BackendNode : HTTPS / WSS (API & Realtime)
+
+VercelNode ..> BackendNode : HTTPS (Server-to-Server API Calls)
+
+BackendNode =down=> AtlasNode : TCP/IP (Mongoose)
+BackendNode =down=> R2Node : HTTPS (Ký Presigned URL)
+ClientNode =down=> R2Node : HTTPS (Tải Upload/Download File trực tiếp)
+
+BackendNode =right=> ThirdPartyNode : HTTPS (REST API)
+
+@enduml

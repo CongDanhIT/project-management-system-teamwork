@@ -29,20 +29,17 @@ rectangle "Quản lý Project, Phase và Task" {
     usecase "Lưu lịch sử hoạt động" as UC_ActivityLog
 }
 
-Owner --> UC_CreateProject
-Owner --> UC_CreatePhase
-Owner --> UC_CreateTask
-Owner --> UC_AssignTask
-Owner --> UC_TrackProgress
+' Theo nguyên lý kế thừa (Inheritance):
+' - Member có quyền CreateTask và TrackProgress
+' - Admin kế thừa Member, có thêm quyền CreateProject, CreatePhase, AssignTask
+' - Owner kế thừa Admin, tự động có TẤT CẢ quyền trên nên không cần vẽ thêm đường nối.
 
-Admin --> UC_CreateProject
-Admin --> UC_CreatePhase
-Admin --> UC_CreateTask
-Admin --> UC_AssignTask
-Admin --> UC_TrackProgress
+Admin -- UC_CreateProject
+Admin -- UC_CreatePhase
+Admin -- UC_AssignTask
 
-Member --> UC_CreateTask
-Member --> UC_TrackProgress
+Member -- UC_CreateTask
+Member -- UC_TrackProgress
 
 UC_CreateProject ..> UC_CheckPermission : "<<include>>"
 UC_CreatePhase ..> UC_CheckPermission : "<<include>>"

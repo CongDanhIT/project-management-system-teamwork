@@ -58,7 +58,7 @@ export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highl
 
   const { data: workspaceTags } = useQuery({
     queryKey: ['workspaceTags', workspaceId],
-    queryFn: () => tagService.getTags(workspaceId as string),
+    queryFn: () => tagService.getTags(workspaceId as string, 'TASK'),
     enabled: !!workspaceId
   });
 

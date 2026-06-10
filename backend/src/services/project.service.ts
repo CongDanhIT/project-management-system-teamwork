@@ -125,6 +125,7 @@ export const getProjectsInWorkspaceService = async (
                 "createdBy.name": 1,
                 "createdBy.profilePicture": 1,
                 favoritedBy: 1,
+                isAutoTaggingEnabled: 1,
                 totalTasks: { $size: "$tasks" },
                 completedTasks: {
                     $size: {

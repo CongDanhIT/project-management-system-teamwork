@@ -36,13 +36,13 @@ rectangle "Phân hệ Thành viên - Hệ thống Quản lý Dự án" {
 }
 
 ' Gắn Actor với các Base Use Cases
-Member --> UC_Auth
-Member --> UC_Profile
-Member --> UC_Task
-Member --> UC_Track
-Member --> UC_Chat
-Member --> UC_Upload
-Member --> UC_AI
+Member -- UC_Auth
+Member -- UC_Profile
+Member -- UC_Task
+Member -- UC_Track
+Member -- UC_Chat
+Member -- UC_Upload
+Member -- UC_AI
 
 ' QUAN HỆ INCLUDE (Đường nét đứt, mũi tên từ Base -> Included)
 ' Tải file lên thì BẮT BUỘC phải gọi API xin quyền Presigned URL từ R2

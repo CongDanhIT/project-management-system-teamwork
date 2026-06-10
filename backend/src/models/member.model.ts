@@ -6,13 +6,15 @@ export interface MemberDocument extends mongoose.Document {
     role: mongoose.Types.ObjectId;
     joinedAt: Date;
     joined?: boolean;
+    skillTags: mongoose.Types.ObjectId[];
 }
 const memberSchema = new Schema<MemberDocument>({
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     workspaceId: { type: Schema.Types.ObjectId, ref: "Workspace", required: true },
     role: { type: Schema.Types.ObjectId, ref: "Role", required: true },
     joinedAt: { type: Date, default: Date.now },
-    joined: { type: Boolean, default: true }
+    joined: { type: Boolean, default: true },
+    skillTags: [{ type: Schema.Types.ObjectId, ref: "Tag" }]
 }, {
     timestamps: true
 });

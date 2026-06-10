@@ -42,19 +42,19 @@ rectangle "Hệ thống Quản trị Dự án Tập trung (TeamFlow)" {
 }
 
 ' Nối quan hệ Association (Giao tiếp)
-Owner --> UC_Workspace
+Owner -- UC_Workspace
 
-Admin --> UC_Project
-Admin --> UC_Personnel
-Admin --> UC_Report
-Admin --> UC_Announcement
-Admin --> UC_AIPlanner
+Admin -- UC_Project
+Admin -- UC_Personnel
+Admin -- UC_Report
+Admin -- UC_Announcement
+Admin -- UC_AIPlanner
 
-Member --> UC_Account
-Member --> UC_Task
-Member --> UC_Docs
-Member --> UC_Communicate
-Member --> UC_AIAssistant
-Member --> UC_Search
+Member -- UC_Account
+Member -- UC_Task
+Member -- UC_Docs
+Member -- UC_Communicate
+Member -- UC_AIAssistant
+Member -- UC_Search
 
 @enduml

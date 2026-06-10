@@ -34,7 +34,10 @@ export const taskService = {
     return response.data.task;
   },
 
-
+  getSmartAssign: async (workspaceId: string, projectId: string, taskId: string) => {
+    const response = await api.get(`/task/workspace/${workspaceId}/project/${projectId}/task/${taskId}/smart-assign`);
+    return response.data;
+  },
 
   updateTask: async (workspaceId: string, projectId: string, taskId: string, data: UpdateTaskRequest) => {
     const response = await api.put(`/task/workspace/${workspaceId}/project/${projectId}/update/${taskId}`, data);

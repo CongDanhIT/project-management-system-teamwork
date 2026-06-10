@@ -100,6 +100,8 @@ export function AIPlannerModal({ isOpen, onClose, projectId, workspaceId, projec
             if (!open) {
                 if (isGenerating || isApplying) return;
                 onClose();
+                // Delay reset để animation đóng modal mượt mà, tránh chớp UI
+                setTimeout(() => resetModal(), 300);
             }
         }}>
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-[32px] border-slate-200/60 dark:border-white/10 shadow-2xl bg-white dark:bg-slate-900">
@@ -295,7 +297,7 @@ export function AIPlannerModal({ isOpen, onClose, projectId, workspaceId, projec
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="outline"
-                                onClick={onClose}
+                                onClick={resetModal}
                                 disabled={isApplying}
                                 className="h-14 rounded-2xl flex-1 font-bold text-slate-600 dark:text-slate-300"
                             >

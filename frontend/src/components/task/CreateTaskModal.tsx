@@ -163,7 +163,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Fetch available tags
   const { data: availableTags = [] } = useQuery({
     queryKey: ['workspace-tags', workspaceId],
-    queryFn: () => tagService.getTags(workspaceId!),
+    queryFn: () => tagService.getTags(workspaceId!, 'TASK'),
     enabled: !!workspaceId,
   });
 

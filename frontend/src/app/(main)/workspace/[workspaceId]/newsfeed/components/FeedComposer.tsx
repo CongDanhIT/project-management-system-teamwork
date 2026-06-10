@@ -36,7 +36,7 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
 
   const { data: workspaceTags } = useQuery({
     queryKey: ['workspaceTags', workspaceId],
-    queryFn: () => tagService.getTags(workspaceId as string),
+    queryFn: () => tagService.getTags(workspaceId as string, 'TASK'),
     enabled: !!workspaceId
   });
 

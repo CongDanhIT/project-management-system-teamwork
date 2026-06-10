@@ -1,0 +1,75 @@
+@startuml Activity_Chatbot_AI
+skinparam BackgroundColor white
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityBorderColor #2E7D32
+skinparam ActivityDiamondBackgroundColor #FFF3E0
+skinparam ActivityDiamondBorderColor #EF6C00
+skinparam ArrowColor #333333
+skinparam NoteBackgroundColor #E3F2FD
+skinparam NoteBorderColor #1565C0
+skinparam SwimlaneBorderColor #999999
+skinparam SwimlaneTitleBackgroundColor #F5F5F5
+skinparam ConditionEndStyle diamond
+skinparam DefaultFontName Arial
+skinparam wrapWidth 200
+
+|Người dùng (Quản lý/Thành viên)|
+start
+:Mở giao diện Chatbot (AI Agent V2);
+:Nhập tin nhắn chat (VD: "Có task nào trễ hạn?");
+:Bấm nút Gửi (Send);
+
+|Frontend (AiChatSidebarV2 - Vercel AI SDK)|
+:Hiển thị tin nhắn người dùng lên UI;
+:Thêm Context (workspaceId, projectId) vào Body;
+:Gửi HTTP POST (Streaming) chứa lịch sử tin nhắn;
+note right
+  API: /api/ai/v2/chat
+  Sử dụng cơ chế useChat (Vercel)
+end note
+
+|Backend (AI-V2 Controller & Service)|
+:Nhận Request và Xác thực người dùng;
+:Xử lý Sliding Window
+(Cắt giảm lịch sử chỉ giữ 8 tin nhắn gần nhất);
+:Tinh giản dữ liệu Tool Invocations cũ
+(Pruning) để tiết kiệm Token;
+
+:Gọi hàm streamAgentChatService;
+
+|AI Service (Provider: Groq/Together/OpenRouter)|
+:Nhận lịch sử tin nhắn và System Prompt;
+if (Cần gọi Tool (Hàm) để lấy dữ liệu?) then (Có)
+  :Tạm dừng sinh text, quyết định gọi Tool;
+  |Backend (AI-V2 Controller & Service)|
+  :Thực thi Tool tương ứng
+  (Ví dụ: getTasksList, createTask...);
+  :Trả kết quả (JSON) ngược lại cho AI;
+  
+  |AI Service (Provider: Groq/Together/OpenRouter)|
+  :Phân tích dữ liệu Tool trả về;
+else (Không)
+endif
+
+|AI Service (Provider: Groq/Together/OpenRouter)|
+:Sinh câu trả lời từng từ (Streaming Text);
+
+|Backend (AI-V2 Controller & Service)|
+:Nhận luồng dữ liệu (Data Stream) từ AI Provider;
+:Pipe Data Stream trực tiếp về Frontend;
+
+|Frontend (AiChatSidebarV2 - Vercel AI SDK)|
+:Nhận từng chunk dữ liệu qua kết nối Stream;
+:Cập nhật giao diện Chat theo thời gian thực
+(Hiệu ứng gõ chữ);
+
+if (Phát hiện Tool gọi thay đổi dữ liệu?) then (Có)
+  :Gọi queryClient.invalidateQueries()
+  để Refresh bảng Kanban/List View;
+else (Không)
+endif
+
+|Người dùng (Quản lý/Thành viên)|
+:Đọc kết quả từ AI Chatbot;
+stop
+@enduml

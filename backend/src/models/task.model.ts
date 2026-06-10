@@ -7,21 +7,21 @@ export interface TaskDocument extends mongoose.Document {
     description: string | null;
     projectId: mongoose.Types.ObjectId;
     workspaceId: mongoose.Types.ObjectId;
-    parentId: mongoose.Types.ObjectId | null; // [AI-ADDED] ID của Task cha (nếu là Subtask)
+    parentId: mongoose.Types.ObjectId | null; //  ID của Task cha (nếu là Subtask)
     status: TaskStatusEnumType;
     priority: TaskPriorityEnumType;
     assignedTo: mongoose.Types.ObjectId[]; // [MULTI-ASSIGNEE] Mảng người thực hiện, rỗng = chưa gán
     createdBy: mongoose.Types.ObjectId;
-    startDate: Date | null; // [AI-ADDED] Ngày bắt đầu (Cho Calendar/Gantt)
+    startDate: Date | null; //  Ngày bắt đầu (Cho Calendar/Gantt)
     dueDate: Date | null;
-    completedAt: Date | null; // [AI-ADDED] Ngày thực tế hoàn thành để tính chỉ số Performance
-    estimatedHours: number; // [AI-ADDED] Thời gian dự tính (Giờ)
-    loggedHours: number;    // [AI-ADDED] Thời gian thực tế đã dùng (Giờ)
+    completedAt: Date | null; //  Ngày thực tế hoàn thành để tính chỉ số Performance
+    estimatedHours: number; //  Thời gian dự tính (Giờ)
+    loggedHours: number;    //  Thời gian thực tế đã dùng (Giờ)
     phaseId: mongoose.Types.ObjectId | null; // ID của Giai đoạn dự án
     tags: mongoose.Types.ObjectId[]; // Danh sách nhãn cho Task
-    deletedAt: Date | null; // [AI-ADDED] Ngày xóa (Cho Soft Delete dự án cha)
-    requiresApproval: boolean; // [AI-ADDED] Cần chờ duyệt trước khi hoàn thành
-    overdueNotificationSent: boolean; // [AI-ADDED] Đã gửi thông báo quá hạn chưa
+    deletedAt: Date | null; //  Ngày xóa (Cho Soft Delete dự án cha)
+    requiresApproval: boolean; //  Cần chờ duyệt trước khi hoàn thành
+    overdueNotificationSent: boolean; //  Đã gửi thông báo quá hạn chưa
     createdAt: Date;
     updatedAt: Date;
 }

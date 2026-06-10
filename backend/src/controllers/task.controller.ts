@@ -30,7 +30,8 @@ export const createTaskController = asyncHandler(
             workspaceId,
             taskId: task._id,
             task,
-            userName: (req.user as any)?.name || "ThÃ nh viÃªn",
+            userId,
+            userName: (req.user as any)?.name || "Thành viên",
             taskTitle: task.title,
             projectName: project.name
         });
@@ -289,4 +290,23 @@ export const permanentDeleteTaskController = asyncHandler(
     }
 );
 
+export const getSmartAssignController = asyncHandler(
+    async (req, res) => {
+        const workspaceId = WorkSpaceIdSchema.parse(req.params.workspaceId);
+        const projectId = projectIdSchema.parse(req.params.projectId);
+        const taskId = taskIdSchema.parse(req.params.taskId);
+        const userId = req.user?._id as string;
 
+        const role = await getMemberRoleInWorkspace(workspaceId, userId);
+        roleGuard(role.name, [Permissions.VIEW_ONLY]);
+
+        const { smartAllocationService } = await import("../services/smart-allocation.service");
+        const suggestions = await smartAllocationService.evaluateMembersForTask(workspaceId, projectId, taskId);
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: "Lấy danh sách gợi ý phân bổ thành công",
+            suggestions
+        });
+    }
+);

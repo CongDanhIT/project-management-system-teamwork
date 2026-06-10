@@ -26,10 +26,10 @@ rectangle "Phân hệ Chủ sở hữu - Hệ thống Quản lý Dự án" {
 }
 
 ' Liên kết từ Actor đến các Base Use Cases
-Owner --> UC_Create
-Owner --> UC_Delete
-Owner --> UC_Update
-Owner --> UC_Config
+Owner -- UC_Create
+Owner -- UC_Delete
+Owner -- UC_Update
+Owner -- UC_Config
 
 ' QUAN HỆ EXTEND: Đặt lại mã mời là một thao tác mở rộng của việc Cập nhật thông tin
 UC_Reset .u.> UC_Update : <<extend>>

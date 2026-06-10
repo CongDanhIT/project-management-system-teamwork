@@ -40,9 +40,9 @@ rectangle "Hệ thống Quản lý Dự án - Phân hệ Tích hợp và Thông 
 }
 
 ' Liên kết giữa Actor con người và các ca sử dụng tương tác (Association - Đường liền nét)
-Admin --> UC_ConfigWebhook
-Admin --> UC_ConfigServices
-Admin --> UC_TestConnection
+Admin -- UC_ConfigWebhook
+Admin -- UC_ConfigServices
+Admin -- UC_TestConnection
 
 ' Quan hệ Bao gồm (<<include>>) - Nét đứt (..>), từ Base đến Included
 ' Mọi thao tác cấu hình đều bắt buộc phải qua bước kiểm tra quyền truy cập
