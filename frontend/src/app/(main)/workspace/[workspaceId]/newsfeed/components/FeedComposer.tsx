@@ -391,7 +391,7 @@ export function FeedComposer({ onCreate, isLoading }: FeedComposerProps) {
                     ref={docInputRef}
                     type="file" 
                     className="hidden" 
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,image/*"
                     onChange={handleDocUpload}
                   />
                   <button onClick={() => docInputRef.current?.click()} className="p-2 rounded-full hover:bg-slate-50 dark:hover:bg-surface-tertiary transition-colors" title="Đính kèm tài liệu">

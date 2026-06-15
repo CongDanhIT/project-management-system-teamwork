@@ -25,10 +25,13 @@ export const AI_MODELS = {
     GROQ_LLAMA_3_1_8B: "llama-3.1-8b-instant",
     NVIDIA_DEEPSEEK_V4: "deepseek-ai/deepseek-v4-pro",
     TOGETHER_LLAMA_3_3_70B: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    TOGETHER_GEMMA_4_31B: "google/gemma-4-31B-it",
     // OpenRouter Free Models
     OPENROUTER_GEMMA_4_31B: "google/gemma-4-31b-it:free",
     OPENROUTER_GPT_OSS_120B: "openai/gpt-oss-120b:free",
+    OPENROUTER_LLAMA_3_3_70B: "meta-llama/llama-3.3-70b-instruct:free",
     OPENROUTER_QWEN3_80B: "qwen/qwen3-next-80b-a3b-instruct:free",
+    OPENROUTER_LAGUNA_M1: "poolside/laguna-m.1:free",
 };
 
 // Cấu hình Vercel AI SDK Provider cho Groq
@@ -46,13 +49,19 @@ const togetherProvider = createOpenAI({
 const openRouterProvider = createOpenAI({
     apiKey: env.OPENROUTER_API_KEY || "",
     baseURL: "https://openrouter.ai/api/v1",
+    headers: {
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "TeamFlow AI",
+    }
 });
 
 // Danh sách các model thuộc OpenRouter để routing tự động
 const OPENROUTER_MODEL_IDS = [
     AI_MODELS.OPENROUTER_GEMMA_4_31B,
     AI_MODELS.OPENROUTER_GPT_OSS_120B,
+    AI_MODELS.OPENROUTER_LLAMA_3_3_70B,
     AI_MODELS.OPENROUTER_QWEN3_80B,
+    AI_MODELS.OPENROUTER_LAGUNA_M1,
 ];
 
 logger.info(`[AI-Init] Groq Provider initialized. Key present: ${!!env.GROQ_API_KEY}`);
@@ -1199,6 +1208,7 @@ QUY TẮC VẬN HÀNH:
  * Sử dụng Groq Llama 3 70B để phân tích log và đưa ra nhận định.
  */
 export const AdvancedInsightsSchema = z.object({
+    criticalIncidents: z.array(z.string()).describe("Danh sách các sự cố NGHIÊM TRỌNG (EXTREME_ANOMALY) từ log. Nêu rõ mức độ ảnh hưởng của siêu ngoại lệ này. Nếu không có, mảng sẽ rỗng."),
     bottlenecks: z.array(z.string()).describe("Danh sách các điểm nghẽn hoặc vấn đề phát hiện được từ log"),
     velocity_analysis: z.string().describe("Nhận định chung về tốc độ làm việc của team"),
     team_performance: z.array(z.string()).describe("Phân tích chi tiết về đóng góp và hiệu suất của từng thành viên"),
@@ -1209,12 +1219,13 @@ export const AdvancedInsightsSchema = z.object({
 
 export type AdvancedInsights = z.infer<typeof AdvancedInsightsSchema>;
 
-export const generateAdvancedInsightsService = async (logsData: any[], contextData?: any): Promise<AdvancedInsights> => {
+export const generateAdvancedInsightsService = async (logsData: any[], contextData?: any, modelId: string = AI_MODELS.GROQ_LLAMA_3_3_70B): Promise<AdvancedInsights> => {
     try {
-        logger.info("[AI-Groq] Đang phân tích chuyên sâu log dự án", { logCount: logsData.length, hasContext: !!contextData });
+        logger.info("[AI-Groq] Đang khởi động quy trình Multi-Agent Self-Reflection cho phân tích chuyên sâu", { logCount: logsData.length, hasContext: !!contextData });
 
         if (!logsData || logsData.length === 0) {
             return {
+                criticalIncidents: [],
                 bottlenecks: ["Không có đủ dữ liệu log để phân tích điểm nghẽn."],
                 velocity_analysis: "Dự án mới hoặc chưa có hoạt động nào được ghi nhận.",
                 team_performance: ["Chưa có dữ liệu thành viên để đánh giá."],
@@ -1227,8 +1238,24 @@ export const generateAdvancedInsightsService = async (logsData: any[], contextDa
         const promptStr = JSON.stringify(logsData);
         const contextStr = contextData ? `\nTHÔNG TIN BỐI CẢNH DỰ ÁN (BASELINE CONTEXT):\n${JSON.stringify(contextData, null, 2)}\n` : "";
 
-        const { text } = await generateText({
-            model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B) as any,
+        let modelInstance: any;
+        if (OPENROUTER_MODEL_IDS.includes(modelId)) {
+            modelInstance = openRouterProvider(modelId);
+            logger.info("[AI-Agent] Sử dụng OpenRouter Provider cho phân tích chuyên sâu", { modelId });
+        } else if (modelId === AI_MODELS.TOGETHER_LLAMA_3_3_70B || modelId === AI_MODELS.NVIDIA_DEEPSEEK_V4 || modelId === AI_MODELS.TOGETHER_GEMMA_4_31B) {
+            modelInstance = togetherProvider.chat(modelId);
+            logger.info("[AI-Agent] Sử dụng Together AI Provider cho phân tích chuyên sâu", { modelId });
+        } else {
+            modelInstance = groqProvider(modelId || AI_MODELS.GROQ_LLAMA_3_3_70B);
+        }
+
+        // ==========================================
+        // PHASE 1: ANALYZER AGENT (Sinh bản nháp)
+        // ==========================================
+        logger.info("[AI-Groq] Phase 1: Analyzer Agent đang phân tích thô...");
+        const draftResult = await generateText({
+            model: modelInstance as any,
+            maxTokens: 1200,
             prompt: `
 Bạn là một Chuyên gia Phân tích Dữ liệu Dự án Cao cấp (Senior Project Data Consultant).
 Nhiệm vụ: Dựa vào thông tin bối cảnh dự án và lịch sử hoạt động (Activity Logs) dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) toàn diện và đưa ra một "Báo cáo phân tích chuyên sâu" cực kỳ chi tiết.
@@ -1241,48 +1268,89 @@ YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
 2. **Dẫn chứng**: Chỉ rõ ĐÂU là vấn đề, AI là người liên quan, hoặc MÃ CÔNG VIỆC nào đang bị đình trệ. Ví dụ: thay vì nói "Team làm chậm", hãy nói "Công việc PRO-12 đã bị đổi trạng thái 4 lần trong 2 ngày qua bởi User A, cho thấy sự lúng túng trong khâu thực thi".
 3. **Phân tích hiệu suất**: Soi kỹ hoạt động của từng người. Ai đang gánh vác nhiều nhất? Ai đang ít tương tác?
 4. **Dự báo rủi ro**: Dựa trên nhịp độ hiện tại, dự án có khả năng trễ hạn không? Có rủi ro về chất lượng hay sự thiếu hụt nhân sự không?
-5. **Góc nhìn Chuyên Sâu (Hybrid Architecture)**: LƯU Ý QUAN TRỌNG: Dữ liệu log trên ĐÃ ĐƯỢC LỌC qua thuật toán "Weighted Context Filtering". Các log xuất hiện có nghĩa là nó đã lặp lại nhiều lần hoặc mang trọng số rủi ro cao. Bạn hãy sử dụng không gian này để suy luận vượt ra khỏi cấu trúc thông thường, tìm ra các MỐI LIÊN HỆ NGẦM, hoặc CHUẨN ĐOÁN LÕI (Root-cause) mà dữ liệu rời rạc không thể hiện rõ.
+5. **Góc nhìn Chuyên Sâu (Hybrid Architecture)**: LƯU Ý QUAN TRỌNG: Dữ liệu log trên ĐÃ ĐƯỢC LỌC qua thuật toán "Weighted Context Filtering" và "Z-Score Anomaly Detection 2 Vòng". Các log xuất hiện có nghĩa là nó đã lặp lại nhiều lần hoặc mang trọng số rủi ro cao. Đặc biệt, nếu log có \`type: "EXTREME_ANOMALY"\`, đó là một sự cố CỰC KỲ BẤT THƯỜNG (ví dụ do bị sửa/xóa liên tục bởi một nhóm nhỏ) mà thuật toán đã tách ra. BẠN PHẢI CHÚ Ý NGAY LẬP TỨC vào các EXTREME_ANOMALY này và ghi chép chúng vào trường \`criticalIncidents\` để cảnh báo người dùng. Nếu không có EXTREME_ANOMALY, hãy để mảng \`criticalIncidents\` rỗng. Hãy sử dụng không gian \`deep_insights\` để suy luận vượt ra khỏi cấu trúc thông thường, tìm ra các MỐI LIÊN HỆ NGẦM, hoặc CHUẨN ĐOÁN LÕI (Root-cause) mà dữ liệu rời rạc không thể hiện rõ.
+6. **Văn phong tự nhiên & Dễ hiểu**: TUYỆT ĐỐI KHÔNG bê nguyên xi các từ khóa lập trình (như \`EXTREME_ANOMALY\`, \`UPDATE_PROJECT\`, \`CREATE_TASK\`, \`zScore\`, \`type\`) vào văn bản. Hãy dịch chúng thành ngôn ngữ quản trị dự án. Ví dụ: thay vì "Sự kiện UPDATE_PROJECT có type EXTREME_ANOMALY với zScore 5.2", hãy viết: "Hệ thống ghi nhận sự thay đổi bất thường về cấu trúc dự án ở mức độ nghiêm trọng...".
+7. **Khung thời gian (Timeframe)**: Dữ liệu bạn đang phân tích CHỈ LÀ CỦA 30 NGÀY GẦN NHẤT (1 tháng). TUYỆT ĐỐI KHÔNG được tự ý viết là "trong 2 tháng qua" hay khoảng thời gian khác.
 
 QUY TẮC TRẢ VỀ:
 - CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ.
 - KHÔNG giải thích ngoài lề.
-- Cấu trúc JSON bắt buộc (Lưu ý: Số lượng các mục trong các mảng như bottlenecks, team_performance, recommendations là KHÔNG GIỚI HẠN. Bạn có thể tự do tạo 1, 2, 3 hoặc N mục tùy theo mức độ phức tạp của dữ liệu, đừng chỉ tạo 2 mục như ví dụ):
+- Cấu trúc JSON bắt buộc:
 {
-  "bottlenecks": [ 
-    "Đoạn văn phân tích điểm nghẽn 1...", 
-    "Đoạn văn phân tích điểm nghẽn 2...",
-    "Đoạn văn phân tích điểm nghẽn N... (Tùy số lượng vấn đề phát hiện)"
-  ],
-  "velocity_analysis": "Đoạn văn dài phân tích chi tiết về nhịp độ làm việc toàn đội, so sánh với các kỳ trước (nếu có) và xu hướng tiến độ.",
-  "team_performance": [
-    "Phân tích đóng góp của thành viên A...",
-    "Phân tích đóng góp của thành viên B...",
-    "Phân tích đóng góp của thành viên N... (Hãy liệt kê đủ các thành viên nổi bật hoặc có vấn đề)"
-  ],
-  "risk_forecast": "Đoạn văn dài dự báo các rủi ro tiềm ẩn trong tương lai và cảnh báo sớm.",
-  "recommendations": [ 
-    "Đề xuất hành động 1...", 
-    "Đề xuất hành động 2...",
-    "Đề xuất hành động 3... (Tạo nhiều đề xuất tương ứng với các điểm nghẽn)"
-  ],
-  "deep_insights": "Một đoạn văn mang tính suy luận logic, phân tích các mẫu (patterns), xu hướng ngầm, kết hợp kiến trúc lai để đưa ra kết luận cực kỳ uyên thâm về thực trạng dự án."
+  "criticalIncidents": ["..."],
+  "bottlenecks": ["..."],
+  "velocity_analysis": "...",
+  "team_performance": ["..."],
+  "risk_forecast": "...",
+  "recommendations": ["..."],
+  "deep_insights": "..."
 }
-
 Ngôn ngữ: Tiếng Việt chuyên nghiệp, sắc bén, mang tính xây dựng cao.
 `,
         });
 
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const cleanJson = jsonMatch ? jsonMatch[0] : text;
-        const object = JSON.parse(cleanJson);
+        const draftJsonMatch = draftResult.text.match(/\{[\s\S]*\}/);
+        const draftCleanJson = draftJsonMatch ? draftJsonMatch[0] : draftResult.text;
 
+        // ==========================================
+        // PHASE 2: CRITIC AGENT (Tự phản biện & Đào sâu)
+        // ==========================================
+        logger.info("[AI-Groq] Phase 2: Critic Agent đang thực hiện Self-Reflection...");
+        const criticPrompt = `
+Bạn là một Chuyên gia Kiểm toán Dự án cực kỳ khó tính (Critic Agent) trong hệ thống Multi-Agent Reasoning.
+Dưới đây là một BẢN BÁO CÁO NHÁP (Draft JSON) vừa được sinh ra bởi một trợ lý AI cấp thấp dựa trên lịch sử hoạt động của dự án. 
+Nhiệm vụ của bạn là:
+1. Tự phản biện (Self-Reflection): Tìm ra những nhận xét còn hời hợt, chung chung hoặc chỉ mang tính chất "đếm số liệu" trong bản nháp.
+2. Đào sâu nguyên nhân gốc rễ (Root Causes): Đối chiếu bản nháp với Dữ liệu Log gốc để suy luận TẠI SAO các điểm nghẽn lại xảy ra.
+3. Viết lại toàn bộ BẢN BÁO CÁO CUỐI CÙNG cho thật sự sắc sảo, uyên thâm và đẳng cấp chuyên gia.
+
+Dữ liệu Log gốc (Đã qua bộ lọc Weighted Context Filtering):
+${promptStr}
+
+Bản Báo cáo Nháp (Cần được cải thiện):
+${draftCleanJson}
+
+YÊU CẦU ĐẦU RA:
+- CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ theo đúng cấu trúc cũ.
+- KHÔNG thêm bất kỳ câu giải thích nào bên ngoài khối JSON.
+- Nội dung bên trong JSON phải sắc bén hơn, mang tính chất chẩn đoán chuyên sâu (Diagnostic Analytics) thay vì chỉ thống kê mô tả (Descriptive Analytics). Đảm bảo mảng (array) như bottlenecks hay recommendations có thể tự do mở rộng (N phần tử).
+- TUYỆT ĐỐI KHÔNG dùng từ ngữ lập trình (\`EXTREME_ANOMALY\`, \`zScore\`, \`UPDATE_PROJECT\`, v.v.). Phải dùng ngôn ngữ con người (quản trị dự án).
+- LUÔN NHỚ khung thời gian phân tích là "trong 30 ngày qua" (1 tháng), tuyệt đối KHÔNG viết "2 tháng qua".
+
+Cấu trúc JSON bắt buộc:
+{
+  "criticalIncidents": ["..."],
+  "bottlenecks": ["..."],
+  "velocity_analysis": "...",
+  "team_performance": ["..."],
+  "risk_forecast": "...",
+  "recommendations": ["..."],
+  "deep_insights": "..."
+}
+`;
+
+        const finalResult = await generateText({
+            model: modelInstance as any,
+            prompt: criticPrompt,
+            temperature: 0.7, // Tăng nhẹ để LLM sáng tạo hơn trong việc suy luận
+            maxTokens: 1200,
+        });
+
+        // Xử lý chuỗi JSON an toàn, loại bỏ các ký tự Markdown (```json) thường gặp ở Deepseek
+        let finalCleanJson = finalResult.text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const finalJsonMatch = finalCleanJson.match(/\{[\s\S]*\}/);
+        if (finalJsonMatch) {
+            finalCleanJson = finalJsonMatch[0];
+        }
+        
+        const object = JSON.parse(finalCleanJson);
         const validated = AdvancedInsightsSchema.parse(object);
 
-        logger.info("[AI-Groq] Đã phân tích chuyên sâu thành công");
+        logger.info("[AI-Groq] Đã hoàn thành Multi-Agent Self-Reflection thành công");
         return validated;
 
     } catch (error: any) {
-        logger.error("[AI-Groq] Lỗi khi phân tích chuyên sâu", {
+        logger.error("[AI-Groq] Lỗi khi phân tích chuyên sâu (Multi-Agent)", {
             message: error?.message,
             stack: error?.stack
         });

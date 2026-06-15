@@ -122,7 +122,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   });
 
   return (
-    <div className="flex items-center gap-3 mb-8 bg-slate-50/50 dark:bg-slate-900/40 backdrop-blur-xl p-2.5 rounded-[32px] border border-slate-100/80 dark:border-white/5 shadow-sm">
+    <div className="flex items-center gap-3 mb-8 bg-white/80 dark:bg-[#071613]/80 bg-gradient-to-r from-brand-primary/[0.03] to-transparent backdrop-blur-xl p-2.5 rounded-[32px] border border-brand-primary/10 dark:border-brand-primary/20 shadow-[0_8px_30px_rgba(3,93,91,0.06)] dark:shadow-none">
       <SearchInput
         placeholder="Tìm kiếm công việc nhanh..."
         value={filters.search}

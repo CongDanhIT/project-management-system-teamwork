@@ -343,7 +343,7 @@ export function FeedEditModal({ announcement, isOpen, onClose, onUpdate, isLoadi
               ref={docInputRef}
               type="file" 
               className="hidden" 
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,image/*"
               onChange={handleDocUpload}
             />
             <button 

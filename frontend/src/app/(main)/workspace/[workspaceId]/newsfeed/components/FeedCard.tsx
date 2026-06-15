@@ -267,13 +267,15 @@ export function FeedCard({ announcement, onToggleReaction, isAdminOrOwner, highl
     }
   };
 
-  const images = announcement.attachments?.filter(att => 
-    att.fileType === 'IMAGE' || /\.(jpg|jpeg|png|webp|gif)$/i.test(att.fileUrl)
-  ) || [];
+  const isImageAndPublic = (att: Attachment) => {
+    // Nếu là file từ R2 private, không thể hiển thị trực tiếp bằng thẻ <img>
+    if (att.fileUrl.includes('r2.cloudflarestorage.com')) return false;
+    return att.fileType === 'IMAGE' || /\.(jpg|jpeg|png|webp|gif)$/i.test(att.fileUrl);
+  };
 
-  const files = announcement.attachments?.filter(att => 
-    att.fileType !== 'IMAGE' && !/\.(jpg|jpeg|png|webp|gif)$/i.test(att.fileUrl)
-  ) || [];
+  const images = announcement.attachments?.filter(isImageAndPublic) || [];
+
+  const files = announcement.attachments?.filter(att => !isImageAndPublic(att)) || [];
 
   // Editorial Tech styles - No-Line Rule & Obsidian Meridian Palette
   return (

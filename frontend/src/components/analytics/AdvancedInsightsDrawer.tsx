@@ -15,6 +15,13 @@ import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { exportAIInsightsToWord } from "../../utils/export-utils";
 import { Button } from '@/components/ui/button';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 interface AdvancedInsightsDrawerProps {
   isOpen: boolean;
@@ -62,16 +69,25 @@ export function AdvancedInsightsDrawer({
   const project = projectData?.project;
   const workspace = workspaceData?.workspace;
 
-  // Use Tanstack Query to fetch the insights, enabled only when the drawer is open
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['advanced-insights', workspaceId, projectId],
+  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
+  const [hasStartedAnalysis, setHasStartedAnalysis] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeout(() => setHasStartedAnalysis(false), 300);
+    }
+  }, [isOpen]);
+
+  // Use Tanstack Query to fetch the insights, enabled only when the drawer is open AND user clicks start
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ['advanced-insights', workspaceId, projectId, selectedModel],
     queryFn: async () => {
       const response = await api.get(
-        `/analytics/workspace/${workspaceId}/project/${projectId}/advanced-insights`
+        `/analytics/workspace/${workspaceId}/project/${projectId}/advanced-insights?modelId=${selectedModel}`
       );
       return response.data;
     },
-    enabled: isOpen && !!workspaceId && !!projectId,
+    enabled: isOpen && !!workspaceId && !!projectId && hasStartedAnalysis,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
@@ -131,22 +147,105 @@ export function AdvancedInsightsDrawer({
               </div>
             </div>
 
-            {/* Export Button */}
-            {data && data.success && (
-              <Button 
-                onClick={handleExport}
-                variant="outline" 
-                className="rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 h-11 px-5 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <FileText className="w-4 h-4 text-indigo-500" />
-                Xuất báo cáo Word
-              </Button>
-            )}
+            {/* Export Button & Model Select */}
+            <div className="flex items-center gap-3 relative z-10">
+              <Select value={selectedModel} onValueChange={(val) => val && setSelectedModel(val as string)}>
+                <SelectTrigger className="h-11 w-[220px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl font-bold focus:ring-indigo-500 shadow-sm">
+                  <SelectValue placeholder="Chọn Model AI" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl font-medium">
+                  <SelectItem value="llama-3.3-70b-versatile" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Llama 3 70B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Groq (Siêu Tốc)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="openai/gpt-oss-120b:free" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">GPT-OSS 120B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Dự Phòng - Ổn Định)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="meta-llama/Llama-3.3-70B-Instruct-Turbo" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-sky-600 dark:text-sky-400">Llama 3 70B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Together AI (Dự phòng tốc độ cao)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="google/gemma-4-31B-it" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Gemma 4 31B-it FP8</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Together AI (Đôi khi bị kẹt do Rate Limit)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="google/gemma-4-31b-it:free" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-teal-600 dark:text-teal-400">Gemma 4 31B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Bản Free - Đáng thử)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="deepseek-ai/deepseek-v4-pro" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-amber-600 dark:text-amber-400">Deepseek V4 Pro</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Together AI (Vua Suy Luận - Khuyên Dùng)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="poolside/laguna-m.1:free" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-teal-600 dark:text-teal-400">Laguna M.1 (Poolside)</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Mới - Chuyên Gia Logic</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="meta-llama/llama-3.3-70b-instruct:free" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Llama 3.3 70B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Rất Dễ Quá Tải)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="qwen/qwen3-next-80b-a3b-instruct:free" className="cursor-pointer">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Qwen3 Next 80B</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Rất Dễ Quá Tải)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {data && data.success && (
+                <Button 
+                  onClick={handleExport}
+                  variant="outline" 
+                  className="rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 h-11 px-5 font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                >
+                  <FileText className="w-4 h-4 text-indigo-500" />
+                  Xuất báo cáo Word
+                </Button>
+              )}
+            </div>
           </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8">
-          {isLoading ? (
+          {!hasStartedAnalysis ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px] space-y-8 animate-in fade-in zoom-in duration-700 mt-10">
+              <div className="w-24 h-24 rounded-[32px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+                <Brain className="w-12 h-12 text-white" />
+              </div>
+              <div className="text-center space-y-3 max-w-md">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white">Sẵn Sàng Phân Tích?</h2>
+                <p className="text-[15px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                  Vui lòng chọn Mô hình AI ở góc trên bên phải. Sau đó, hệ thống sẽ quét toàn bộ dữ liệu 30 ngày qua để tìm ra điểm nghẽn và rủi ro tiềm ẩn.
+                </p>
+              </div>
+              <Button 
+                onClick={() => setHasStartedAnalysis(true)}
+                className="h-14 px-8 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-xl shadow-indigo-500/30 hover:scale-105 transition-all"
+              >
+                <Sparkles className="w-5 h-5 mr-2" />
+                Bắt Đầu Phân Tích
+              </Button>
+            </div>
+          ) : isLoading || isFetching ? (
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-in fade-in duration-1000">
               <div className="relative">
                 <div className="absolute inset-0 bg-indigo-500 blur-[40px] opacity-20 rounded-full" />
@@ -175,6 +274,39 @@ export function AdvancedInsightsDrawer({
           ) : data && data.success && data.data ? (
             <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-8 duration-700 pb-10">
               
+              {/* 0. CRITICAL INCIDENTS - Báo động đỏ nếu có EXTREME_ANOMALY */}
+              {data.data.criticalIncidents && data.data.criticalIncidents.length > 0 && (
+                <div className="relative group animate-in slide-in-from-bottom-4 duration-500">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 rounded-[32px] blur opacity-40 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                  <div className="relative bg-white dark:bg-slate-950 rounded-[32px] p-8 border border-red-500/50 shadow-2xl overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                      <AlertTriangle className="w-48 h-48 text-red-500" />
+                    </div>
+                    
+                    <div className="flex items-center gap-3 mb-6 relative z-10">
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg shadow-red-500/30">
+                        <AlertTriangle className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600 dark:from-red-400 dark:to-orange-400 tracking-tight">
+                          Cảnh Báo Nghiêm Trọng (Extreme Anomaly)
+                        </h3>
+                        <p className="text-xs font-bold text-red-500 uppercase tracking-[0.2em]">Phát hiện bất thường cấp độ cao</p>
+                      </div>
+                    </div>
+                    
+                    <div className="relative z-10 space-y-4">
+                      {data.data.criticalIncidents.map((incident: string, i: number) => (
+                        <div key={i} className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 text-[15px] leading-relaxed text-red-700 dark:text-red-300 font-medium flex gap-4 items-start">
+                          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
+                          <p>{incident}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 1. DEEP INSIGHTS - Thẻ Tự do suy luận siêu việt (Nổi bật nhất) */}
               {data.data.deep_insights && (
                 <div className="relative group">

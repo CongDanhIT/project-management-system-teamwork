@@ -177,18 +177,12 @@ function ProjectCard({
         router.push(`/workspace/${workspaceId}/projects/${project._id}/phases`);
       }}
       className={cn(
-        "group relative p-0 rounded-[32px] bg-white dark:bg-slate-900/40 backdrop-blur-md shadow-glow-combined hover:z-30 overflow-hidden flex flex-col h-[360px] border border-slate-200 dark:border-white/5 cursor-pointer",
-        isTrash ? "opacity-60 cursor-default" : "cursor-pointer"
+        "group relative p-0 rounded-[32px] bg-gradient-to-br from-white to-[#F8FAFC] dark:bg-none dark:bg-slate-900/40 backdrop-blur-md shadow-glow-project-card overflow-hidden flex flex-col h-[360px] border border-slate-200 dark:border-white/5",
+        isTrash ? "opacity-60 cursor-default" : "cursor-pointer",
+        "hover:z-30"
       )}
     >
-      {/* Editorial Accent Line (Unlocking Animation) */}
-      <div className="absolute top-0 left-0 w-full h-[4px] overflow-hidden pointer-events-none z-30 transform-gpu">
-        <div className={cn(
-          "absolute inset-x-0 top-0 h-full transition-all duration-700 cubic-bezier(0.23,1,0.32,1) origin-left transform-gpu opacity-80 group-hover:opacity-100 scale-x-[0.15] group-hover:scale-x-100",
-          currentTheme.accent
-        )} />
-        <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer-slide_2.5s_infinite] opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ transform: 'translateZ(0)' }} />
-      </div>
+
 
       {/* Top Visual Section */}
       <div className="relative h-[212px] w-full overflow-hidden bg-slate-50 dark:bg-slate-900/50 transform-gpu z-[5]" style={{ backfaceVisibility: 'hidden', isolation: 'isolate' }}>
@@ -638,20 +632,21 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-1000">
-      {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-4">
-          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
-            {activeTab === 'trash' ? 'Thùng rác' : 'Dự án'}
-          </h1>
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-80">
-            {activeTab === 'trash'
-              ? `${(deletedData?.length || 0) + (deletedTasksData?.length || 0) + (deletedPhasesData?.length || 0)} mục đã xoá đang chờ xử lý`
-              : `${data?.projects?.length || 0} dự án đang được quản lý`}
-          </p>
+    <div className="-m-8 lg:-m-12 min-h-[calc(100vh-73px)] bg-slate-50/50 dark:bg-background overflow-auto hidden-scrollbar pb-20">
+      <div className="w-full px-8 lg:px-12 py-10 mt-7 space-y-8 animate-in fade-in duration-1000">
+        {/* Header & Actions */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-4">
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-black text-brand-primary dark:text-white tracking-tight">
+              {activeTab === 'trash' ? 'Trash Bin' : 'Workspace Projects'}
+            </h1>
+            <p className="text-[14px] text-slate-500 font-medium">
+              {activeTab === 'trash'
+                ? `Đang có ${(deletedData?.length || 0) + (deletedTasksData?.length || 0) + (deletedPhasesData?.length || 0)} mục đã xoá đang chờ xử lý trong thùng rác.`
+                : `${data?.projects?.length || 0} dự án đang được quản lý bởi đội nhóm.`}
+            </p>
+          </div>
         </div>
-      </div>
 
       {/* --- Action Bar (Editorial Style) --- */}
       <div className="flex flex-wrap items-center justify-between gap-6 py-2">
@@ -773,7 +768,7 @@ export default function ProjectsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 pt-10 pb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 pt-2 pb-16">
           {activeTab === 'active' && isAdminOrOwner && (
             <CreateProjectPlaceholder
               key="create-project-placeholder"
@@ -972,6 +967,7 @@ export default function ProjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

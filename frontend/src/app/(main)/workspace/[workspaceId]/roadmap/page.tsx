@@ -54,12 +54,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Loader from "@/components/ui/Loader";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +71,7 @@ export default function RoadmapPage() {
   const workspaceId = params?.workspaceId as string;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -133,19 +132,19 @@ export default function RoadmapPage() {
   const { projects = [], tasks: allTasks = [], unscheduledTasks = [], phases: allPhases = [] } = data || {};
 
   const filteredProjects = useMemo(() => {
-    if (selectedProjectId === "all") return projects;
-    return projects.filter((p: any) => String(p._id) === selectedProjectId);
-  }, [projects, selectedProjectId]);
+    if (selectedProjectIds.length === 0) return projects;
+    return projects.filter((p: any) => selectedProjectIds.includes(String(p._id)));
+  }, [projects, selectedProjectIds]);
 
   const filteredUnscheduledTasks = useMemo(() => {
-    if (selectedProjectId === "all") return unscheduledTasks;
+    if (selectedProjectIds.length === 0) return unscheduledTasks;
     return unscheduledTasks.filter((t: any) => {
       const pId = typeof t.projectId === 'object' && t.projectId !== null
         ? (t.projectId._id || t.projectId.$oid)
         : t.projectId;
-      return String(pId) === selectedProjectId;
+      return selectedProjectIds.includes(String(pId));
     });
-  }, [unscheduledTasks, selectedProjectId]);
+  }, [unscheduledTasks, selectedProjectIds]);
 
   // Lọc task chỉ hiển thị những cái có trong tháng hiện tại để tối ưu không gian
   const tasks = useMemo(() => {
@@ -239,28 +238,45 @@ export default function RoadmapPage() {
             </Button>
           </div>
 
-          <Select value={selectedProjectId} onValueChange={(val) => val && setSelectedProjectId(val)}>
-            <SelectTrigger className="w-[180px] h-9 bg-background border-border rounded-xl focus:ring-primary/20 font-medium text-xs shadow-sm">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="w-[180px] h-9 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium text-xs shadow-sm flex items-center px-3 hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-2 w-full min-w-0">
                 <Filter className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span className="flex-1 text-left truncate">
-                  {selectedProjectId === "all"
+                  {selectedProjectIds.length === 0
                     ? "Tất cả dự án"
-                    : projects.find((p: any) => String(p._id) === selectedProjectId)?.name || "Dự án"}
+                    : selectedProjectIds.length === 1 
+                      ? projects.find((p: any) => String(p._id) === selectedProjectIds[0])?.name || "1 dự án"
+                      : `${selectedProjectIds.length} dự án`}
                 </span>
               </div>
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border-none shadow-depth-4 bg-popover p-2 z-[9999]">
-              <SelectItem value="all" className="rounded-lg py-2.5 font-medium text-xs">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[200px] rounded-2xl border-none shadow-lg bg-popover p-2 z-[9999]">
+              <DropdownMenuCheckboxItem
+                checked={selectedProjectIds.length === 0}
+                onCheckedChange={() => setSelectedProjectIds([])}
+                className="rounded-lg py-2.5 font-medium text-xs"
+              >
                 Tất cả dự án
-              </SelectItem>
+              </DropdownMenuCheckboxItem>
               {projects.map((p: any) => (
-                <SelectItem key={String(p._id)} value={String(p._id)} className="rounded-lg py-2.5 font-medium text-xs">
+                <DropdownMenuCheckboxItem
+                  key={String(p._id)}
+                  checked={selectedProjectIds.includes(String(p._id))}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedProjectIds((prev) => [...prev, String(p._id)]);
+                    } else {
+                      setSelectedProjectIds((prev) => prev.filter((id) => id !== String(p._id)));
+                    }
+                  }}
+                  className="rounded-lg py-2.5 font-medium text-xs"
+                >
                   {p.name}
-                </SelectItem>
+                </DropdownMenuCheckboxItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             variant="outline"
@@ -356,12 +372,20 @@ export default function RoadmapPage() {
                       <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400" />
                     </div>
                     {/* Tasks of this project */}
-                    {projectTasks.map((task: any) => (
+                    <div className="relative">
+                    {projectTasks.map((task: any, index: number) => (
                       <div
                         key={task._id}
-                        className="h-12 ml-6 mr-2 pl-4 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer border-l-2 border-l-transparent hover:border-l-primary/60"
+                        className="h-12 ml-10 mr-2 pl-3 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer relative"
                         onClick={() => handleNavigateToProject(project._id)}
                       >
+                        {/* Tree guide lines */}
+                        <div className={cn(
+                          "absolute left-[-14px] top-0 w-px bg-slate-200 dark:bg-white/10",
+                          index === projectTasks.length - 1 ? "bottom-1/2" : "bottom-0"
+                        )} />
+                        <div className="absolute left-[-14px] top-1/2 w-3 h-px bg-slate-200 dark:bg-white/10" />
+
                         <Badge
                           variant="outline"
                           className="text-[9px] font-bold tracking-tighter px-1.5 py-0.5 rounded-md mr-2.5 shrink-0 bg-slate-100/50 dark:bg-white/5 border-none text-slate-400 dark:text-slate-500 font-mono"
@@ -381,6 +405,7 @@ export default function RoadmapPage() {
                         )}
                       </div>
                     ))}
+                    </div>
                   </div>
                 );
               })}
@@ -439,10 +464,12 @@ export default function RoadmapPage() {
               {/* Today Marker */}
               {format(currentMonth, 'MM-yyyy') === format(new Date(), 'MM-yyyy') && (
                 <div
-                  className="absolute inset-y-0 z-10 w-px bg-rose-500/30 pointer-events-none"
+                  className="absolute inset-y-0 z-10 w-[1.5px] bg-primary/30 pointer-events-none"
                   style={{ left: (new Date().getDate() - 1) * COLUMN_WIDTH + (COLUMN_WIDTH / 2) }}
                 >
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)] mt-12" />
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary text-[9px] font-bold text-white shadow-[0_0_10px_rgba(3,93,91,0.4)] mt-2 tracking-widest uppercase">
+                    Hôm nay
+                  </div>
                 </div>
               )}
 
@@ -521,11 +548,11 @@ export default function RoadmapPage() {
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   className={cn(
-                                    "absolute h-7 rounded-full flex items-center px-1 border group cursor-pointer hover:scale-[1.02] transition-transform",
-                                    task.status === "DONE" ? "bg-emerald-500/10 border-emerald-500/20" :
-                                      isOverdue ? "bg-amber-500/10 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)]" :
-                                        task.priority === "HIGH" ? "bg-rose-500/10 border-rose-500/20" :
-                                          "bg-primary/10 border-primary/20"
+                                    "absolute h-7 rounded-md flex items-center px-1 border group cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
+                                    task.status === "DONE" ? "bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 shadow-emerald-500/10" :
+                                      isOverdue ? "bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/20 shadow-amber-500/10" :
+                                        task.priority === "HIGH" ? "bg-gradient-to-r from-rose-500/10 to-rose-500/5 border-rose-500/20 shadow-rose-500/10" :
+                                          "bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 shadow-primary/10"
                                   )}
                                   style={{
                                     left: startOffset * COLUMN_WIDTH + 4,

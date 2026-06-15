@@ -299,9 +299,9 @@ export default function ProjectPhasesHub() {
                             <div className="flex items-center gap-2">
                                 <Button 
                                     onClick={() => setIsAIModalOpen(true)}
-                                    className="rounded-2xl h-12 px-6 bg-gradient-to-r from-brand-primary to-purple-600 hover:from-brand-primary/90 hover:to-purple-600/90 text-white shadow-xl shadow-brand-primary/20 border-none font-bold"
+                                    className="rounded-2xl h-12 px-6 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary hover:text-white hover:border-brand-primary hover:shadow-lg hover:shadow-brand-primary/20 transition-all duration-300 font-bold group"
                                 >
-                                    <Sparkles className="w-5 h-5 mr-2" />
+                                    <Sparkles className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
                                     AI Plan
                                 </Button>
                                 <Button 

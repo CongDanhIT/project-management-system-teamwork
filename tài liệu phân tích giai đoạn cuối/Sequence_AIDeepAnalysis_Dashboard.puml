@@ -1,0 +1,82 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+
+actor "Người dùng" as User
+participant "Client App\n(React/Next.js)" as Client
+participant "Analytics Controller" as Controller
+participant "Analytics Service\n(Z-Score Algorithm)" as AnalyticsService
+participant "AI Service\n(Dual-Agent)" as AIService
+participant "Vercel AI SDK\n<<system>>" as VercelAI
+participant "LLM Engine\n(Groq/OpenAI)" as LLM
+database "Database\n(MongoDB)" as DB
+
+User -> Client: Truy cập tab Dashboard / Analytics\nvà bấm "Phân tích sâu bằng AI"
+activate User
+activate Client
+
+Client -> Controller: GET /api/workspace/{id}/project/{id}/analytics/advanced
+activate Controller
+
+Controller -> Controller: Kiểm tra quyền truy cập dự án (roleGuard)
+
+Controller -> AnalyticsService: aggregateProjectActivityLogsService(projectId)
+activate AnalyticsService
+AnalyticsService -> DB: Query toàn bộ Activity Logs trong 30 ngày qua
+activate DB
+DB --> AnalyticsService: Trả về tập dữ liệu Logs thô
+deactivate DB
+AnalyticsService -> AnalyticsService: Thực thi thuật toán Two-Pass Z-Score:\n1. Tính tần suất & Z-Score\n2. Loại bỏ nhiễu (Z < 0.5)\n3. Đánh dấu Extreme Anomaly (Z >= 3.0)
+AnalyticsService --> Controller: Trả về Logs đã nén (Aggregated Logs)
+deactivate AnalyticsService
+
+Controller -> DB: Lấy Context dự án (Tổng task, task quá hạn, thành viên...)
+activate DB
+DB --> Controller: Trả về Project Context Baseline
+deactivate DB
+
+Controller -> AIService: generateAdvancedInsightsService(aggregatedLogs, contextData)
+activate AIService
+
+note right of AIService: Phase 1: Analyzer Agent
+AIService -> LLM: Gửi Prompt Phân tích + Aggregated Logs (Groq API)
+activate LLM
+LLM -> LLM: Phân tích nguyên nhân gốc rễ, điểm nghẽn
+LLM --> AIService: Trả về bản nháp Báo cáo (Draft JSON String)
+deactivate LLM
+
+note right of AIService: Phase 2: Critic Agent (Self-Reflection)
+AIService -> VercelAI: generateText(Critic Prompt + Draft JSON)
+activate VercelAI
+VercelAI -> LLM: Yêu cầu tự phản biện và chuẩn hóa đầu ra
+activate LLM
+LLM --> VercelAI: Trả về Báo cáo Cuối cùng (Final JSON String)
+deactivate LLM
+VercelAI --> AIService: Chuỗi văn bản Final JSON
+deactivate VercelAI
+
+AIService -> AIService: Sử dụng Regex để trích xuất khối JSON từ chuỗi văn bản\nvà ép kiểu (JSON.parse)
+
+alt [Dữ liệu khớp Zod Schema]
+    AIService -> AIService: AdvancedInsightsSchema.parse(object)\n=> Thành công
+    AIService --> Controller: Trả về JSON Đối tượng đã được Validate
+else [Dữ liệu không khớp Zod Schema]
+    AIService -> AIService: AdvancedInsightsSchema.parse(object)
+    AIService -> AIService: Ném ngoại lệ ZodError\n(e.g., invalid_type, unrecognized_keys)
+    AIService --> Controller: Throw Error "AI không thể phân tích dữ liệu"
+    Controller --> Client: HTTP 500 Internal Server Error
+    Client --> User: Báo lỗi "AI hiện đang bận hoặc lỗi định dạng, vui lòng thử lại"
+end
+
+Controller --> Client: HTTP 200 OK\nBody: { data: insights }
+deactivate Controller
+
+Client -> Client: Render các thẻ thống kê (Critical Incidents,\nBottlenecks, Velocity Analysis, v.v.)
+Client --> User: Hiển thị giao diện Advanced Insights Dashboard trực quan
+deactivate Client
+deactivate User
+
+@enduml

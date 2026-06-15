@@ -125,12 +125,12 @@ export default function Header() {
           size="icon" 
           onClick={toggleInboxSidebar}
           className={cn(
-            "group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11 transition-all duration-300",
-            isInboxSidebarOpen && "bg-brand-primary/10 text-brand-primary"
+            "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300",
+            isInboxSidebarOpen && "bg-slate-100 dark:bg-slate-800 text-brand-primary"
           )}
         >
-          <Inbox className="w-6 h-6 group-hover:text-brand-primary" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
+          <Inbox className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
         </Button>
 
         {workspaceId && <NotificationCenter workspaceId={workspaceId} />}
@@ -141,20 +141,20 @@ export default function Header() {
             size="icon" 
             onClick={handleStartCall}
             className={cn(
-              "group relative text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11 transition-all duration-300",
-              isCallActive && "bg-brand-primary/10 text-brand-primary"
+              "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300",
+              isCallActive && "bg-slate-100 dark:bg-slate-800 text-brand-primary"
             )}
             title="Video Call"
           >
-            <Video className="w-6 h-6 group-hover:text-brand-primary" />
+            <Video className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
             {isCallActive && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white animate-pulse"></span>
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
             )}
           </Button>
         )}
 
-        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-brand-primary/10 rounded-full h-11 w-11">
-          <HelpCircle className="w-6 h-6 group-hover:text-brand-primary" />
+        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300">
+          <HelpCircle className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
         </Button>
 
         <ThemeToggle />
