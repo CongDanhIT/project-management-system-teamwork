@@ -7,7 +7,10 @@ import { getWorkspaceRoadmap } from "@/services/roadmap.service";
 import { workspaceService } from "@/services/workspace.service";
 import { taskService } from "@/services/task.service";
 import { toast } from "sonner";
+import { toast } from "sonner";
 import dynamic from 'next/dynamic';
+import { Rnd } from 'react-rnd';
+import { DndContext, DragEndEvent, useDroppable, useDraggable, DragOverlay } from '@dnd-kit/core';
 
 const TaskDetailModal = dynamic(() => import('@/components/task/TaskDetailModal').then(mod => mod.TaskDetailModal), {
   ssr: false,
@@ -71,6 +74,68 @@ import Loader from "@/components/ui/Loader";
 import { cn } from "@/lib/utils";
 const ROW_HEIGHT = 48;
 
+function DroppableRow({ id, children, className }: any) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={cn(className, isOver && "bg-primary/5")}>
+      {children}
+    </div>
+  );
+}
+
+function DraggableTask({ task, onClick }: any) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task._id,
+    data: task,
+  });
+  
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  } : undefined;
+
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
+  let badgeColorClass = "bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400";
+  if (task.status === "DONE") badgeColorClass = "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400";
+  else if (isOverdue) badgeColorClass = "bg-amber-100/80 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400";
+  else if (task.priority === "HIGH") badgeColorClass = "bg-rose-100/80 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400";
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "p-3 rounded-xl bg-card border hover:border-primary/20 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group flex flex-col gap-1.5",
+        isDragging ? "shadow-xl border-primary ring-2 ring-primary/20 opacity-50 z-50" : "border-border"
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between gap-3 pointer-events-none">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge variant="outline" className={cn("text-[9px] uppercase tracking-wider border-none px-1.5 py-0 h-5 flex items-center", badgeColorClass)}>
+            {task.taskCode}
+          </Badge>
+          <h4 className="text-xs font-semibold group-hover:text-primary transition-colors truncate">{task.title}</h4>
+        </div>
+        {task.assignedTo?.[0] && (
+          <Avatar className="h-5 w-5 border border-background shrink-0">
+            <AvatarImage src={task.assignedTo[0].profilePicture} />
+            <AvatarFallback className="text-[7px] bg-primary text-primary-foreground font-bold">{task.assignedTo[0].name?.[0]}</AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground pointer-events-none">
+        <span className="truncate">
+          <span className="font-medium text-foreground/70">{task.projectId?.name}</span> {task.phaseId && `| ${task.phaseId.name}`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function RoadmapPage() {
   const params = useParams();
   const router = useRouter();
@@ -99,6 +164,76 @@ export default function RoadmapPage() {
     queryFn: () => workspaceService.getMembers(workspaceId),
     enabled: !!workspaceId,
   });
+
+  const handleDragResizeTask = async (task: any, newStartDate: Date, newDueDate: Date) => {
+    // Optimistic Update
+    queryClient.setQueryData(["workspace-roadmap", workspaceId], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        tasks: oldData.tasks.map((t: any) => 
+          t._id === task._id 
+            ? { ...t, startDate: newStartDate.toISOString(), dueDate: newDueDate.toISOString() } 
+            : t
+        )
+      };
+    });
+
+    try {
+      const pId = typeof task.projectId === 'object' ? task.projectId._id : task.projectId;
+      await taskService.updateTask(workspaceId, pId || 'any', task._id, {
+        startDate: newStartDate.toISOString(),
+        dueDate: newDueDate.toISOString()
+      });
+      queryClient.invalidateQueries({ queryKey: ["workspace-roadmap", workspaceId] });
+      toast.success("Đã cập nhật lịch trình");
+    } catch (error) {
+      toast.error("Không thể cập nhật lịch trình");
+      queryClient.invalidateQueries({ queryKey: ["workspace-roadmap", workspaceId] });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over, pointerCoordinates } = event;
+    if (!over || !pointerCoordinates) return;
+    
+    const container = document.getElementById("timeline-grid-container");
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
+
+    // Use absolute X coordinate offset by scroll position
+    const localX = pointerCoordinates.x - rect.left;
+    
+    let dayIndex = Math.floor(localX / COLUMN_WIDTH);
+    if (dayIndex < 0) dayIndex = 0;
+    if (dayIndex >= days.length) dayIndex = days.length - 1;
+
+    const targetDay = startOfDay(days[dayIndex]);
+    const taskId = String(active.id);
+    const targetGroup = String(over.id).replace('row-', '');
+
+    const task = unscheduledTasks.find((t: any) => t._id === taskId);
+    if (!task) return;
+
+    const newStartDate = targetDay;
+    let newEndDate = addDays(newStartDate, zoomLevel === 'quarter' ? 7 : 1);
+
+    const updates: any = {
+      startDate: newStartDate.toISOString(),
+      dueDate: newEndDate.toISOString()
+    };
+    
+    if (groupBy === 'project') {
+      updates.projectId = targetGroup;
+    } else {
+      updates.assignedTo = [targetGroup];
+    }
+
+    handleUpdateTask(taskId, updates);
+  };
 
   const handleUpdateTask = async (taskId: string, data: any) => {
     try {
@@ -341,7 +476,8 @@ export default function RoadmapPage() {
   if (isLoading) return <div className="h-full flex items-center justify-center"><Loader /></div>;
 
   return (
-    <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
+    <DndContext onDragEnd={handleDragEnd}>
+      <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
       {/* Header */}
       <header className="p-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="flex items-center gap-4">
@@ -499,31 +635,11 @@ export default function RoadmapPage() {
                     </div>
                   ) : (
                     filteredUnscheduledTasks.map((task: any) => (
-                      <div
-                        key={task._id}
-                        onClick={() => { setSelectedTask({ ...task, workspaceId }); setIsTaskModalOpen(true); }}
-                        className="p-3 rounded-xl bg-card border border-border hover:border-primary/20 hover:shadow-md transition-all cursor-pointer group flex flex-col gap-1.5"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider bg-muted border-none text-muted-foreground px-1.5 py-0 h-5 flex items-center">
-                              {task.taskCode}
-                            </Badge>
-                            <h4 className="text-xs font-semibold group-hover:text-primary transition-colors truncate">{task.title}</h4>
-                          </div>
-                          {task.assignedTo?.[0] && (
-                            <Avatar className="h-5 w-5 border border-background shrink-0">
-                              <AvatarImage src={task.assignedTo[0].profilePicture} />
-                              <AvatarFallback className="text-[7px] bg-primary text-primary-foreground font-bold">{task.assignedTo[0].name?.[0]}</AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className="truncate">
-                            <span className="font-medium text-foreground/70">{task.projectId?.name}</span> {task.phaseId && `| ${task.phaseId.name}`}
-                          </span>
-                        </div>
-                      </div>
+                      <DraggableTask 
+                        key={task._id} 
+                        task={task} 
+                        onClick={() => { setSelectedTask({ ...task, workspaceId }); setIsTaskModalOpen(true); }} 
+                      />
                     ))
                   )}
                 </div>
@@ -626,6 +742,7 @@ export default function RoadmapPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea ref={scrollRef} className="flex-1">
             <div
+              id="timeline-grid-container"
               className="relative min-h-full"
               style={{ width: days.length * COLUMN_WIDTH }}
             >
@@ -685,7 +802,7 @@ export default function RoadmapPage() {
               {/* Content Rows */}
               <div className="py-2">
                 {displayGroups.map((group: any) => (
-                  <div key={group.id} className="mb-4 relative">
+                  <DroppableRow id={`row-${group.id}`} key={group.id} className="mb-4 relative">
                     {/* Project timeline background row */}
                     <div className="h-12 relative border-b border-border/30">
                       {/* Phase Shading */}
@@ -778,38 +895,74 @@ export default function RoadmapPage() {
                           <TooltipProvider>
                             <Tooltip delayDuration={0}>
                               <TooltipTrigger asChild>
-                                <motion.div
-                                  initial={{ opacity: 0, x: -20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  className={cn(
-                                    "absolute h-7 rounded-md flex items-center px-1 border group cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
-                                    task.status === "DONE" ? "bg-gradient-to-r from-emerald-100 to-emerald-50/50 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/10" :
-                                      isOverdue ? "bg-gradient-to-r from-amber-100 to-amber-50/50 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-500/20 shadow-amber-500/10" :
-                                        task.priority === "HIGH" ? "bg-gradient-to-r from-rose-100 to-rose-50/50 dark:from-rose-500/20 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/20 shadow-rose-500/10" :
-                                          "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
-                                  )}
-                                  style={{
-                                    left: pos.left + 4,
-                                    width: pos.width - 8
-                                  }}
-                                  onClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
-                                >
-                                  <div className={cn(
-                                    "w-1.5 h-1.5 rounded-full ml-2",
-                                    task.status === "DONE" ? "bg-emerald-500" :
-                                      isOverdue ? "bg-amber-500 animate-pulse" :
-                                        task.priority === "HIGH" ? "bg-rose-500" :
-                                          "bg-blue-500"
-                                  )} />
-                                  <Avatar className="h-5 w-5 ml-auto border border-background">
-                                    <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
-                                    <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
-                                      {task.assignedTo?.[0]?.name?.[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                </motion.div>
+                                <div className="absolute inset-y-0" style={{ left: pos.left, width: pos.width }}>
+                                  <Rnd
+                                    dragAxis="x"
+                                    bounds="parent"
+                                    enableResizing={{ left: true, right: true, top: false, bottom: false, topLeft: false, topRight: false, bottomLeft: false, bottomRight: false }}
+                                    position={{ x: 4, y: 10 }}
+                                    size={{ width: pos.width - 8, height: 28 }}
+                                    onDragStop={(e, d) => {
+                                      const deltaX = d.x - 4;
+                                      let daysShifted = Math.round(deltaX / COLUMN_WIDTH);
+                                      if (zoomLevel === 'quarter') daysShifted *= 7;
+                                      
+                                      if (daysShifted !== 0) {
+                                        const newStart = addDays(startDate, daysShifted);
+                                        const newEnd = addDays(endDate, daysShifted);
+                                        handleDragResizeTask(task, newStart, newEnd);
+                                      }
+                                    }}
+                                    onResizeStop={(e, direction, ref, delta, position) => {
+                                      let newStart = startDate;
+                                      let newEnd = endDate;
+                                      
+                                      if (direction === 'left') {
+                                        const deltaX = position.x - 4;
+                                        let daysShifted = Math.round(deltaX / COLUMN_WIDTH);
+                                        if (zoomLevel === 'quarter') daysShifted *= 7;
+                                        newStart = addDays(startDate, daysShifted);
+                                      } else if (direction === 'right') {
+                                        const deltaWidth = parseInt(ref.style.width, 10) - (pos.width - 8);
+                                        let daysAdded = Math.round(deltaWidth / COLUMN_WIDTH);
+                                        if (zoomLevel === 'quarter') daysAdded *= 7;
+                                        newEnd = addDays(endDate, daysAdded);
+                                      }
+                                      
+                                      if (newStart.getTime() !== startDate.getTime() || newEnd.getTime() !== endDate.getTime()) {
+                                        handleDragResizeTask(task, newStart, newEnd);
+                                      }
+                                    }}
+                                    className="z-10 group"
+                                  >
+                                    <div
+                                      className={cn(
+                                        "h-full w-full rounded-md flex items-center px-1 border cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
+                                        task.status === "DONE" ? "bg-gradient-to-r from-emerald-100 to-emerald-50/50 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/10" :
+                                          isOverdue ? "bg-gradient-to-r from-amber-100 to-amber-50/50 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-500/20 shadow-amber-500/10" :
+                                            task.priority === "HIGH" ? "bg-gradient-to-r from-rose-100 to-rose-50/50 dark:from-rose-500/20 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/20 shadow-rose-500/10" :
+                                              "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
+                                      )}
+                                      onDoubleClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
+                                    >
+                                      <div className={cn(
+                                        "w-1.5 h-1.5 rounded-full ml-2",
+                                        task.status === "DONE" ? "bg-emerald-500" :
+                                          isOverdue ? "bg-amber-500 animate-pulse" :
+                                            task.priority === "HIGH" ? "bg-rose-500" :
+                                              "bg-blue-500"
+                                      )} />
+                                      <Avatar className="h-5 w-5 ml-auto border border-background pointer-events-none">
+                                        <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
+                                        <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
+                                          {task.assignedTo?.[0]?.name?.[0]}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                  </Rnd>
+                                </div>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="bg-popover border-border text-popover-foreground p-3 rounded-xl shadow-2xl">
+                              <TooltipContent side="top" className="bg-popover border-border text-popover-foreground p-3 rounded-xl shadow-2xl z-50">
                                 <div className="space-y-2 min-w-[200px]">
                                   <div className="flex items-center justify-between gap-4">
                                     <Badge variant="outline" className="text-[10px] uppercase bg-muted border-none">
@@ -863,7 +1016,7 @@ export default function RoadmapPage() {
                         </div>
                       );
                     })}
-                  </div>
+                  </DroppableRow>
                 ))}
               </div>
             </div>
@@ -901,15 +1054,15 @@ export default function RoadmapPage() {
         </div>
       </footer>
       <TaskDetailModal
-        task={selectedTask}
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        onUpdate={handleUpdateTask}
-        onDelete={handleDeleteTask}
-        members={membersData?.members || []}
-        tasks={allTasks || []}
-        isAdminOrOwner={true}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
       />
-    </div>
+    </DndContext>
   );
 }
