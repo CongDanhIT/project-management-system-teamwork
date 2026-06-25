@@ -61,12 +61,12 @@ export const AssetService = {
         return response.data;
     },
 
-    updateFolder: async (folderId: string, data: { name: string }) => {
+    updateFolder: async (folderId: string, data: { name?: string; isPinned?: boolean }) => {
         const response = await api.patch(`/asset/folder/${folderId}`, data);
         return response.data;
     },
 
-    updateAsset: async (assetId: string, data: { name: string }) => {
+    updateAsset: async (assetId: string, data: { name?: string; isPinned?: boolean }) => {
         const response = await api.patch(`/asset/${assetId}`, data);
         return response.data;
     }

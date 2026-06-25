@@ -44,6 +44,12 @@ export default function ProjectRadarChart({ title, data, color = "#035D5B", fill
       <CardContent className="h-[280px] flex items-center justify-center p-2">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+            <defs>
+              <linearGradient id={`gradRadar-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={fill} stopOpacity={0.8} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.3} />
+              </linearGradient>
+            </defs>
             <PolarGrid stroke="#94a3b8" strokeOpacity={0.2} />
             <PolarAngleAxis 
               dataKey="subject" 
@@ -54,8 +60,10 @@ export default function ProjectRadarChart({ title, data, color = "#035D5B", fill
               name="Số lượng"
               dataKey="A"
               stroke={color}
-              fill={fill}
-              fillOpacity={0.4}
+              strokeWidth={2}
+              fill={`url(#gradRadar-${title.replace(/\s+/g, '')})`}
+              fillOpacity={1}
+              style={{ filter: `drop-shadow(0 8px 12px ${color}66)` }}
             />
             <Tooltip 
               content={({ active, payload }: any) => {

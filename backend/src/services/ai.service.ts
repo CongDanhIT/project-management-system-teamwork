@@ -16,6 +16,7 @@ import WorkspaceModel from "../models/workspace.model";
 import MemberModel from "../models/member.model";
 
 import { logActivityService } from "./activity.service";
+import { embedTaskService } from "./embedding.service";
 import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
 import { TaskStatusEnum, TaskPriorityEnum } from "../enums/task.enum";
 
@@ -277,16 +278,26 @@ export type ProjectStructure = z.infer<typeof ProjectStructureSchema>;
  * Sử dụng Groq Llama 3.3 70B để tạo cấu trúc Phases & Tasks
  */
 
-export const generateProjectStructureService = async (prompt: string): Promise<ProjectStructure> => {
+export const generateProjectStructureService = async (prompt: string, projectId?: string): Promise<ProjectStructure> => {
     try {
-        logger.info("[AI-Groq] Đang phân rã dự án với prompt (Text Mode Safe Search)", { prompt });
+        logger.info("[AI-Groq] Đang phân rã dự án với prompt (Text Mode Safe Search)", { prompt, projectId });
+
+        let contextText = "";
+        if (projectId) {
+            const project = await ProjectModel.findById(projectId).select("name description").lean();
+            if (project) {
+                const phases = await PhaseModel.find({ projectId, deletedAt: null }).select("name").lean();
+                const phaseNames = phases.map((p: any) => p.name).join(", ");
+                contextText = `\nBỐI CẢNH DỰ ÁN HIỆN TẠI:\n- Tên dự án: ${project.name}\n- Mô tả dự án: ${project.description || "Không có"}\n- Các giai đoạn (Phases) đã có sẵn trong dự án này: ${phaseNames || "Chưa có giai đoạn nào"}\n\nLƯU Ý QUAN TRỌNG: \nHãy đọc kỹ BỐI CẢNH DỰ ÁN HIỆN TẠI ở trên. Khi lập kế hoạch mới dựa trên Yêu cầu của người dùng, vui lòng tham khảo các giai đoạn đã có để tránh tạo trùng lặp tên giai đoạn, và ưu tiên tạo các giai đoạn nối tiếp hoặc phù hợp với hiện trạng dự án.\n`;
+            }
+        }
 
         const { text } = await generateText({
             model: groqProvider(AI_MODELS.GROQ_LLAMA_3_3_70B) as any,
             prompt: `
 Bạn là một chuyên gia quản trị dự án (Senior Project Manager) giàu kinh nghiệm.
 Nhiệm vụ của bạn là phân rã yêu cầu sau thành một cấu trúc JSON hợp lệ.
-
+${contextText}
 Yêu cầu: "${prompt}"
 
 QUY TẮC TRẢ VỀ:
@@ -419,6 +430,14 @@ export const applyAIProjectPlanService = async (
                 });
 
                 await task.save({ session });
+                
+                // [AI-V2-RAG] Sinh vector cho task vừa tạo bằng AI (Chạy ngầm độc lập với transaction)
+                embedTaskService({ title: task.title, description: task.description, status: task.status })
+                    .then(async (embedding) => {
+                        await TaskModel.updateOne({ _id: task._id }, { embedding, embeddingUpdatedAt: new Date() });
+                    })
+                    .catch(err => console.error("[Embedding-Service] Lỗi khi nhúng Task (AI Plan):", err.message));
+
                 createdTasks.push(task);
             }
         }
@@ -526,6 +545,7 @@ Nếu đây là lần đầu người dùng trò chuyện hoặc khi được h�
 - 🏗️ **Cấu trúc Giai đoạn**: Xem danh sách các Phase và tìm kiếm giai đoạn theo tên.
 - 👥 **Quản lý Thành viên**: Tra cứu thông tin người dùng để gán việc.
 - 📋 **Quản lý Công việc**: Liệt kê, tìm kiếm công việc theo tên, tạo mới và cập nhật task trực tiếp.
+- 🧠 **Hỏi đáp Tri thức (RAG)**: Tìm kiếm các task dựa trên ngữ nghĩa và mức độ liên quan bằng AI Semantic Search.
 - 📈 **Báo cáo Tiến độ**: Cung cấp báo cáo tiến độ dự án chi tiết, chỉ ra các điểm nóng quá hạn và tình hình phân tải công việc của thành viên.
 
 BỐI CẢNH HIỆN TẠI:
@@ -542,6 +562,14 @@ BỐI CẢNH HIỆN TẠI:
    - Nếu người dùng cung cấp **MÃ công việc / mã task** trực tiếp (ví dụ: "M-14", "TSK-5", "task M-14"): Bạn **BẮT BUỘC gọi trực tiếp** tool "updateTask" (hoặc "getTasksList" để tra cứu) bằng cách truyền mã đó vào tham số "taskCode" của tool. **TUYỆT ĐỐI KHÔNG** được gọi tool tìm kiếm "searchTasksByName" trước để tránh lãng phí bước xử lý (redundant tool calls).
    - Nếu người dùng chỉ cung cấp **TÊN công việc** bằng chữ (ví dụ: "cập nhật task Viết Unit Test", "tìm task Fix bug màn hình Home") mà không có mã cụ thể: Lúc này mới gọi tool "searchTasksByName" để tìm kiếm lấy "taskCode" hoặc "taskId" trước, sau đó mới thực hiện cập nhật.
 5. Nếu sau khi gọi các công cụ tìm kiếm mà vẫn không tìm thấy thông tin hoặc có nhiều kết quả trùng tên gây mơ hồ: Báo lại cho người dùng để yêu cầu làm rõ, tuyệt đối KHÔNG được tự ý đoán bừa ID hoặc nhập thiếu thông tin gây ra lỗi dữ liệu ma (Data integrity).
+
+[SCOPE RESOLUTION - PHÂN GIẢI PHẠM VI TÌM KIẾM]:
+Khi người dùng yêu cầu tìm kiếm, liệt kê hoặc thống kê (Task/Project), bạn PHẢI phân tích ngữ nghĩa để xác định phạm vi:
+- Ngữ nghĩa "Phase này/Giai đoạn này/Hiện tại/Vị trí này": Bắt buộc truyền tham số 'targetPhaseId' bằng Phase ID từ BỐI CẢNH HIỆN TẠI.
+- Ngữ nghĩa "Toàn bộ dự án/Tất cả các phase": Bắt buộc truyền tham số 'targetProjectId' bằng Project ID từ BỐI CẢNH HIỆN TẠI, và TUYỆT ĐỐI BỎ TRỐNG 'targetPhaseId'.
+- Ngữ nghĩa "Toàn bộ hệ thống/Tất cả dự án/Toàn bộ workspace": BỎ TRỐNG cả 'targetProjectId' và 'targetPhaseId' để quét toàn bộ (tuy nhiên RAG Vector Search chỉ hỗ trợ quét trong 1 dự án).
+- Ngữ nghĩa nhắc đến một Dự án/Phase cụ thể (VD: "Phase 1", "Dự án Thiết kế"): Gọi tool tìm kiếm tương ứng để lấy ID, sau đó truyền vào 'targetProjectId' hoặc 'targetPhaseId'.
+- LƯU Ý: Việc phân giải Scope CHỈ LÀ BỔ SUNG. Các tham số BẮT BUỘC của tool (như tham số 'query' của tool searchKnowledge) VẪN PHẢI ĐƯỢC TRUYỀN đầy đủ.
 
 QUY TẮC VẬN HÀNH:
 1. LUÔN LUÔN gọi tool "getProjectPhases" hoặc "searchPhasesByName" trước khi tạo task nếu người dùng nhắc đến một giai đoạn cụ thể mà trong BỐI CẢNH HIỆN TẠI không có Phase ID chuẩn xác.
@@ -621,7 +649,8 @@ QUY TẮC VẬN HÀNH:
         getTasksList: {
             description: "Lấy danh sách công việc. Hỗ trợ lọc linh hoạt theo phaseId, status, người được gán (assignedTo), mã công việc (taskCode), mức độ ưu tiên (priority), tìm kiếm theo tiêu đề (title), hoặc lọc theo khoảng thời gian của hạn chót và ngày tạo. Chỉ cần truyền 1 hoặc nhiều tham số bất kỳ để tìm kiếm.",
             parameters: z.object({
-                phaseId: z.string().optional().describe("ID giai đoạn để lọc."),
+                targetProjectId: z.string().optional().describe("ID dự án cần tìm (nếu bỏ trống sẽ tìm trên toàn workspace)."),
+                targetPhaseId: z.string().optional().describe("ID giai đoạn cần tìm (nếu bỏ trống sẽ tìm toàn bộ dự án)."),
                 status: z.string().optional().describe("Trạng thái công việc để lọc (TODO, IN_PROGRESS, DONE...)."),
                 assignedTo: z.string().optional().describe("ID của thành viên được gán để lọc (userId - lấy từ getWorkspaceMembers)."),
                 taskCode: z.string().optional().describe("Mã công việc để tìm kiếm chính xác (VD: PROJ-1)."),
@@ -633,7 +662,8 @@ QUY TẮC VẬN HÀNH:
                 createdTo: z.string().optional().describe("Ngày tạo công việc đến ngày (định dạng YYYY-MM-DD hoặc ISO).")
             }),
             execute: async ({
-                phaseId,
+                targetProjectId,
+                targetPhaseId,
                 status,
                 assignedTo,
                 taskCode,
@@ -646,13 +676,18 @@ QUY TẮC VẬN HÀNH:
             }: any) => {
                 try {
                     logger.info("[AI-Tool] getTasksList invoked", {
-                        projectId, phaseId, status, assignedTo, taskCode, priority, title,
+                        targetProjectId, targetPhaseId, status, assignedTo, taskCode, priority, title,
                         dueDateFrom, dueDateTo, createdFrom, createdTo
                     });
-                    if (!projectId) return { error: "⚠️ Hiện tại bạn chưa chọn dự án cụ thể. Vui lòng chọn một dự án để tôi có thể liệt kê công việc." };
+                    
+                    const effectiveProjectId = targetProjectId || projectId;
+                    const query: any = { deletedAt: null };
+                    
+                    if (effectiveProjectId) query.projectId = effectiveProjectId;
+                    else if (workspaceId) query.workspaceId = workspaceId; // Fallback to workspace scope
+                    else return { error: "⚠️ Lỗi ngữ cảnh: Không xác định được Workspace ID hay Project ID." };
 
-                    const query: any = { projectId, deletedAt: null };
-                    if (phaseId) query.phaseId = phaseId;
+                    if (targetPhaseId) query.phaseId = targetPhaseId;
 
                     if (status) {
                         const s = String(status).toUpperCase().trim();
@@ -815,6 +850,13 @@ QUY TẮC VẬN HÀNH:
                             assignedTo: taskData.assignedTo ? [taskData.assignedTo] : []
                         });
 
+                        // [AI-V2-RAG] Sinh vector cho task tạo từ Bot
+                        embedTaskService({ title: task.title, description: task.description, status: task.status })
+                            .then(async (embedding) => {
+                                await TaskModel.updateOne({ _id: task._id }, { embedding, embeddingUpdatedAt: new Date() });
+                            })
+                            .catch(err => console.error("[Embedding-Service] Lỗi khi nhúng Task (AI Bot Create):", err.message));
+
                         await logActivityService({
                             userId, workspaceId, projectId,
                             action: ActivityActionEnum.CREATE_TASK,
@@ -927,6 +969,13 @@ QUY TẮC VẬN HÀNH:
                             updatedTasksInfo.push({ success: false, taskCode: taskCode || taskId, error: "Không tìm thấy công việc để cập nhật." });
                             continue;
                         }
+
+                        // [AI-V2-RAG] Cập nhật lại vector cho task
+                        embedTaskService({ title: task.title, description: task.description, status: task.status })
+                            .then(async (embedding) => {
+                                await TaskModel.updateOne({ _id: task._id }, { embedding, embeddingUpdatedAt: new Date() });
+                            })
+                            .catch(err => console.error("[Embedding-Service] Lỗi khi cập nhật vector Task (AI Bot Update):", err.message));
 
                         updatedTasksInfo.push({ success: true, taskCode: task.taskCode, title: task.title });
                     }
@@ -1136,28 +1185,117 @@ QUY TẮC VẬN HÀNH:
             }
         },
         searchTasksByName: {
-            description: "Tìm kiếm các công việc (tasks) trong dự án hiện tại theo tên để lấy taskId hoặc taskCode.",
+            description: "Tìm kiếm các công việc (tasks) theo tên để lấy taskId hoặc taskCode.",
             parameters: z.object({
                 title: z.string().optional().describe("Tiêu đề hoặc một phần tiêu đề của công việc để tìm kiếm."),
-                name: z.string().optional().describe("Tên công việc để tìm kiếm (tương đương với title).")
+                name: z.string().optional().describe("Tên công việc để tìm kiếm (tương đương với title)."),
+                targetProjectId: z.string().optional().describe("ID dự án cần tìm (nếu bỏ trống sẽ tìm trên toàn workspace)."),
+                targetPhaseId: z.string().optional().describe("ID giai đoạn cần tìm (nếu bỏ trống sẽ tìm toàn dự án).")
             }),
-            execute: async ({ title, name }: any) => {
+            execute: async ({ title, name, targetProjectId, targetPhaseId }: any) => {
                 try {
                     const searchStr = title || name;
                     if (!searchStr) return { error: "Vui lòng cung cấp title hoặc name để tìm kiếm." };
 
-                    logger.info("[AI-Tool] searchTasksByName invoked", { projectId, searchStr });
-                    if (!projectId) return { error: "⚠️ Lỗi ngữ cảnh: Bạn cần chọn một dự án cụ thể trước." };
-                    const tasks = await TaskModel.find({
-                        projectId,
+                    logger.info("[AI-Tool] searchTasksByName invoked", { targetProjectId, targetPhaseId, searchStr });
+                    const effectiveProjectId = targetProjectId || projectId;
+                    const query: any = {
                         title: { $regex: searchStr, $options: "i" },
                         deletedAt: null
-                    }).select("title taskCode status priority assignedTo").populate("assignedTo", "name").limit(15).lean();
+                    };
+                    
+                    if (effectiveProjectId) query.projectId = effectiveProjectId;
+                    else if (workspaceId) query.workspaceId = workspaceId;
+                    else return { error: "⚠️ Lỗi ngữ cảnh: Không có workspaceId hoặc projectId." };
+                    
+                    if (targetPhaseId) query.phaseId = targetPhaseId;
+
+                    const tasks = await TaskModel.find(query).select("title taskCode status priority assignedTo").populate("assignedTo", "name").limit(15).lean();
                     logger.info("[AI-Tool] searchTasksByName result", { count: tasks?.length });
                     return tasks;
                 } catch (error: any) {
                     logger.error("[AI-Tool] Lỗi trong searchTasksByName", { error: error.message, stack: error.stack });
                     return { error: `Lỗi khi tìm kiếm công việc: ${error.message}` };
+                }
+            }
+        },
+        searchKnowledge: {
+            description: "Sử dụng công nghệ Vector Semantic Search (RAG) để tìm kiếm các công việc (tasks) có ý nghĩa và ngữ cảnh TƯƠNG ĐỒNG với câu hỏi của người dùng. Dùng khi người dùng hỏi các câu hỏi chung chung, tìm kiếm ý tưởng, tìm các vấn đề liên quan, hoặc không nhớ tên chính xác của công việc (ví dụ: 'Các task liên quan đến thiết kế UI?', 'Có task nào bị lỗi database không?'). KHÔNG dùng tool này nếu người dùng đã cho biết mã task (taskCode).",
+            parameters: z.object({
+                query: z.string().describe("Câu hỏi hoặc ngữ nghĩa cần tìm kiếm (VD: 'thiết kế UI', 'lỗi database')."),
+                status: z.string().optional().describe("Trạng thái công việc cần lọc cứng TRƯỚC khi dò Vector (VD: 'TODO', 'DONE'). Chỉ truyền nếu người dùng chủ động nhắc đến trạng thái."),
+                targetProjectId: z.string().optional().describe("ID dự án cần tìm."),
+                targetPhaseId: z.string().optional().describe("ID giai đoạn cần tìm.")
+            }),
+            execute: async ({ query, status, targetProjectId, targetPhaseId }: any) => {
+                try {
+                    const effectiveProjectId = targetProjectId || projectId;
+                    logger.info("[AI-Tool] searchKnowledge invoked", { effectiveProjectId, targetPhaseId, query, status });
+                    if (!effectiveProjectId) return { error: "⚠️ Không tìm thấy Project ID. Vector Search hiện tại yêu cầu giới hạn trong 1 dự án cụ thể." };
+
+                    // 1. Sinh vector cho câu hỏi (Sử dụng dynamic import tránh circular dependency nếu có)
+                    const { generateEmbeddingService } = await import("./embedding.service");
+                    const queryVector = await generateEmbeddingService(query);
+
+                    // 2. Tạo filter cứng (Metadata Filtering)
+                    const filter: any = { 
+                        projectId: new mongoose.Types.ObjectId(effectiveProjectId), 
+                        deletedAt: null 
+                    };
+                    
+                    if (status) {
+                        const s = String(status).toUpperCase().trim();
+                        if (["TODO", "IN_PROGRESS", "INREVIEW", "DONE", "COMPLETED"].includes(s)) {
+                            filter.status = s === "COMPLETED" ? "DONE" : s;
+                        } else if (s.includes("ĐANG LÀM") || s.includes("DANG LAM") || s.includes("IN PROGRESS")) {
+                            filter.status = "IN_PROGRESS";
+                        } else if (s.includes("HOÀN THÀNH") || s.includes("HOAN THANH") || s.includes("XONG")) {
+                            filter.status = "DONE";
+                        }
+                    }
+
+                    // 3. Pipeline MongoDB Atlas Vector Search
+                    const pipeline: any[] = [
+                        {
+                            $vectorSearch: {
+                                index: "vector_index", // Tên Index phải được tạo trên giao diện MongoDB Atlas
+                                path: "embedding",
+                                queryVector: queryVector,
+                                numCandidates: 100, // Số ứng viên tối đa duyệt qua (càng cao càng chính xác nhưng chậm)
+                                limit: targetPhaseId ? 20 : 10, // Lấy nhiều hơn 1 chút nếu lát cắt sau bằng match phase
+                                filter: filter
+                            }
+                        }
+                    ];
+
+                    if (targetPhaseId) {
+                        pipeline.push({ $match: { phaseId: new mongoose.Types.ObjectId(targetPhaseId) } });
+                    }
+
+                    pipeline.push({
+                        $project: {
+                            title: 1,
+                            taskCode: 1,
+                            status: 1,
+                            priority: 1,
+                            description: 1,
+                            score: { $meta: "vectorSearchScore" }
+                        }
+                    });
+
+                    if (targetPhaseId) {
+                        pipeline.push({ $limit: 10 });
+                    }
+
+                    const tasks = await TaskModel.aggregate(pipeline);
+
+                    logger.info("[AI-Tool] searchKnowledge result", { count: tasks?.length });
+                    if (tasks.length === 0) return { message: "Không tìm thấy công việc nào có ngữ nghĩa tương đồng với câu hỏi." };
+
+                    return tasks;
+                } catch (error: any) {
+                    logger.error("[AI-Tool] Lỗi trong searchKnowledge", { error: error.message, stack: error.stack });
+                    return { error: `Lỗi khi tìm kiếm semantic bằng Vector Search: ${error.message}. (Ghi chú cho AI: Nếu lỗi này là do MongoDB Atlas chưa được tạo Index "vector_index", hãy thông báo cho user biết rằng hệ thống Vector DB chưa sẵn sàng và yêu cầu họ tạo Index).` };
                 }
             }
         }

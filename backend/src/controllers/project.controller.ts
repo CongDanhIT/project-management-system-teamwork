@@ -126,7 +126,8 @@ export const getProjectAnalyticsHistoryController = asyncHandler(
 
         roleGuard(role.name, [Permissions.VIEW_ONLY]);
 
-        const history = await getProjectAnalyticsHistoryService(projectId, workspaceId);
+        const days = req.query.days ? parseInt(req.query.days as string) : 14;
+        const history = await getProjectAnalyticsHistoryService(projectId, workspaceId, days);
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: "Lấy lịch sử analytics dự án thành công",

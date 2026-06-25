@@ -530,7 +530,7 @@ export default function TaskListPage() {
             </div>
             
             <div className="relative flex items-center justify-center w-14 h-14 flex-shrink-0">
-              <svg className="w-full h-full transform -rotate-90">
+              <svg className="w-full h-full transform -rotate-90 overflow-visible">
                 <circle
                   cx="28"
                   cy="28"
@@ -549,6 +549,7 @@ export default function TaskListPage() {
                   strokeDasharray={2 * Math.PI * 24}
                   strokeDashoffset={2 * Math.PI * 24 * (1 - myCompletionRate / 100)}
                   strokeLinecap="round"
+                  style={{ filter: 'drop-shadow(0 4px 8px rgba(3, 93, 91, 0.5))' }}
                 />
               </svg>
             </div>
@@ -655,10 +656,13 @@ export default function TaskListPage() {
                       </div>
                     </div>
                     {/* Progress Bar */}
-                    <div className="w-full h-1.5 bg-slate-200/50 dark:bg-[#071613] rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-200/50 dark:bg-[#071613] rounded-full">
                       <div 
-                        className={`h-full ${progressColor} transition-all duration-500`}
-                        style={{ width: progressWidth }}
+                        className={`h-full ${progressColor} rounded-full transition-all duration-500`}
+                        style={{ 
+                          width: progressWidth,
+                          boxShadow: task.status === 'IN_PROGRESS' || task.status === 'INREVIEW' ? '0 0 10px rgba(3,93,91,0.5)' : 'none'
+                        }}
                       />
                     </div>
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
@@ -735,10 +739,10 @@ export default function TaskListPage() {
                       <span className="text-slate-700 dark:text-slate-300 truncate pr-2 group-hover:text-brand-primary transition-colors">{phase.name}</span>
                       <span className="text-slate-500 dark:text-slate-400 font-black bg-slate-100 dark:bg-[#172925] px-2 py-0.5 rounded-lg">{phase.count}</span>
                     </div>
-                    <div className="w-full h-1.5 bg-brand-primary/5 dark:bg-slate-800/50 rounded-full overflow-hidden flex">
+                    <div className="w-full h-1.5 bg-brand-primary/5 dark:bg-slate-800/50 rounded-full flex">
                       {phase.count > 0 && (
                         <div 
-                          className="h-full bg-brand-primary dark:bg-brand-secondary rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(3,93,91,0.2)] dark:shadow-none" 
+                          className="h-full bg-brand-primary dark:bg-brand-secondary rounded-full transition-all duration-1000 ease-out shadow-[0_2px_8px_rgba(3,93,91,0.4)] dark:shadow-[0_0_10px_rgba(168,239,236,0.3)]" 
                           style={{ 
                             width: `${widthPercent}%`,
                             opacity: barOpacity 

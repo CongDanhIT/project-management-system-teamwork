@@ -127,17 +127,17 @@ export function AdvancedInsightsDrawer({
       <SheetContent side="right" className="w-[850px] max-w-[90vw] p-0 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800">
         <SheetHeader className="p-8 pb-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative overflow-hidden">
           {/* Background decorative element */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/4 pointer-events-none" />
           
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <Brain className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-sm">
+                <Brain className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
                 <SheetTitle className="text-2xl font-black tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
                   Phân Tích Chuyên Sâu
-                  <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-widest text-primary">
                     AI Powered
                   </span>
                 </SheetTitle>
@@ -228,8 +228,8 @@ export function AdvancedInsightsDrawer({
         <div className="flex-1 overflow-y-auto p-8 space-y-8">
           {!hasStartedAnalysis ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[400px] space-y-8 animate-in fade-in zoom-in duration-700 mt-10">
-              <div className="w-24 h-24 rounded-[32px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-                <Brain className="w-12 h-12 text-white" />
+              <div className="w-24 h-24 rounded-[32px] bg-primary flex items-center justify-center shadow-md">
+                <Brain className="w-12 h-12 text-primary-foreground" />
               </div>
               <div className="text-center space-y-3 max-w-md">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">Sẵn Sàng Phân Tích?</h2>
@@ -239,7 +239,7 @@ export function AdvancedInsightsDrawer({
               </div>
               <Button 
                 onClick={() => setHasStartedAnalysis(true)}
-                className="h-14 px-8 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-xl shadow-indigo-500/30 hover:scale-105 transition-all"
+                className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg shadow-sm hover:scale-105 transition-all"
               >
                 <Sparkles className="w-5 h-5 mr-2" />
                 Bắt Đầu Phân Tích
@@ -248,7 +248,7 @@ export function AdvancedInsightsDrawer({
           ) : isLoading || isFetching ? (
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-in fade-in duration-1000">
               <div className="relative">
-                <div className="absolute inset-0 bg-indigo-500 blur-[40px] opacity-20 rounded-full" />
+                <div className="absolute inset-0 bg-primary/20 blur-[40px] opacity-20 rounded-full" />
                 <Loader size="lg" />
               </div>
               <div className="space-y-2 text-center">
@@ -277,18 +277,17 @@ export function AdvancedInsightsDrawer({
               {/* 0. CRITICAL INCIDENTS - Báo động đỏ nếu có EXTREME_ANOMALY */}
               {data.data.criticalIncidents && data.data.criticalIncidents.length > 0 && (
                 <div className="relative group animate-in slide-in-from-bottom-4 duration-500">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 rounded-[32px] blur opacity-40 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
-                  <div className="relative bg-white dark:bg-slate-950 rounded-[32px] p-8 border border-red-500/50 shadow-2xl overflow-hidden">
+                  <div className="relative bg-white dark:bg-card rounded-[32px] p-8 border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
                       <AlertTriangle className="w-48 h-48 text-red-500" />
                     </div>
                     
                     <div className="flex items-center gap-3 mb-6 relative z-10">
-                      <div className="p-3 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg shadow-red-500/30">
-                        <AlertTriangle className="w-6 h-6 text-white" />
+                      <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20">
+                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600 dark:from-red-400 dark:to-orange-400 tracking-tight">
+                        <h3 className="text-xl font-black text-red-600 dark:text-red-400 tracking-tight">
                           Cảnh Báo Nghiêm Trọng (Extreme Anomaly)
                         </h3>
                         <p className="text-xs font-bold text-red-500 uppercase tracking-[0.2em]">Phát hiện bất thường cấp độ cao</p>
@@ -310,20 +309,18 @@ export function AdvancedInsightsDrawer({
               {/* 1. DEEP INSIGHTS - Thẻ Tự do suy luận siêu việt (Nổi bật nhất) */}
               {data.data.deep_insights && (
                 <div className="relative group">
-                  {/* Glow effect */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-fuchsia-600 via-violet-600 to-indigo-600 rounded-[32px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                  <div className="relative bg-white dark:bg-slate-950 rounded-[32px] p-8 border border-white/40 dark:border-white/10 shadow-2xl overflow-hidden">
+                  <div className="relative bg-white dark:bg-card rounded-[32px] p-8 border border-primary/20 shadow-sm overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute top-0 right-0 p-8 opacity-5">
-                      <Brain className="w-48 h-48" />
+                      <Brain className="w-48 h-48 text-primary" />
                     </div>
                     
                     <div className="flex items-center gap-3 mb-6 relative z-10">
-                      <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
-                        <Sparkles className="w-6 h-6 text-white" />
+                      <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
+                        <Sparkles className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 tracking-tight">
+                        <h3 className="text-xl font-black text-primary tracking-tight">
                           Góc Nhìn Chuyên Sâu
                         </h3>
                         <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Khám phá rủi ro ngầm & Xu hướng</p>
@@ -429,31 +426,27 @@ export function AdvancedInsightsDrawer({
               </div>
 
               {/* 4. RECOMMENDATIONS - Thẻ Action Plan chuyên nghiệp */}
-              <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-950 rounded-[32px] p-8 border border-slate-800 shadow-2xl">
-                {/* Decor elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px]" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]" />
-                
+              <div className="relative overflow-hidden bg-slate-50 dark:bg-slate-900/50 rounded-[32px] p-8 border border-slate-200 dark:border-white/10 shadow-sm">
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/10">
+                  <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200 dark:border-white/10">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-white" />
+                      <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-sm">
+                        <FileText className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-black text-white uppercase tracking-widest">Kế Hoạch Hành Động</h3>
-                        <p className="text-sm text-slate-400">AI Recommendations & Next Steps</p>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-widest">Kế Hoạch Hành Động</h3>
+                        <p className="text-sm text-slate-500">AI Recommendations & Next Steps</p>
                       </div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-4">
                     {(data.data.recommendations || []).map((rec: string, index: number) => (
-                      <div key={index} className="flex items-start gap-5 p-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
-                          <span className="font-black text-white text-sm">{index + 1}</span>
+                      <div key={index} className="flex items-start gap-5 p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 shadow-sm transition-all group">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                          <span className="font-black text-sm">{index + 1}</span>
                         </div>
-                        <span className="text-[15px] text-slate-200 leading-relaxed font-medium mt-1">{rec}</span>
+                        <span className="text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium mt-1">{rec}</span>
                       </div>
                     ))}
                   </div>

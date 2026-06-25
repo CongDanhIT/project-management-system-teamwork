@@ -6,6 +6,9 @@ import Header from "@/components/layout/Header";
 import InboxSidebar from "@/components/layout/InboxSidebar";
 import { AiChatButton } from '@/components/ai/AiChatButton';
 import { AiChatButtonV2 } from '@/components/ai/AiChatButtonV2';
+import { FloatingDock } from '@/components/layout/FloatingDock';
+import { GlobalDocumentPanel } from '@/components/layout/GlobalDocumentPanel';
+import { DrawingOverlay } from '@/components/layout/DrawingOverlay';
 import { useUiStore } from '@/stores/ui.store';
 import { cn } from '@/lib/utils';
 import { DndRootProvider } from '@/providers/DndRootProvider';
@@ -23,7 +26,7 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isInboxSidebarOpen } = useUiStore();
+  const { isInboxSidebarOpen, isLeftSidebarOpen } = useUiStore();
   const params = useParams();
   const queryClient = useQueryClient();
   const [activeDraft, setActiveDraft] = React.useState<IInboxDraft | null>(null);
@@ -97,16 +100,23 @@ export default function MainLayout({
       <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         <Sidebar />
         <div className={cn(
-          "pl-64 flex flex-col min-h-screen transition-all duration-500 ease-in-out"
+          "flex flex-col min-h-screen transition-all duration-500 ease-in-out",
+          isLeftSidebarOpen ? "pl-64" : "pl-0"
         )}>
           <Header />
-          <main className="flex-1 p-8 lg:p-12 overflow-x-hidden">
+          <main className="flex-1 p-8 lg:p-12 overflow-x-clip">
             <div className="max-w-[1600px] mx-auto w-full">
               {children}
             </div>
           </main>
         </div>
         <InboxSidebar />
+        
+        {/* Global Floating Tools */}
+        <FloatingDock />
+        <GlobalDocumentPanel />
+        <DrawingOverlay />
+
         {/* AI Chat Floating Button - hiển thị trên tất cả các trang */}
         <AiChatButton />
         <AiChatButtonV2 context={{ workspaceId: workspaceId, projectId: projectId, phaseId: phaseId }} />

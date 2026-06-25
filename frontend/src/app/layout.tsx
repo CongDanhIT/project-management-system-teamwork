@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   title: "My Team Flow | Project Management SaaS",
   description: "Quản lý công việc và dự án hiệu quả phong cách Linear",
   icons: {
-    icon: "/logos/logo_v4_final.png",
-    apple: "/logos/logo_v4_final.png",
+    icon: "/logos/logo thương hiệu.svg",
+    apple: "/logos/logo thương hiệu.svg",
   }
 };
 

@@ -135,7 +135,7 @@ export function TagManagerWidget() {
 
   return (
     <div className="p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none transition-all">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-6">
         <div className="p-2.5 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/10">
           <Tags className="w-5 h-5 text-indigo-500" />
         </div>

@@ -31,7 +31,8 @@ import {
     Trash2,
     Edit2,
     ArrowLeft,
-    Sparkles
+    Sparkles,
+    Star
 } from 'lucide-react';
 import { PhaseModal } from '@/components/project/PhaseModal';
 import { AIPlannerModal } from '@/components/project/AIPlannerModal';
@@ -89,6 +90,7 @@ export default function ProjectPhasesHub() {
     const [renamingFile, setRenamingFile] = useState<ProjectAsset | null>(null);
     const [renameFileName, setRenameFileName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showPinnedOnly, setShowPinnedOnly] = useState(false);
     const { isPrivileged } = useRole();
 
     useEffect(() => {
@@ -162,13 +164,17 @@ export default function ProjectPhasesHub() {
         enabled: !!projectId && activeTab === 'files',
     });
 
-    const filteredFolders = assetsData?.folders.filter((folder: AssetFolder) =>
-        folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+    const filteredFolders = assetsData?.folders.filter((folder: AssetFolder) => {
+        const matchesSearch = folder.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesPinned = showPinnedOnly ? folder.isPinned : true;
+        return matchesSearch && matchesPinned;
+    }) || [];
 
-    const filteredFiles = assetsData?.files.filter((file: ProjectAsset) =>
-        file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+    const filteredFiles = assetsData?.files.filter((file: ProjectAsset) => {
+        const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesPinned = showPinnedOnly ? file.isPinned : true;
+        return matchesSearch && matchesPinned;
+    }) || [];
 
     // Create Folder Mutation (Đã chuyển sang AssetFolderModal quản lý)
 
@@ -234,6 +240,30 @@ export default function ProjectPhasesHub() {
         },
         onError: (error: any) => {
             toast.error(error.message || 'Không thể đổi tên tài liệu');
+        }
+    });
+
+    // Toggle Pin Folder Mutation
+    const togglePinFolderMutation = useMutation({
+        mutationFn: ({ folderId, isPinned }: { folderId: string, isPinned: boolean }) => AssetService.updateFolder(folderId, { isPinned }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project-assets', projectId, selectedPhaseId, selectedFolderId] });
+            toast.success('Đã cập nhật trạng thái ghim thư mục');
+        },
+        onError: () => {
+            toast.error('Không thể ghim thư mục');
+        }
+    });
+
+    // Toggle Pin Asset Mutation
+    const togglePinAssetMutation = useMutation({
+        mutationFn: ({ assetId, isPinned }: { assetId: string, isPinned: boolean }) => AssetService.updateAsset(assetId, { isPinned }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project-assets', projectId, selectedPhaseId, selectedFolderId] });
+            toast.success('Đã cập nhật trạng thái ghim tài liệu');
+        },
+        onError: () => {
+            toast.error('Không thể ghim tài liệu');
         }
     });
 
@@ -357,19 +387,16 @@ export default function ProjectPhasesHub() {
                                 className="group relative"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity blur-2xl -z-10 rounded-[32px]" />
-                                <div className="bg-white dark:bg-slate-900/50 rounded-[32px] border border-slate-200/60 dark:border-white/5 p-6 shadow-sm hover:shadow-2xl hover:border-brand-primary/30 transition-all duration-500 overflow-hidden">
-                                    <div className="flex items-start justify-between mb-6">
+                                <div className="relative bg-gradient-to-br from-white to-[#F8FAFC] dark:from-slate-800/50 dark:to-slate-900/50 rounded-[32px] border border-slate-100 dark:border-white/5 p-6 shadow-depth-1 hover:shadow-[6px_6px_18px_rgba(0,0,0,0.05),15px_15px_35px_rgba(3,93,91,0.1),-12px_-12px_30px_rgba(255,255,255,1)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:border-brand-primary/20 transition-all duration-500 overflow-hidden hover:-translate-y-2">
+                                    {/* Watermark Number */}
+                                    <div className="absolute -right-2 -top-6 text-[100px] font-black text-slate-900/[0.03] dark:text-white/[0.02] select-none pointer-events-none z-0 tracking-tighter transition-transform duration-500 group-hover:scale-110">
+                                        {(index + 1).toString().padStart(2, '0')}
+                                    </div>
+
+                                    <div className="relative z-10 flex items-start justify-between mb-3">
                                         <div className={cn(
-                                            "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-500",
-                                            !phase.isLocked 
-                                            ? 'bg-brand-primary text-white border-brand-primary/20 shadow-lg shadow-brand-primary/20' 
-                                            : 'bg-slate-100 dark:bg-white/5 text-slate-400 border-transparent'
-                                        )}>
-                                            {phase.isLocked ? <Lock className="w-7 h-7" /> : <Unlock className="w-7 h-7" />}
-                                        </div>
-                                        <div className={cn(
-                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
-                                            phase.isLocked ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'
+                                            "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm backdrop-blur-sm",
+                                            phase.isLocked ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-200/50' : 'bg-[#C7F964]/20 text-brand-primary border border-[#C7F964]/50'
                                         )}>
                                             {phase.isLocked ? (
                                                 <>
@@ -449,7 +476,7 @@ export default function ProjectPhasesHub() {
                                                 }
                                                 router.push(`/workspace/${workspaceId}/projects/${projectId}/phases/${phase._id}/board`);
                                             }}
-                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-brand-primary hover:text-white transition-all group/action"
+                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-900/50 shadow-sm border border-slate-100 dark:border-white/5 hover:bg-brand-primary hover:text-white hover:border-brand-primary hover:-translate-y-1 hover:shadow-md transition-all group/action"
                                         >
                                             <LayoutGrid className="w-5 h-5 mb-1 group-hover/action:scale-110 transition-transform" />
                                             <span className="text-[10px] font-black uppercase">Board</span>
@@ -462,7 +489,7 @@ export default function ProjectPhasesHub() {
                                                 }
                                                 router.push(`/workspace/${workspaceId}/projects/${projectId}/phases/${phase._id}/table`);
                                             }}
-                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-brand-primary hover:text-white transition-all group/action"
+                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-900/50 shadow-sm border border-slate-100 dark:border-white/5 hover:bg-brand-primary hover:text-white hover:border-brand-primary hover:-translate-y-1 hover:shadow-md transition-all group/action"
                                         >
                                             <Layout className="w-5 h-5 mb-1 group-hover/action:scale-110 transition-transform" />
                                             <span className="text-[10px] font-black uppercase">Table</span>
@@ -475,7 +502,7 @@ export default function ProjectPhasesHub() {
                                                 }
                                                 router.push(`/workspace/${workspaceId}/projects/${projectId}/phases/${phase._id}/calendar`);
                                             }}
-                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-brand-primary hover:text-white transition-all group/action"
+                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-900/50 shadow-sm border border-slate-100 dark:border-white/5 hover:bg-brand-primary hover:text-white hover:border-brand-primary hover:-translate-y-1 hover:shadow-md transition-all group/action"
                                         >
                                             <Calendar className="w-5 h-5 mb-1 group-hover/action:scale-110 transition-transform" />
                                             <span className="text-[10px] font-black uppercase">Calendar</span>
@@ -488,7 +515,7 @@ export default function ProjectPhasesHub() {
                                                 }
                                                 router.push(`/workspace/${workspaceId}/projects/${projectId}/phases/${phase._id}/analytics`);
                                             }}
-                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-white/5 hover:bg-brand-primary hover:text-white transition-all group/action"
+                                            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white dark:bg-slate-900/50 shadow-sm border border-slate-100 dark:border-white/5 hover:bg-brand-primary hover:text-white hover:border-brand-primary hover:-translate-y-1 hover:shadow-md transition-all group/action"
                                         >
                                             <BarChart3 className="w-5 h-5 mb-1 group-hover/action:scale-110 transition-transform" />
                                             <span className="text-[10px] font-black uppercase">Stats</span>
@@ -506,10 +533,10 @@ export default function ProjectPhasesHub() {
                                             router.push(`/workspace/${workspaceId}/projects/${projectId}/phases/${phase._id}/board`);
                                         }}
                                         className={cn(
-                                            "w-full mt-4 rounded-2xl h-12 transition-all font-bold group/btn",
+                                            "w-full mt-4 rounded-full h-12 transition-all duration-300 font-bold group/btn",
                                             phase.isLocked && !isPrivileged 
                                             ? "bg-slate-100 dark:bg-white/5 text-slate-400 cursor-not-allowed" 
-                                            : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-white"
+                                            : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-brand-primary dark:hover:bg-brand-primary hover:text-white shadow-depth-2 hover:shadow-depth-3 hover:-translate-y-0.5"
                                         )}
                                     >
                                         {phase.isLocked && !isPrivileged ? 'Đã bị khóa' : 'Vào làm việc'}
@@ -549,14 +576,14 @@ export default function ProjectPhasesHub() {
                     >
                         {/* Phase Selector Sidebar */}
                         <div className="w-full lg:w-72 flex flex-col gap-4">
-                            <div className="bg-white dark:bg-slate-900/50 rounded-[32px] border border-slate-200/60 dark:border-white/5 overflow-hidden shadow-sm flex flex-col h-full">
+                            <div className="bg-[#F8FAFC] dark:bg-slate-900/50 rounded-[32px] border border-slate-200/60 dark:border-white/5 overflow-hidden shadow-sm flex flex-col h-full">
                                 <div className="p-5 border-b border-slate-200/60 dark:border-white/5">
                                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <Filter className="w-3 h-3" />
                                         Lọc theo giai đoạn
                                     </h3>
                                 </div>
-                                <div className="p-3 space-y-1.5 overflow-y-auto max-h-[500px]">
+                                <div className="p-3 space-y-1.5 overflow-y-auto flex-1 custom-scrollbar">
                                     <button
                                         onClick={() => {
                                             setSelectedPhaseId(null);
@@ -564,17 +591,18 @@ export default function ProjectPhasesHub() {
                                             setSearchQuery('');
                                         }}
                                         className={cn(
-                                            "w-full text-left p-4 rounded-2xl transition-all flex items-center gap-3 group",
-                                            !selectedPhaseId ? "bg-brand-primary/5 text-brand-primary font-bold" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
+                                            "w-full text-left p-4 rounded-2xl transition-all flex items-center gap-3 group relative overflow-hidden",
+                                            !selectedPhaseId ? "bg-brand-primary/10 text-brand-primary font-bold shadow-sm" : "text-slate-500 hover:bg-white dark:hover:bg-white/5"
                                         )}
                                     >
+                                        {!selectedPhaseId && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C7F964]" />}
                                         <div className={cn(
-                                            "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                                            !selectedPhaseId ? "bg-brand-primary text-white" : "bg-slate-100 dark:bg-white/5"
+                                            "w-8 h-8 rounded-xl flex items-center justify-center transition-all relative z-10",
+                                            !selectedPhaseId ? "bg-gradient-to-br from-brand-primary to-teal-700 text-white shadow-md shadow-brand-primary/20" : "bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/10"
                                         )}>
                                             <Files className="w-4 h-4" />
                                         </div>
-                                        <span className="text-sm">Tài liệu chung</span>
+                                        <span className={cn("text-sm relative z-10", !selectedPhaseId && "font-black tracking-tight")}>Tài liệu chung</span>
                                     </button>
                                     
                                     {phases.map((phase: Phase, idx: number) => (
@@ -586,17 +614,18 @@ export default function ProjectPhasesHub() {
                                                 setSearchQuery('');
                                             }}
                                             className={cn(
-                                                "w-full text-left p-4 rounded-2xl transition-all flex items-center gap-3 group",
-                                                selectedPhaseId === phase._id ? "bg-brand-primary/5 text-brand-primary font-bold" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
+                                                "w-full text-left p-4 rounded-2xl transition-all flex items-center gap-3 group relative overflow-hidden",
+                                                selectedPhaseId === phase._id ? "bg-brand-primary/10 text-brand-primary font-bold shadow-sm" : "text-slate-500 hover:bg-white dark:hover:bg-white/5"
                                             )}
                                         >
+                                            {selectedPhaseId === phase._id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C7F964]" />}
                                             <div className={cn(
-                                                "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                                                selectedPhaseId === phase._id ? "bg-brand-primary text-white" : "bg-slate-100 dark:bg-white/5"
+                                                "w-8 h-8 rounded-xl flex items-center justify-center transition-all relative z-10",
+                                                selectedPhaseId === phase._id ? "bg-gradient-to-br from-brand-primary to-teal-700 text-white shadow-md shadow-brand-primary/20" : "bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/10"
                                             )}>
                                                 <span className="text-xs font-black">{idx + 1}</span>
                                             </div>
-                                            <span className="text-sm truncate">{phase.name}</span>
+                                            <span className={cn("text-sm truncate relative z-10", selectedPhaseId === phase._id && "font-black tracking-tight")}>{phase.name}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -614,22 +643,35 @@ export default function ProjectPhasesHub() {
                                             placeholder="Tìm kiếm tài liệu..." 
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 rounded-2xl py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+                                            className="w-full bg-slate-50/50 dark:bg-slate-900/50 shadow-inner border border-slate-200/50 dark:border-white/5 rounded-full py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-[#C7F964]/50 focus:bg-white dark:focus:bg-slate-900 transition-all"
                                         />
                                         {searchQuery && (
                                             <button 
                                                 onClick={() => setSearchQuery('')}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold w-6 h-6 rounded-full hover:bg-slate-200/50 dark:hover:bg-white/10 flex items-center justify-center transition-colors"
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-primary dark:hover:text-slate-200 text-sm font-bold w-6 h-6 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors"
                                             >
                                                 ✕
                                             </button>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                "rounded-full h-11 px-4 border-slate-100 dark:border-white/10 font-bold transition-all duration-300",
+                                                showPinnedOnly 
+                                                ? "bg-amber-50 dark:bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-500/30 shadow-inner" 
+                                                : "bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                            )}
+                                            onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+                                        >
+                                            <Star className={cn("w-4 h-4 mr-2 transition-all", showPinnedOnly ? "fill-amber-500" : "")} />
+                                            Đã ghim
+                                        </Button>
                                         {selectedFolderId && (
                                             <Button 
                                                 variant="ghost" 
-                                                className="rounded-xl h-10 text-slate-500"
+                                                className="rounded-full h-11 text-slate-500 hover:bg-slate-100 font-bold"
                                                 onClick={() => {
                                                     setSelectedFolderId(null);
                                                     setSearchQuery('');
@@ -641,7 +683,7 @@ export default function ProjectPhasesHub() {
                                         )}
                                         <Button 
                                             variant="outline" 
-                                            className="rounded-xl border-slate-200/60 h-10"
+                                            className="rounded-full bg-white dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 shadow-sm border-slate-100 h-11 px-6 font-bold hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 text-brand-primary"
                                             onClick={() => {
                                                 setEditingFolder(null);
                                                 setIsFolderModalOpen(true);
@@ -657,83 +699,35 @@ export default function ProjectPhasesHub() {
                                     <div className="flex-1 flex items-center justify-center"><Loader size="md" /></div>
                                 ) : assetsData && (assetsData.folders.length > 0 || assetsData.files.length > 0) ? (
                                     filteredFolders.length > 0 || filteredFiles.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                            {filteredFolders.map((folder: AssetFolder) => (
-                                                <div 
-                                                    key={folder._id} 
-                                                    onClick={() => setSelectedFolderId(folder._id)}
-                                                    className="p-5 bg-slate-50/50 dark:bg-white/5 rounded-2xl border border-slate-200/60 dark:border-white/5 hover:border-brand-primary/30 transition-all cursor-pointer group shadow-sm"
-                                                >
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                                            <svg className="w-7 h-7 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M10 4L12 6H20C21.1 6 22 6.9 22 8V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4H10Z" />
-                                                            </svg>
-                                                        </div>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger 
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                render={
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100">
-                                                                        <MoreVertical className="w-4 h-4 text-slate-400" />
-                                                                    </Button>
-                                                                }
-                                                            />
-                                                            <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
-                                                                <DropdownMenuItem 
-                                                                    className="rounded-xl font-bold cursor-pointer"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setEditingFolder(folder);
-                                                                        setIsFolderModalOpen(true);
-                                                                    }}
-                                                                >
-                                                                    <Edit2 className="w-4 h-4 mr-2" />
-                                                                    Đổi tên thư mục
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem 
-                                                                    className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10 font-bold cursor-pointer"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        deleteAssetMutation.mutate(folder._id);
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="w-4 h-4 mr-2" />
-                                                                    Xóa thư mục
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                    <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{folder.name}</h4>
-                                                    <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Thư mục</p>
-                                                </div>
-                                            ))}
-                                            {filteredFiles.map((file: ProjectAsset) => {
-                                                const isImage = file.fileType.startsWith('image/');
-                                                return (
+                                        <div className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar -mx-2 px-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-3 pb-4">
+                                                {filteredFolders.map((folder: AssetFolder) => (
                                                     <div 
-                                                        key={file._id} 
-                                                        onClick={() => setSelectedFile(file)}
-                                                        className="p-5 bg-slate-50/50 dark:bg-white/5 rounded-2xl border border-slate-200/60 dark:border-white/5 hover:border-brand-primary/30 transition-all group shadow-sm cursor-pointer"
+                                                        key={folder._id} 
+                                                        onClick={() => setSelectedFolderId(folder._id)}
+                                                        className="p-5 bg-gradient-to-br from-white to-[#F8FAFC] dark:from-slate-800/50 dark:to-slate-900/50 rounded-3xl border border-slate-100 dark:border-white/10 hover:border-brand-primary/20 transition-all duration-500 cursor-pointer group shadow-depth-1 hover:-translate-y-2 hover:shadow-[6px_6px_18px_rgba(0,0,0,0.05),15px_15px_35px_rgba(3,93,91,0.1),-12px_-12px_30px_rgba(255,255,255,1)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
                                                     >
                                                         <div className="flex items-start justify-between">
-                                                            {isImage ? (
-                                                                <div className="w-12 h-12 rounded-xl overflow-hidden mb-3 group-hover:scale-110 transition-transform border border-slate-200/40 dark:border-white/5 bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative">
-                                                                    <img 
-                                                                        src={file.fileUrl} 
-                                                                        alt={file.name} 
-                                                                        className="w-full h-full object-cover" 
-                                                                        loading="lazy"
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                                                    <Files className="w-6 h-6 text-blue-500" />
-                                                                </div>
-                                                            )}
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger 
+                                                            <div className="w-12 h-12 bg-gradient-to-br from-brand-primary/10 to-slate-50 dark:from-brand-primary/20 dark:to-brand-primary/5 border border-brand-primary/5 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 backdrop-blur-xl">
+                                                                <svg className="w-6 h-6 text-brand-primary" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M10 4L12 6H20C21.1 6 22 6.9 22 8V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4H10Z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        togglePinFolderMutation.mutate({ folderId: folder._id, isPinned: !folder.isPinned });
+                                                                    }}
+                                                                    className={cn(
+                                                                        "w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-all focus:opacity-100 z-10",
+                                                                        folder.isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                                                    )}
+                                                                >
+                                                                    <Star className={cn("w-4 h-4 transition-all hover:scale-110", folder.isPinned ? "fill-amber-400 text-amber-400" : "text-slate-400")} />
+                                                                </button>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger 
                                                                     onClick={(e) => e.stopPropagation()}
                                                                     render={
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100">
@@ -746,50 +740,128 @@ export default function ProjectPhasesHub() {
                                                                         className="rounded-xl font-bold cursor-pointer"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setRenamingFile(file);
+                                                                            setEditingFolder(folder);
+                                                                            setIsFolderModalOpen(true);
                                                                         }}
                                                                     >
                                                                         <Edit2 className="w-4 h-4 mr-2" />
-                                                                        Đổi tên tài liệu
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem 
-                                                                        className="rounded-xl font-bold cursor-pointer"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setSelectedFile(file);
-                                                                        }}
-                                                                    >
-                                                                        <ArrowRight className="w-4 h-4 mr-2" />
-                                                                        Xem chi tiết
+                                                                        Đổi tên thư mục
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem 
                                                                         className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10 font-bold cursor-pointer"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            deleteAssetMutation.mutate(file._id);
+                                                                            deleteAssetMutation.mutate(folder._id);
                                                                         }}
                                                                     >
                                                                         <Trash2 className="w-4 h-4 mr-2" />
-                                                                        Xóa tài liệu
+                                                                        Xóa thư mục
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         </div>
-                                                        <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{file.name}</h4>
-                                                        <div className="flex items-center justify-between mt-2 gap-2">
-                                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={file.fileType}>
-                                                                {file.fileType.includes('spreadsheetml') ? 'XLSX' : 
-                                                                 file.fileType.includes('wordprocessingml') ? 'DOCX' : 
-                                                                 file.fileType.includes('presentationml') ? 'PPTX' :
-                                                                 file.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(file.fileSize / 1024).toFixed(2)} KB</p>
-                                                        </div>
                                                     </div>
-                                                );
-                                            })}
+                                                    <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{folder.name}</h4>
+                                                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Thư mục</p>
+                                                    </div>
+                                                ))}
+                                                {filteredFiles.map((file: ProjectAsset) => {
+                                                    const isImage = file.fileType.startsWith('image/');
+                                                    return (
+                                                        <div 
+                                                            key={file._id} 
+                                                            onClick={() => setSelectedFile(file)}
+                                                            className="p-5 bg-gradient-to-br from-white to-[#F8FAFC] dark:from-slate-800/50 dark:to-slate-900/50 rounded-3xl border border-slate-100 dark:border-white/10 hover:border-brand-primary/20 transition-all duration-500 group shadow-depth-1 hover:-translate-y-2 hover:shadow-[6px_6px_18px_rgba(0,0,0,0.05),15px_15px_35px_rgba(3,93,91,0.1),-12px_-12px_30px_rgba(255,255,255,1)] dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] cursor-pointer"
+                                                        >
+                                                            <div className="flex items-start justify-between">
+                                                                {isImage ? (
+                                                                    <div className="w-12 h-12 rounded-2xl overflow-hidden mb-4 group-hover:scale-110 transition-transform duration-500 border border-brand-primary/5 shadow-sm relative">
+                                                                        <img 
+                                                                            src={file.fileUrl} 
+                                                                            alt={file.name} 
+                                                                            className="w-full h-full object-cover" 
+                                                                            loading="lazy"
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-12 h-12 bg-gradient-to-br from-brand-primary/10 to-slate-50 dark:from-brand-primary/20 dark:to-brand-primary/5 border border-brand-primary/5 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500 backdrop-blur-xl">
+                                                                        <Files className="w-6 h-6 text-brand-primary" />
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-1">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            togglePinAssetMutation.mutate({ assetId: file._id, isPinned: !file.isPinned });
+                                                                        }}
+                                                                        className={cn(
+                                                                            "w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-all focus:opacity-100 z-10",
+                                                                            file.isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                                                        )}
+                                                                    >
+                                                                        <Star className={cn("w-4 h-4 transition-all hover:scale-110", file.isPinned ? "fill-amber-400 text-amber-400" : "text-slate-400")} />
+                                                                    </button>
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger 
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        render={
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100">
+                                                                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                                                            </Button>
+                                                                        }
+                                                                    />
+                                                                    <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                                                                        <DropdownMenuItem 
+                                                                            className="rounded-xl font-bold cursor-pointer"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setRenamingFile(file);
+                                                                            }}
+                                                                        >
+                                                                            <Edit2 className="w-4 h-4 mr-2" />
+                                                                            Đổi tên tài liệu
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem 
+                                                                            className="rounded-xl font-bold cursor-pointer"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setSelectedFile(file);
+                                                                            }}
+                                                                        >
+                                                                            <ArrowRight className="w-4 h-4 mr-2" />
+                                                                            Xem chi tiết
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem 
+                                                                            className="rounded-xl text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-500/10 font-bold cursor-pointer"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                deleteAssetMutation.mutate(file._id);
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4 mr-2" />
+                                                                            Xóa tài liệu
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+                                                        <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{file.name}</h4>
+                                                            <div className="flex items-center justify-between mt-2 gap-2">
+                                                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={file.fileType}>
+                                                                    {file.fileType.includes('spreadsheetml') ? 'XLSX' : 
+                                                                     file.fileType.includes('wordprocessingml') ? 'DOCX' : 
+                                                                     file.fileType.includes('presentationml') ? 'PPTX' :
+                                                                     file.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
+                                                                </p>
+                                                                <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(file.fileSize / 1024).toFixed(2)} KB</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="flex-1 flex flex-col items-center justify-center text-center py-12">

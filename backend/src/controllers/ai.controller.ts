@@ -111,7 +111,7 @@ export const generateProjectStructureController = asyncHandler(
 
         logger.info("[AI-Controller] Đang phân rã dự án", { prompt: prompt.substring(0, 50), projectId });
         
-        const structure = await generateProjectStructureService(prompt.trim());
+        const structure = await generateProjectStructureService(prompt.trim(), projectId);
         
         return res.status(HTTP_STATUS.OK).json({
             success: true,

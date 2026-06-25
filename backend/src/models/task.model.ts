@@ -22,6 +22,8 @@ export interface TaskDocument extends mongoose.Document {
     deletedAt: Date | null; //  Ngày xóa (Cho Soft Delete dự án cha)
     requiresApproval: boolean; //  Cần chờ duyệt trước khi hoàn thành
     overdueNotificationSent: boolean; //  Đã gửi thông báo quá hạn chưa
+    embedding?: number[]; // Lưu trữ vector cho Semantic Search (1024 dimensions)
+    embeddingUpdatedAt?: Date | null; // Theo dõi thời gian cập nhật vector
     createdAt: Date;
     updatedAt: Date;
 }
@@ -45,6 +47,8 @@ const taskSchema = new Schema<TaskDocument>({
     phaseId: { type: Schema.Types.ObjectId, ref: "Phase", default: null },
     requiresApproval: { type: Boolean, default: false },
     overdueNotificationSent: { type: Boolean, default: false },
+    embedding: { type: [Number], default: [] },
+    embeddingUpdatedAt: { type: Date, default: null },
     deletedAt: { type: Date, default: null },
 
 }, {

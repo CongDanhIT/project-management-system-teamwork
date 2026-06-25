@@ -7,6 +7,7 @@ export interface AssetFolderDocument extends Document {
     parentFolderId: mongoose.Types.ObjectId | null;
     name: string;
     visibility: "PUBLIC" | "PRIVATE";
+    isPinned: boolean;
     createdBy: mongoose.Types.ObjectId;
     deletedAt: Date | null;
     createdAt: Date;
@@ -25,6 +26,7 @@ const assetFolderSchema = new Schema<AssetFolderDocument>(
             enum: ["PUBLIC", "PRIVATE"],
             default: "PUBLIC",
         },
+        isPinned: { type: Boolean, default: false },
         createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
         deletedAt: { type: Date, default: null },
     },

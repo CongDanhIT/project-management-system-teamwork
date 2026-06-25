@@ -6,6 +6,7 @@ import {
   Bell,
   Plus,
   HelpCircle,
+  Keyboard,
   UserPlus,
   Building2,
   CheckSquare,
@@ -21,6 +22,7 @@ import { taskService } from '@/services/task.service';
 import { CreateTaskModal } from '@/components/task/CreateTaskModal';
 import { toast } from 'sonner';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,7 +116,7 @@ export default function Header() {
   };
 
   return (
-    <header className="h-20 bg-background/40 dark:bg-background/40 backdrop-blur-[20px] sticky top-0 z-40 flex items-center justify-between px-12 border-b border-border transition-all duration-300">
+    <header className="h-16 bg-background/40 dark:bg-background/40 backdrop-blur-[20px] sticky top-0 z-40 flex items-center justify-between px-8 border-b border-border transition-all duration-300">
       <div className="flex-1">
         {/* Can add breadcrumbs or search here in future */}
       </div>
@@ -125,12 +127,12 @@ export default function Header() {
           size="icon" 
           onClick={toggleInboxSidebar}
           className={cn(
-            "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300",
+            "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-9 w-9 transition-all duration-300",
             isInboxSidebarOpen && "bg-slate-100 dark:bg-slate-800 text-brand-primary"
           )}
         >
-          <Inbox className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
+          <Inbox className="w-5 h-5 group-hover:text-brand-primary transition-colors" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]"></span>
         </Button>
 
         {workspaceId && <NotificationCenter workspaceId={workspaceId} />}
@@ -141,20 +143,49 @@ export default function Header() {
             size="icon" 
             onClick={handleStartCall}
             className={cn(
-              "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300",
+              "group relative text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-9 w-9 transition-all duration-300",
               isCallActive && "bg-slate-100 dark:bg-slate-800 text-brand-primary"
             )}
             title="Video Call"
           >
-            <Video className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
+            <Video className="w-5 h-5 group-hover:text-brand-primary transition-colors" />
             {isCallActive && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-brand-primary rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
             )}
           </Button>
         )}
 
-        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-11 w-11 transition-all duration-300">
-          <HelpCircle className="w-6 h-6 group-hover:text-brand-primary transition-colors" />
+        <Dialog>
+          <DialogTrigger render={<Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-9 w-9 transition-all duration-300" title="Phím tắt" />}>
+            <Keyboard className="w-5 h-5 group-hover:text-brand-primary transition-colors" />
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px] rounded-[24px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">Chú giải Phím tắt</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Bật/tắt Menu trái</span>
+                <kbd className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shadow-sm">Alt + 1</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Mở Tài liệu chung</span>
+                <kbd className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shadow-sm">Alt + 2</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Chế độ vẽ (Drawing)</span>
+                <kbd className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shadow-sm">Alt + 3</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Bật/tắt Inbox</span>
+                <kbd className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-bold text-slate-500 dark:text-slate-400 shadow-sm">Alt + 4</kbd>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Button variant="ghost" size="icon" className="group text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full h-9 w-9 transition-all duration-300">
+          <HelpCircle className="w-5 h-5 group-hover:text-brand-primary transition-colors" />
         </Button>
 
         <ThemeToggle />
@@ -163,14 +194,14 @@ export default function Header() {
           <DropdownMenuTrigger 
             render={
               <Button 
-                className="relative px-6 h-11 rounded-full bg-background/70 dark:bg-card/70 backdrop-blur-xl hover:bg-background/90 dark:hover:bg-card/90 text-foreground dark:text-white font-black text-[9px] tracking-[0.1em] gap-3 shadow-sm hover:shadow-[0_10px_30px_rgba(45,212,191,0.12)] flex items-center overflow-hidden active:scale-95 transition-all duration-500 border border-slate-200/60 dark:border-white/5 hover:border-teal-400/40 group/btn"
+                className="relative px-5 h-9 rounded-full bg-background/70 dark:bg-card/70 backdrop-blur-xl hover:bg-background/90 dark:hover:bg-card/90 text-foreground dark:text-white font-black text-[9px] tracking-[0.1em] gap-2 shadow-sm hover:shadow-[0_10px_30px_rgba(45,212,191,0.12)] flex items-center overflow-hidden active:scale-95 transition-all duration-500 border border-slate-200/60 dark:border-white/5 hover:border-teal-400/40 group/btn"
               >
                 {/* Subtle Kinetic Mesh for Hover */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/0 via-transparent to-brand-primary/0 group-hover/btn:from-teal-500/10 group-hover/btn:to-brand-primary/10 transition-all duration-700"></div>
                 
                 {/* Vibrant Icon Circle - Smaller size */}
-                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-brand-primary/100 flex items-center justify-center shadow-[0_2px_6px_rgba(20,184,166,0.1)] group-hover/btn:shadow-teal-500/30 group-hover/btn:rotate-180 transition-all duration-700">
-                  <Plus className="w-5 h-5 text-white" strokeWidth={3} />
+                <div className="relative w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-brand-primary/100 flex items-center justify-center shadow-[0_2px_6px_rgba(20,184,166,0.1)] group-hover/btn:shadow-teal-500/30 group-hover/btn:rotate-180 transition-all duration-700">
+                  <Plus className="w-4 h-4 text-white" strokeWidth={3} />
                 </div>
                 
                 <span className="relative uppercase z-10 group-hover/btn:text-teal-600 dark:group-hover/btn:text-teal-400 transition-colors">KHỞI TẠO NHANH</span>

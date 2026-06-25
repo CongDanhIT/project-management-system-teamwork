@@ -17,13 +17,13 @@ export const getWorkspaceExplorerService = async (workspaceId: string) => {
     const folders = await AssetFolderModel.find({
         workspaceId: workspaceIdObj,
         deletedAt: null
-    }).select("_id name projectId parentFolderId visibility").lean();
+    }).select("_id name projectId parentFolderId visibility isPinned").lean();
 
     // 3. Lấy tất cả asset trong workspace
     const assets = await ProjectAssetModel.find({
         workspaceId: workspaceIdObj,
         deletedAt: null
-    }).select("_id name fileUrl fileSize fileType projectId folderId category status storageKey createdAt createdBy").lean();
+    }).select("_id name fileUrl fileSize fileType projectId folderId category status storageKey createdAt createdBy isPinned").lean();
 
     // Thêm Signed URL cho mỗi file
     const assetsWithSignedUrls = await Promise.all(assets.map(async (asset) => {

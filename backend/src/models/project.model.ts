@@ -21,6 +21,8 @@ export interface ProjectDocument extends mongoose.Document {
     favoritedBy: mongoose.Types.ObjectId[];
     slackWebhookUrl?: string | null;
     isAutoTaggingEnabled: boolean;
+    embedding?: number[]; // Lưu trữ vector cho Semantic Search (1024 dimensions)
+    embeddingUpdatedAt?: Date | null; // Theo dõi thời gian cập nhật vector
 }
 const projectSchema = new Schema<ProjectDocument>({
     name: { type: String, required: true, trim: true },
@@ -40,6 +42,8 @@ const projectSchema = new Schema<ProjectDocument>({
     favoritedBy: [{ type: Schema.Types.ObjectId, ref: "User", default: [] }],
     slackWebhookUrl: { type: String, required: false, trim: true, default: null },
     isAutoTaggingEnabled: { type: Boolean, default: true },
+    embedding: { type: [Number], default: [] },
+    embeddingUpdatedAt: { type: Date, default: null },
 }, {
     timestamps: true,
 });

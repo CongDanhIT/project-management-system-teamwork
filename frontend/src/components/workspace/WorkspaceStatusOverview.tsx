@@ -39,10 +39,10 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
     const others = Math.max(0, analytics.totalTasks - (analytics.completedTasks + analytics.inProgressTasks + analytics.overdueTasks));
 
     return [
-      { name: 'Cần làm', value: others, color: COLORS.todo },
-      { name: 'Đang thực hiện', value: analytics.inProgressTasks, color: COLORS.inProgress },
-      { name: 'Đã hoàn thành', value: analytics.completedTasks, color: COLORS.completed },
-      { name: 'Quá hạn', value: analytics.overdueTasks, color: COLORS.overdue }
+      { name: 'Cần làm', value: others, color: 'url(#pieTodo)' },
+      { name: 'Đang thực hiện', value: analytics.inProgressTasks, color: 'url(#pieInProgress)' },
+      { name: 'Đã hoàn thành', value: analytics.completedTasks, color: 'url(#pieCompleted)' },
+      { name: 'Quá hạn', value: analytics.overdueTasks, color: 'url(#striped-pattern)' }
     ].filter(item => item.value > 0);
   }, [analytics]);
 
@@ -118,7 +118,7 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Row 1 - Left: Status Pie Chart */}
-        <div className="lg:col-span-5 bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm hover:shadow-md transition-all duration-500 overflow-hidden">
+        <div className="lg:col-span-5 bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none transition-all duration-500 overflow-hidden">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">Cơ cấu trạng thái</h3>
             <div className="text-[10px] font-bold text-[#035D5B] dark:text-[#C7F964] bg-[#035D5B]/5 dark:bg-[#C7F964]/5 px-3 py-1 rounded-full">
@@ -129,6 +129,24 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
           <div className="h-[280px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
+                <defs>
+                  <linearGradient id="pieTodo" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#cbd5e1" />
+                    <stop offset="100%" stopColor="#94a3b8" />
+                  </linearGradient>
+                  <linearGradient id="pieInProgress" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#818cf8" />
+                    <stop offset="100%" stopColor="#4f46e5" />
+                  </linearGradient>
+                  <linearGradient id="pieCompleted" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#34d399" />
+                    <stop offset="100%" stopColor="#059669" />
+                  </linearGradient>
+                  <pattern id="striped-pattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <rect width="8" height="8" fill="#fca5a5" />
+                    <line x1="0" y1="0" x2="0" y2="8" stroke="#ef4444" strokeWidth="4" />
+                  </pattern>
+                </defs>
                 <Pie
                   data={statusData}
                   cx="50%"
@@ -139,9 +157,11 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
                   dataKey="value"
                   animationDuration={1500}
                   animationBegin={200}
+                  stroke="none"
+                  cornerRadius={6}
                 >
                   {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    <Cell key={`cell-${index}`} fill={entry.color} style={{ filter: `drop-shadow(0 4px 6px rgba(0,0,0,0.1))` }} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
@@ -158,18 +178,21 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
-            {statusData.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
-                <span className="text-[11px] font-black text-slate-900 dark:text-white ml-auto">{item.value}</span>
-              </div>
-            ))}
+            {statusData.map((item, idx) => {
+              const bg = item.color.includes('url') ? (item.color.includes('pieTodo') ? '#94a3b8' : item.color.includes('pieInProgress') ? '#6366f1' : item.color.includes('pieCompleted') ? '#10b981' : '#ef4444') : item.color;
+              return (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color.includes('striped') ? 'repeating-linear-gradient(45deg, #ef4444, #ef4444 2px, #fca5a5 2px, #fca5a5 4px)' : bg }} />
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
+                  <span className="text-[11px] font-black text-slate-900 dark:text-white ml-auto">{item.value}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Row 1 - Right: Projects Bar Chart */}
-        <div className="lg:col-span-7 bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm hover:shadow-md transition-all duration-500 overflow-hidden">
+        <div className="lg:col-span-7 bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none transition-all duration-500 overflow-hidden">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">Số lượng công việc theo dự án</h3>
             <div className="text-[10px] font-bold text-[#035D5B] dark:text-[#C7F964] bg-[#035D5B]/5 dark:bg-[#C7F964]/5 px-3 py-1 rounded-full">
@@ -184,8 +207,19 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.1} />
-                <XAxis type="number" hide />
+                <defs>
+                  <linearGradient id="barGradientPrimary" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#035D5B" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd5e1" strokeOpacity={0.4} />
+                <XAxis 
+                  type="number" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 600 }}
+                />
                 <YAxis 
                   dataKey="name" 
                   type="category" 
@@ -201,9 +235,17 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
                   barSize={20}
                   animationDuration={2000}
                 >
-                  {projectTasksData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#035D5B' : '#10b981'} />
-                  ))}
+                  {projectTasksData.map((entry, index) => {
+                    const opacity = Math.max(0.3, 1 - index * 0.1);
+                    return (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill="url(#barGradientPrimary)" 
+                        fillOpacity={opacity}
+                        style={{ filter: `drop-shadow(0 4px 6px rgba(16, 185, 129, ${opacity * 0.3}))` }}
+                      />
+                    );
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -211,7 +253,7 @@ export const WorkspaceStatusOverview = ({ analytics, analyticsHistory, projects,
         </div>
 
         {/* Row 2: Velocity Area Chart */}
-        <div className="lg:col-span-full bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm hover:shadow-md transition-all duration-500 overflow-hidden">
+        <div className="lg:col-span-full bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none transition-all duration-500 overflow-hidden">
           <div className="flex items-center justify-between mb-10">
             <div>
               <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mb-1">Tiến độ theo thời gian</h3>

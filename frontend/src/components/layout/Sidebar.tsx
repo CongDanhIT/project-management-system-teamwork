@@ -43,6 +43,8 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 
+import { useUiStore } from '@/stores/ui.store';
+
 // navItems removed from static list to be dynamic in component
 
 export default function Sidebar() {
@@ -58,6 +60,7 @@ export default function Sidebar() {
   const { user, logout } = useAuthStore();
   const { setCurrentWorkspaceId } = useWorkspaceStore();
   const { isAdminOrOwner } = useWorkspaceRole();
+  const { isLeftSidebarOpen } = useUiStore();
   const queryClient = useQueryClient();
   const [isFavoritesOpen, setIsFavoritesOpen] = React.useState(true);
   const [isProjectsOpen, setIsProjectsOpen] = React.useState(false);
@@ -103,14 +106,19 @@ export default function Sidebar() {
   const allPhases = phasesData?.data || [];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col bg-white dark:bg-sidebar lg:flex shadow-[inset_1px_1px_0_rgba(255,255,255,0.6),4px_0_16px_-4px_rgba(0,0,0,0.1)] dark:shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),4px_0_24px_rgba(0,0,0,0.4)] border-none transition-all duration-300">
+    <aside className={cn(
+      "fixed left-0 top-0 z-40 hidden h-screen w-60 flex-col bg-white dark:bg-sidebar lg:flex shadow-[inset_1px_1px_0_rgba(255,255,255,0.6),4px_0_16px_-4px_rgba(0,0,0,0.1)] dark:shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),4px_0_24px_rgba(0,0,0,0.4)] border-none transition-transform duration-500 ease-in-out",
+      !isLeftSidebarOpen && "-translate-x-full"
+    )}>
       {/* Logo & Workspace Selector */}
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-9 h-9 bg-kinetic rounded-xl flex items-center justify-center shadow-glow shadow-brand-primary/20">
-            <Layout className="text-white w-5 h-5" />
-          </div>
-          <span className="text-xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-accent-ai">
+      <div className="p-5 space-y-5">
+        <div className="flex items-center gap-1.5 px-2">
+          <img 
+            src="/logos/logo thương hiệu.svg" 
+            alt="TeamFlow Logo" 
+            className="w-12 h-12 object-contain -my-2 drop-shadow-md" 
+          />
+          <span className="text-[1.35rem] font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-accent-ai dark:from-brand-secondary dark:to-white">
             TeamFlow
           </span>
         </div>
@@ -163,7 +171,7 @@ export default function Sidebar() {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-400/30 dark:via-brand-secondary/10 to-transparent" />
               </div>
             )}
-            <span className="px-5 text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] mb-2 block">
+            <span className="px-4 text-[9px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] mb-2 block">
               {section.group}
             </span>
             {section.items.map((item: any) => {
@@ -174,18 +182,18 @@ export default function Sidebar() {
                   <div key={item.label} className="space-y-1">
                     <div
                       className={cn(
-                        "group flex items-center gap-3 px-5 py-3 rounded-2xl text-[14px] font-medium transition-all duration-300 cursor-pointer",
+                        "group flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-[13px] transition-all duration-300 cursor-pointer relative overflow-hidden",
                         isActive
-                          ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
-                          : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary"
+                          ? "text-brand-primary dark:text-[#C7F964] font-bold bg-brand-primary/[0.12] dark:bg-[#C7F964]/15 ring-1 ring-brand-primary/20 dark:ring-[#C7F964]/30 shadow-[0_4px_10px_-3px_rgba(3,93,91,0.25)] dark:shadow-[0_4px_10px_-3px_rgba(199,249,100,0.15)]"
+                          : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary font-medium"
                       )}
                       onClick={() => setIsProjectsOpen(!isProjectsOpen)}
                     >
-                      <item.icon className={cn("w-5 h-5 transition-all duration-300", isActive ? "text-[#C7F964] scale-105" : "text-current opacity-70 group-hover:opacity-100")} />
-                      <span className={cn(isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
-                      <div className="ml-auto flex items-center gap-2">
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#C7F964] shadow-[0_0_8px_#C7F964]" />}
-                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-300 opacity-50 group-hover:opacity-100", isProjectsOpen && "rotate-180")} />
+                      <item.icon className={cn("w-[18px] h-[18px] transition-all duration-300 relative z-10", isActive ? "text-brand-primary dark:text-[#C7F964]" : "text-current opacity-70 group-hover:opacity-100 group-hover:scale-105")} />
+                      <span className="relative z-10">{item.label}</span>
+                      <div className="ml-auto flex items-center gap-2 relative z-10">
+                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-brand-primary dark:bg-[#C7F964] shadow-sm animate-pulse" />}
+                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-300 opacity-50 group-hover:opacity-100", isProjectsOpen && "rotate-180", isActive && "text-brand-primary dark:text-[#C7F964]")} />
                       </div>
                     </div>
 
@@ -273,15 +281,15 @@ export default function Sidebar() {
                   key={item.label}
                   href={item.href}
                   className={cn(
-                    "group flex items-center gap-3 px-5 py-3 rounded-2xl text-[14px] font-medium transition-all duration-300",
+                    "group flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-[13px] transition-all duration-300 relative overflow-hidden",
                     isActive
-                      ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
-                      : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary"
+                      ? "text-brand-primary dark:text-[#C7F964] font-bold bg-brand-primary/[0.12] dark:bg-[#C7F964]/15 ring-1 ring-brand-primary/20 dark:ring-[#C7F964]/30 shadow-[0_4px_10px_-3px_rgba(3,93,91,0.25)] dark:shadow-[0_4px_10px_-3px_rgba(199,249,100,0.15)]"
+                      : "text-[#3F4948] dark:text-slate-50/60 hover:bg-brand-primary/5 dark:hover:bg-brand-secondary/5 hover:text-brand-primary dark:hover:text-brand-secondary font-medium"
                   )}
                 >
-                  <item.icon className={cn("w-5 h-5 transition-all duration-300", isActive ? "text-[#C7F964] scale-105" : "text-current opacity-70 group-hover:opacity-100")} />
-                  <span className={cn(isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
-                  {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#C7F964] shadow-[0_0_8px_#C7F964]" />}
+                  <item.icon className={cn("w-[18px] h-[18px] transition-all duration-300 relative z-10", isActive ? "text-brand-primary dark:text-[#C7F964]" : "text-current opacity-70 group-hover:opacity-100 group-hover:scale-105")} />
+                  <span className="relative z-10">{item.label}</span>
+                  {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary dark:bg-[#C7F964] shadow-sm animate-pulse relative z-10" />}
                 </Link>
               );
             })}
@@ -293,9 +301,9 @@ export default function Sidebar() {
           <div className="pt-6 space-y-2">
             <button 
               onClick={() => setIsFavoritesOpen(!isFavoritesOpen)}
-              className="flex items-center justify-between w-full px-5 mb-2 group outline-none"
+              className="flex items-center justify-between w-full px-4 mb-2 group outline-none"
             >
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
                 Dự án yêu thích
               </span>
               <ChevronDown 
@@ -316,7 +324,7 @@ export default function Sidebar() {
                       key={project._id}
                       href={projectHref}
                       className={cn(
-                        "group flex items-center gap-3 px-5 py-2.5 rounded-xl text-[13px] transition-all duration-300",
+                        "group flex items-center gap-3 px-4 py-2 rounded-xl text-[12px] transition-all duration-300",
                         isActive
                           ? "bg-brand-primary/10 text-brand-primary dark:text-brand-secondary font-bold"
                           : "text-slate-500 dark:text-slate-400 hover:bg-brand-primary/5 dark:hover:bg-white/5 hover:text-brand-primary dark:hover:text-brand-secondary"

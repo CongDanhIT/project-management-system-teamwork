@@ -8,7 +8,7 @@ import ProjectAnalyticsSnapshotModel from "../models/project-analytics-snapshot.
 import logger from "../utils/logger";
 import { logActivity } from "./activity.service";
 import { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
-
+import { embedProjectService } from "./embedding.service";
 
 
 export const createProjectService = async (workspaceId: string, body: {
@@ -27,6 +27,13 @@ export const createProjectService = async (workspaceId: string, body: {
         createdBy: userId
     })
     await project.save();
+
+    // [AI-V2-RAG] Sinh vector ở background (không block quá trình tạo project)
+    embedProjectService({ name: project.name, description: project.description, status: project.status })
+        .then(async (embedding) => {
+            await ProjectModel.updateOne({ _id: project._id }, { embedding, embeddingUpdatedAt: new Date() });
+        })
+        .catch(err => console.error("[Embedding-Service] Lỗi khi nhúng Project mới:", err.message));
 
     // Ghi nhật ký
     await logActivity({
@@ -523,7 +530,20 @@ export const getProjectAnalyticsService = async (projectId: string, workspaceId:
  * Lấy lịch sử dữ liệu analytics trong 15 ngày gần nhất
  * Đã khôi phục và tích hợp dữ liệu Real-time
  */
-export const getProjectAnalyticsHistoryService = async (projectId: string, workspaceId: string) => {
+export const getProjectAnalyticsHistoryService = async (projectId: string, workspaceId: string, days: number = 14) => {
+    const project = await ProjectModel.findById(projectId);
+    if (!project) throw new Error("Dự án không tồn tại");
+
+    const diffTime = Math.abs(new Date().getTime() - new Date(project.createdAt).getTime());
+    const projectAgeDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+    let actualDays = days;
+    if (days === 0) {
+        actualDays = projectAgeDays;
+    } else {
+        actualDays = Math.min(days, projectAgeDays);
+    }
+
     // 1. Lấy dữ liệu thực tế hiện tại
     const currentData = await getProjectAnalyticsService(projectId, workspaceId);
     if (!currentData) {
@@ -535,7 +555,7 @@ export const getProjectAnalyticsHistoryService = async (projectId: string, works
         projectId: new mongoose.Types.ObjectId(projectId)
     })
     .sort({ date: -1 })
-    .limit(25)
+    .limit(actualDays * 2)
     .lean();
 
     // 3. Xây dựng Timeline 14 ngày (từ 13 ngày trước đến hôm nay)
@@ -549,14 +569,27 @@ export const getProjectAnalyticsHistoryService = async (projectId: string, works
         snapshotsMap.set(dateStr, s);
     });
 
-    // Tạo mảng 14 ngày thô (Dữ liệu snapshot hoặc điền bù)
-    for (let i = 13; i >= 0; i--) {
+    // Tạo mảng timeline thô (Dữ liệu snapshot hoặc điền bù)
+    const projectCreatedAt = new Date(project.createdAt).setHours(0, 0, 0, 0);
+
+    for (let i = actualDays - 1; i >= 0; i--) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() - i);
         const dateStr = targetDate.toDateString();
         const isToday = i === 0;
+        const isBeforeCreation = targetDate.getTime() < projectCreatedAt;
 
-        if (isToday) {
+        if (isBeforeCreation) {
+            timeline.push({
+                date: targetDate,
+                totalTasks: 0,
+                completedTasks: 0,
+                overdueTasks: 0,
+                unassignedTasks: 0,
+                dailyCompletedTasks: 0,
+                isBeforeCreation: true
+            });
+        } else if (isToday) {
             timeline.push({
                 date: today,
                 totalTasks: currentData.totalTasks,
@@ -593,8 +626,7 @@ export const getProjectAnalyticsHistoryService = async (projectId: string, works
     }
 
     // 4. Tính toán Burndown Data
-    // Lấy thông tin dự án để có ngày bắt đầu/kết thúc lý tưởng
-    const project = await ProjectModel.findById(projectId).select("startDate endDate createdAt").lean();
+    // Đã lấy thông tin dự án ở đầu hàm
     if (!project) return timeline; // Không tìm thấy dự án thì trả về timeline thô
 
     // Đường lý tưởng (Ideal Burn): Giảm dần từ totalTasks về 0 theo thời gian dự án
@@ -706,6 +738,16 @@ export const updateProjectService = async (projectId: string, workspaceId: strin
                 summary: detailedSummary
             }
         });
+    }
+
+    // [AI-V2-RAG] Cập nhật lại vector nếu có thay đổi nội dung quan trọng
+    const updatedFields = Object.keys(body);
+    if (updatedFields.includes('name') || updatedFields.includes('description') || updatedFields.includes('status')) {
+        embedProjectService({ name: project.name, description: project.description, status: project.status })
+            .then(async (embedding) => {
+                await ProjectModel.updateOne({ _id: project._id }, { embedding, embeddingUpdatedAt: new Date() });
+            })
+            .catch(err => console.error("[Embedding-Service] Lỗi khi cập nhật vector Project:", err.message));
     }
 
     return project;

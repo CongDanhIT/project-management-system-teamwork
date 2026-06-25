@@ -14,6 +14,7 @@ export interface ProjectAssetDocument extends Document {
     fileType: string;
     category: "GENERAL" | "STRATEGY" | "DELIVERABLE";
     status: "PENDING" | "APPROVED" | "REJECTED";
+    isPinned: boolean;
     createdBy: mongoose.Types.ObjectId;
     deletedAt: Date | null;
     createdAt: Date;
@@ -47,6 +48,7 @@ const projectAssetSchema = new Schema<ProjectAssetDocument>(
             enum: ["PENDING", "APPROVED", "REJECTED"],
             default: "APPROVED",
         },
+        isPinned: { type: Boolean, default: false },
         createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
         deletedAt: { type: Date, default: null },
     },

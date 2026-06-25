@@ -158,13 +158,14 @@ export default function RegisterPage() {
             className="space-y-12"
           >
             {/* Logo Section */}
-            <div className="flex items-center gap-4">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-[#035D5B] to-[#004442] rounded-[24px] flex items-center justify-center shadow-lg shadow-teal-900/20 group overflow-hidden">
-                <Layout className="w-7 h-7 text-[#C7F964] group-hover:text-white transition-colors z-10" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logos/logo thương hiệu.svg" 
+                alt="TeamFlow Logo" 
+                className="w-20 h-20 object-contain -my-4 z-10 transition-transform hover:scale-105 drop-shadow-lg" 
+              />
               <div>
-                <h2 className="text-2xl font-black text-white tracking-widest uppercase">TeamFlow</h2>
+                <h2 className="text-3xl font-black text-white tracking-widest uppercase">TeamFlow</h2>
                 <p className="text-[10px] font-bold text-[#C7F964] tracking-[0.2em] uppercase opacity-80">Design Excellence</p>
               </div>
             </div>
@@ -210,11 +211,12 @@ export default function RegisterPage() {
           animate="visible"
           className="w-full max-w-[460px] space-y-8 my-auto"
         >
-          {/* Header Mobile Only */}
           <div className="mb-6 text-center lg:hidden flex flex-col items-center">
-            <div className="w-12 h-12 rounded-xl bg-[#035D5B] flex items-center justify-center mb-4">
-              <span className="text-[#C7F964] font-black text-xl">T</span>
-            </div>
+            <img 
+              src="/logos/logo thương hiệu.svg" 
+              alt="TeamFlow Logo" 
+              className="w-24 h-24 object-contain -my-4 mb-2 drop-shadow-xl" 
+            />
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">TEAMFLOW</h1>
           </div>
 

@@ -302,7 +302,7 @@ export default function RoadmapPage() {
                 </Button>
               }
             />
-            <SheetContent className="bg-background border-l border-border text-foreground w-[400px]">
+            <SheetContent className="bg-background border-l border-border text-foreground !w-[400px] sm:!w-[400px] !max-w-[400px]">
               <SheetHeader className="mb-6">
                 <SheetTitle className="text-foreground flex items-center gap-2">
                   <Inbox className="w-5 h-5 text-muted-foreground" />
@@ -310,7 +310,7 @@ export default function RoadmapPage() {
                 </SheetTitle>
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-120px)]">
-                <div className="space-y-3 pr-4">
+                <div className="space-y-2 pr-4">
                   {filteredUnscheduledTasks.length === 0 ? (
                     <div className="py-20 text-center space-y-3 opacity-40">
                       <Clock className="w-12 h-12 mx-auto" />
@@ -321,21 +321,25 @@ export default function RoadmapPage() {
                       <div
                         key={task._id}
                         onClick={() => { setSelectedTask({ ...task, workspaceId }); setIsTaskModalOpen(true); }}
-                        className="p-4 rounded-2xl bg-card border border-border hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer group"
+                        className="p-3 rounded-xl bg-card border border-border hover:border-primary/20 hover:shadow-md transition-all cursor-pointer group flex flex-col gap-1.5"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-muted border-none text-muted-foreground">
-                            {task.taskCode}
-                          </Badge>
-                          <Avatar className="h-6 w-6 border border-background">
-                            <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
-                            <AvatarFallback className="text-[8px] bg-primary text-primary-foreground">{task.assignedTo?.[0]?.name?.[0]}</AvatarFallback>
-                          </Avatar>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider bg-muted border-none text-muted-foreground px-1.5 py-0 h-5 flex items-center">
+                              {task.taskCode}
+                            </Badge>
+                            <h4 className="text-xs font-semibold group-hover:text-primary transition-colors truncate">{task.title}</h4>
+                          </div>
+                          {task.assignedTo?.[0] && (
+                            <Avatar className="h-5 w-5 border border-background shrink-0">
+                              <AvatarImage src={task.assignedTo[0].profilePicture} />
+                              <AvatarFallback className="text-[7px] bg-primary text-primary-foreground font-bold">{task.assignedTo[0].name?.[0]}</AvatarFallback>
+                            </Avatar>
+                          )}
                         </div>
-                        <h4 className="text-sm font-medium mb-2 group-hover:text-primary transition-colors">{task.title}</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">
-                            Dự án: {task.projectId?.name} {task.phaseId && `| Phase: ${task.phaseId.name}`}
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="truncate">
+                            <span className="font-medium text-foreground/70">{task.projectId?.name}</span> {task.phaseId && `| ${task.phaseId.name}`}
                           </span>
                         </div>
                       </div>
@@ -362,49 +366,63 @@ export default function RoadmapPage() {
                 return (
                   <div key={project._id} className="mb-4">
                     <div
-                      className="h-12 px-6 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer group transition-all duration-200 border-l-2 border-l-transparent hover:border-l-primary"
+                      className="h-12 px-6 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer group transition-all duration-200 border-l-2 border-l-transparent hover:border-l-primary relative overflow-hidden"
                       onClick={() => handleNavigateToProject(project._id)}
                     >
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center shrink-0 shadow-sm border border-slate-200/10">
-                        <span className="text-base">{project.emoji || "🎯"}</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 relative z-10" />
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate flex-1 relative z-10">{project.name}</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400 relative z-10" />
+                      
+                      {/* Watermark Icon */}
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[44px] opacity-[0.03] group-hover:opacity-10 group-hover:scale-110 group-hover:-translate-x-2 transition-all duration-500 ease-out pointer-events-none select-none z-0 grayscale group-hover:grayscale-0">
+                        {project.icon || "🎯"}
                       </div>
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate flex-1">{project.name}</span>
-                      <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400" />
                     </div>
                     {/* Tasks of this project */}
                     <div className="relative">
-                    {projectTasks.map((task: any, index: number) => (
-                      <div
-                        key={task._id}
-                        className="h-12 ml-10 mr-2 pl-3 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer relative"
-                        onClick={() => handleNavigateToProject(project._id)}
-                      >
-                        {/* Tree guide lines */}
-                        <div className={cn(
-                          "absolute left-[-14px] top-0 w-px bg-slate-200 dark:bg-white/10",
-                          index === projectTasks.length - 1 ? "bottom-1/2" : "bottom-0"
-                        )} />
-                        <div className="absolute left-[-14px] top-1/2 w-3 h-px bg-slate-200 dark:bg-white/10" />
+                    {projectTasks.map((task: any, index: number) => {
+                      const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
+                      let badgeColorClass = "bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400";
+                      if (task.status === "DONE") badgeColorClass = "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400";
+                      else if (isOverdue) badgeColorClass = "bg-amber-100/80 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400";
+                      else if (task.priority === "HIGH") badgeColorClass = "bg-rose-100/80 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400";
 
-                        <Badge
-                          variant="outline"
-                          className="text-[9px] font-bold tracking-tighter px-1.5 py-0.5 rounded-md mr-2.5 shrink-0 bg-slate-100/50 dark:bg-white/5 border-none text-slate-400 dark:text-slate-500 font-mono"
+                      return (
+                        <div
+                          key={task._id}
+                          className="h-12 ml-10 mr-2 pl-3 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer relative"
+                          onClick={() => handleNavigateToProject(project._id)}
                         >
-                          {task.taskCode}
-                        </Badge>
-                        <span className="text-xs truncate text-slate-500 dark:text-slate-400 font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors flex-1">
-                          {task.title}
-                        </span>
-                        {task.assignedTo?.[0] && (
-                          <Avatar className="h-5 w-5 border border-white dark:border-slate-900 shadow-sm shrink-0 ml-2">
-                            <AvatarImage src={task.assignedTo[0].profilePicture} />
-                            <AvatarFallback className="text-[7px] bg-slate-200 dark:bg-slate-800 text-slate-500 font-bold">
-                              {task.assignedTo[0].name?.[0]?.toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                      </div>
-                    ))}
+                          {/* Tree guide lines */}
+                          <div className={cn(
+                            "absolute left-[-13px] top-0 w-px bg-border",
+                            index === projectTasks.length - 1 ? "bottom-1/2" : "bottom-0"
+                          )} />
+                          <div className="absolute left-[-13px] top-1/2 w-3 h-px bg-border" />
+
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[9px] font-bold tracking-tighter px-1.5 py-0.5 rounded-md mr-2.5 shrink-0 border-none font-mono",
+                              badgeColorClass
+                            )}
+                          >
+                            {task.taskCode}
+                          </Badge>
+                          <span className="text-xs truncate text-slate-500 dark:text-slate-400 font-medium group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors flex-1">
+                            {task.title}
+                          </span>
+                          {task.assignedTo?.[0] && (
+                            <Avatar className="h-5 w-5 border border-white dark:border-slate-900 shadow-sm shrink-0 ml-2">
+                              <AvatarImage src={task.assignedTo[0].profilePicture} />
+                              <AvatarFallback className="text-[7px] bg-slate-200 dark:bg-slate-800 text-slate-500 font-bold">
+                                {task.assignedTo[0].name?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      );
+                    })}
                     </div>
                   </div>
                 );
@@ -549,10 +567,10 @@ export default function RoadmapPage() {
                                   animate={{ opacity: 1, x: 0 }}
                                   className={cn(
                                     "absolute h-7 rounded-md flex items-center px-1 border group cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
-                                    task.status === "DONE" ? "bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 shadow-emerald-500/10" :
-                                      isOverdue ? "bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/20 shadow-amber-500/10" :
-                                        task.priority === "HIGH" ? "bg-gradient-to-r from-rose-500/10 to-rose-500/5 border-rose-500/20 shadow-rose-500/10" :
-                                          "bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 shadow-primary/10"
+                                    task.status === "DONE" ? "bg-gradient-to-r from-emerald-100 to-emerald-50/50 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/10" :
+                                      isOverdue ? "bg-gradient-to-r from-amber-100 to-amber-50/50 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-500/20 shadow-amber-500/10" :
+                                        task.priority === "HIGH" ? "bg-gradient-to-r from-rose-100 to-rose-50/50 dark:from-rose-500/20 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/20 shadow-rose-500/10" :
+                                          "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
                                   )}
                                   style={{
                                     left: startOffset * COLUMN_WIDTH + 4,
@@ -565,7 +583,7 @@ export default function RoadmapPage() {
                                     task.status === "DONE" ? "bg-emerald-500" :
                                       isOverdue ? "bg-amber-500 animate-pulse" :
                                         task.priority === "HIGH" ? "bg-rose-500" :
-                                          "bg-primary"
+                                          "bg-blue-500"
                                   )} />
                                   <Avatar className="h-5 w-5 ml-auto border border-background">
                                     <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
@@ -600,6 +618,17 @@ export default function RoadmapPage() {
                                         <span>Giai đoạn: <span className="text-foreground/70 font-medium">{task.phaseId.name}</span></span>
                                       </div>
                                     )}
+                                    {task.priority && (
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                        <span>Độ ưu tiên: <span className={cn(
+                                          "font-medium",
+                                          task.priority === "HIGH" ? "text-rose-500" :
+                                          task.priority === "MEDIUM" ? "text-amber-500" :
+                                          "text-teal-500"
+                                        )}>{task.priority}</span></span>
+                                      </div>
+                                    )}
                                   </div>
 
                                   <div className="pt-2 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground">
@@ -628,26 +657,31 @@ export default function RoadmapPage() {
       </div>
 
       {/* Footer Info */}
-      <footer className="h-10 px-6 border-t border-border bg-background flex items-center gap-6 text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary" />
-          <span>Kế hoạch</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-rose-500" />
-          <span>Ưu tiên cao</span>
-        </div>
+      <footer className="h-10 px-6 border-t border-border bg-background flex items-center gap-4 text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+        <span className="text-muted-foreground/50 mr-2">Ưu tiên màu:</span>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Hoàn thành</span>
+          <span className="text-emerald-600 dark:text-emerald-500">Hoàn thành</span>
         </div>
+        <span className="text-muted-foreground/30">&gt;</span>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <span>Quá hạn</span>
+          <span className="text-amber-600 dark:text-amber-500">Quá hạn</span>
         </div>
-        <div className="ml-auto flex items-center gap-4">
+        <span className="text-muted-foreground/30">&gt;</span>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-rose-500" />
+          <span className="text-rose-600 dark:text-rose-500">Ưu tiên cao</span>
+        </div>
+        <span className="text-muted-foreground/30">&gt;</span>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
+          <span className="text-blue-600 dark:text-blue-500">Kế hoạch</span>
+        </div>
+        
+        <div className="ml-auto flex items-center gap-2 text-muted-foreground/70">
           <Info className="w-3 h-3" />
-          <span>Di chuột vào thanh công việc để xem chi tiết</span>
+          <span className="tracking-normal normal-case font-medium text-xs">Di chuột vào công việc để xem chi tiết</span>
         </div>
       </footer>
       <TaskDetailModal

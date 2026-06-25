@@ -23,10 +23,19 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Info } from "lucide-react";
 
 interface ProjectAnalyticsChartProps {
   data: any[];
+  historyDays?: number;
+  onDaysChange?: (days: number) => void;
 }
 
 const CHART_DESCRIPTIONS: Record<string, string> = {
@@ -38,7 +47,7 @@ const CHART_DESCRIPTIONS: Record<string, string> = {
   'Thực tế (Vùng)': 'Vùng trực quan hóa khối lượng công việc còn lại.'
 };
 
-const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
+const ProjectAnalyticsChart = ({ data, historyDays = 14, onDaysChange }: ProjectAnalyticsChartProps) => {
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-[300px] flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10 p-10">
@@ -83,11 +92,11 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
 
     return {
       date: format(new Date(item.date), 'dd/MM', { locale: vi }),
-      'Thực tế': item.remainingTasks,
-      'Lý tưởng': idealValue,
-      'Xong trong ngày': item.dailyCompletedTasks || 0,
-      'Hiệu suất (%)': Number(item.performanceIndex || 0),
-      'Dự báo': isLast ? item.remainingTasks : null,
+      'Thực tế': item.isBeforeCreation ? null : item.remainingTasks,
+      'Lý tưởng': item.isBeforeCreation ? null : idealValue,
+      'Xong trong ngày': item.isBeforeCreation ? null : (item.dailyCompletedTasks || 0),
+      'Hiệu suất (%)': item.isBeforeCreation ? null : Number(item.performanceIndex || 0),
+      'Dự báo': isLast && !item.isBeforeCreation ? item.remainingTasks : null,
     };
   });
 
@@ -192,27 +201,54 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+    <div className="flex flex-col w-full gap-4">
+      {onDaysChange && (
+        <div className="flex justify-end w-full px-2">
+          <div className="inline-flex items-center p-1 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm">
+            {[7, 14, 30].map(days => (
+              <button
+                key={days}
+                onClick={() => onDaysChange(days)}
+                className={cn(
+                  "px-5 py-1.5 rounded-xl text-[10px] font-black tracking-[0.2em] uppercase transition-all duration-300 relative",
+                  historyDays === days 
+                    ? "text-emerald-600 dark:text-brand-primary" 
+                    : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                )}
+              >
+                {historyDays === days && (
+                  <div className="absolute inset-0 bg-white dark:bg-white/10 shadow-sm rounded-xl -z-10 animate-in zoom-in-95 duration-200" />
+                )}
+                {`${days} Ngày`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
       {/* Chart 1: Burndown Analysis */}
       <div className="relative group h-[450px]">
         <div className="absolute -inset-1 bg-gradient-to-r from-red-500/10 to-indigo-500/10 rounded-[40px] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-        <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-[32px] border border-white dark:border-white/5 p-8 flex flex-col shadow-ambient">
+        <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-[24px] border border-white dark:border-white/5 p-6 flex flex-col shadow-ambient">
           <div className="flex items-start justify-between mb-6">
             <div className="space-y-1">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Burndown Analysis</h3>
               <p className="text-sm font-black text-red-500 dark:text-red-400 tracking-tight">Biểu đồ dự báo hoàn thành</p>
             </div>
             <div className="flex flex-col items-end gap-2">
-              {lastDataPoint.idealTasksRemaining !== null && (
-                <div className={cn(
-                  "px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider",
-                  isSlowerThanIdeal 
-                  ? "bg-red-50 border-red-100 text-red-500 dark:bg-red-500/10 dark:border-red-500/20"
-                  : "bg-emerald-50 border-emerald-100 text-emerald-500 dark:bg-emerald-500/10 dark:border-emerald-500/20"
-                )}>
-                  {isSlowerThanIdeal ? `Chậm ${taskDifference} việc` : `Nhanh ${taskDifference} việc`}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {lastDataPoint.idealTasksRemaining !== null && (
+                  <div className={cn(
+                    "px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider h-6 flex items-center",
+                    isSlowerThanIdeal 
+                    ? "bg-red-50 border-red-100 text-red-500 dark:bg-red-500/10 dark:border-red-500/20"
+                    : "bg-emerald-50 border-emerald-100 text-emerald-500 dark:bg-emerald-500/10 dark:border-emerald-500/20"
+                  )}>
+                    {isSlowerThanIdeal ? `Chậm ${taskDifference} việc` : `Nhanh ${taskDifference} việc`}
+                  </div>
+                )}
+              </div>
               {estimatedFinishDate && (
                 <div className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:border-indigo-500/20 text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
@@ -266,6 +302,7 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
                   strokeWidth={4} 
                   dot={{ r: 4, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} 
                   activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }} 
+                  style={{ filter: 'drop-shadow(0 4px 8px rgba(239, 68, 68, 0.4))' }}
                 />
 
                 {/* Forecast Line - Dashed Indigo */}
@@ -278,6 +315,7 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
                   strokeWidth={3} 
                   dot={{ r: 5, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} 
                   activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff' }}
+                  style={{ filter: 'drop-shadow(0 4px 8px rgba(99, 102, 241, 0.4))' }}
                 />
 
                 {/* Ideal Line - Dashed Slate */}
@@ -300,7 +338,7 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
       {/* Chart 2: Velocity Momentum */}
       <div className="relative group h-[450px]">
         <div className="absolute -inset-1 bg-gradient-to-r from-[#C7F964]/10 to-indigo-500/10 rounded-[40px] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-        <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-[32px] border border-white dark:border-white/5 p-8 flex flex-col shadow-ambient">
+        <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-[24px] border border-white dark:border-white/5 p-6 flex flex-col shadow-ambient">
           <div className="flex items-start justify-between mb-6">
             <div className="space-y-1">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Performance Velocity</h3>
@@ -352,6 +390,7 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
                   fill="url(#colorDaily)" 
                   radius={[4, 4, 0, 0]} 
                   barSize={30}
+                  style={{ filter: 'drop-shadow(0 4px 6px rgba(245, 158, 11, 0.3))' }}
                 />
                 <Line 
                   yAxisId="right"
@@ -362,12 +401,14 @@ const ProjectAnalyticsChart = ({ data }: ProjectAnalyticsChartProps) => {
                   strokeWidth={3} 
                   dot={{ r: 4, fill: '#C7F964', strokeWidth: 2, stroke: '#fff' }} 
                   activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }} 
+                  style={{ filter: 'drop-shadow(0 4px 8px rgba(199, 249, 100, 0.4))' }}
                 />
                 <ReferenceLine yAxisId="right" y={0} stroke="#94a3b8" strokeDasharray="3 3" opacity={0.5} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

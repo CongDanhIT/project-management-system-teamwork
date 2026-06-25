@@ -17,6 +17,7 @@ import eventDispatcher, { EVENTS } from "../utils/eventDispatcher";
 import { NotificationService } from "./notification.service";
 import { SlackService } from "./slack.service";
 import UserModel from "../models/user.model";
+import { embedTaskService } from "./embedding.service";
 
 const updateParentHours = async (parentId: string | mongoose.Types.ObjectId) => {
     const subtasks = await TaskModel.find({ parentId, deletedAt: null });
@@ -148,6 +149,13 @@ export const createTaskService = async (
 
     await task.save();
     
+    // [AI-V2-RAG] Sinh vector ở background (không block quá trình tạo task)
+    embedTaskService({ title: task.title, description: task.description, status: task.status })
+        .then(async (embedding) => {
+            await TaskModel.updateOne({ _id: task._id }, { embedding, embeddingUpdatedAt: new Date() });
+        })
+        .catch(err => console.error("[Embedding-Service] Lỗi khi nhúng Task mới:", err.message));
+
     // [NOTIFICATION] Thông báo cho những người được gán
     if (task.assignedTo && task.assignedTo.length > 0) {
         for (const recipientId of task.assignedTo) {
@@ -425,6 +433,8 @@ export const updateTaskService = async (
 
     await task.save();
 
+
+
     // Cập nhật giờ cho task cha hiện tại (nếu có)
     if (task.parentId) {
         await updateParentHours(task.parentId);
@@ -441,6 +451,15 @@ export const updateTaskService = async (
         }
         return JSON.stringify(oldV) !== JSON.stringify(newV);
     });
+
+    // [AI-V2-RAG] Cập nhật lại vector nếu có thay đổi nội dung quan trọng
+    if (changedFields.includes('title') || changedFields.includes('description') || changedFields.includes('status')) {
+        embedTaskService({ title: task.title, description: task.description, status: task.status })
+            .then(async (embedding) => {
+                await TaskModel.updateOne({ _id: task._id }, { embedding, embeddingUpdatedAt: new Date() });
+            })
+            .catch(err => console.error("[Embedding-Service] Lỗi khi cập nhật vector Task:", err.message));
+    }
 
     let detailedSummary = `đã cập nhật thông tin công việc **${task.title}**`;
     const changeDescriptions: string[] = [];

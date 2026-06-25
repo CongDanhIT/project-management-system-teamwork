@@ -114,7 +114,7 @@
   --depth-2: 15px 15px 30px -10px rgba(0, 0, 0, 0.12), -4px -4px 15px rgba(0, 0, 0, 0.05), -12px -12px 25px rgba(255, 255, 255, 1);
   --depth-3: 25px 30px 50px -15px rgba(0, 0, 0, 0.15), -5px -5px 20px rgba(0, 0, 0, 0.06), -15px -15px 35px rgba(255, 255, 255, 1);
   --depth-flat: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-neumorphic: 6px 6px 18px rgba(0, 0, 0, 0.05), 15px 15px 35px rgba(3, 93, 91, 0.1), -12px -12px 30px rgba(255, 255, 255, 1);
+  --shadow-neumorphic: 6px 6px 18px rgba(3, 93, 91, 0.04), 15px 15px 35px rgba(3, 93, 91, 0.08), -12px -12px 30px rgba(255, 255, 255, 0.7);
 
   /* Common Palette */
   --background: #F7F9FB;

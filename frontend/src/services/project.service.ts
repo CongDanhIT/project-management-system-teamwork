@@ -61,8 +61,9 @@ export const projectService = {
     return response.data.analytics;
   },
 
-  getProjectAnalyticsHistory: async (workspaceId: string, projectId: string) => {
-    const response = await api.get(`/project/workspace/${workspaceId}/analytics/history/${projectId}`);
+  getProjectAnalyticsHistory: async (workspaceId: string, projectId: string, days?: number) => {
+    const url = days !== undefined ? `/project/workspace/${workspaceId}/analytics/history/${projectId}?days=${days}` : `/project/workspace/${workspaceId}/analytics/history/${projectId}`;
+    const response = await api.get(url);
     return response.data.history;
   },
 

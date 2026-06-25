@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Announcement } from '@/services/announcement.service';
 import { Pin, Activity, Zap } from 'lucide-react';
 import { TagManagerWidget } from './TagManagerWidget';
 import { TeamWidget } from './TeamWidget';
+import { RecentTasksWidget } from './RecentTasksWidget';
 
 interface PulseSidebarProps {
   announcements: Announcement[];
@@ -24,8 +25,43 @@ export function PulseSidebar({ announcements }: PulseSidebarProps) {
     }
   };
 
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [topOffset, setTopOffset] = useState('6rem');
+
+  useEffect(() => {
+    if (!sidebarRef.current) return;
+
+    const calculateOffset = () => {
+      if (!sidebarRef.current) return;
+      const sidebarHeight = sidebarRef.current.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      
+      // Nếu Sidebar dài hơn màn hình (trừ đi khoảng margin an toàn)
+      if (sidebarHeight > viewportHeight - 120) {
+        // Stick ở dưới cùng (phần tử cuối chạm vạch)
+        setTopOffset(`${viewportHeight - sidebarHeight - 24}px`);
+      } else {
+        // Nếu ngắn thì stick ở trên cùng như bình thường
+        setTopOffset('6rem'); // tương đương top-24
+      }
+    };
+
+    const observer = new ResizeObserver(calculateOffset);
+    observer.observe(sidebarRef.current);
+    window.addEventListener('resize', calculateOffset);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', calculateOffset);
+    };
+  }, []);
+
   return (
-    <div className="sticky top-24 space-y-6 hidden lg:block">
+    <div 
+      ref={sidebarRef}
+      className="sticky self-start space-y-6 hidden lg:block pb-10 transition-all duration-300"
+      style={{ top: topOffset }}
+    >
       
       {/* Pinned Updates - Real Data from Database */}
       {pinnedAnnouncements.length > 0 && (
@@ -57,6 +93,9 @@ export function PulseSidebar({ announcements }: PulseSidebarProps) {
         </div>
       )}
 
+
+      {/* Recent Tasks Widget */}
+      <RecentTasksWidget />
 
       {/* Workspace Tags Manager */}
       <TagManagerWidget />

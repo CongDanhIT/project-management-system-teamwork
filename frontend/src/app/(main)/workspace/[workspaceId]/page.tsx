@@ -741,7 +741,7 @@ export default function WorkspaceDashboardPage() {
         {/* Welcome Header & Tabs Control */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-[42px] font-black text-[#035D5B] dark:text-[#C7F964] tracking-[-0.04em] leading-tight uppercase">
+            <h1 className="text-4xl font-black text-[#035D5B] dark:text-[#C7F964] tracking-[-0.04em] leading-tight uppercase">
               Chiến lược Workspace
             </h1>
             <p className="text-[16px] text-[#3F4948] dark:text-[#E5F4EF]/80 font-medium">
@@ -841,7 +841,7 @@ export default function WorkspaceDashboardPage() {
                       <span className="text-[11px] font-black text-slate-400 dark:text-brand-primary/80 uppercase tracking-[0.2em]">{stat.label}</span>
                       <div className="flex items-baseline gap-2 mt-2">
                         <h3 className={cn(
-                          "text-[32px] font-black tracking-[-0.06em] leading-none transition-all duration-700",
+                          "text-3xl font-black tracking-[-0.06em] leading-none transition-all duration-700",
                           stat.color
                         )}>
                           {isLoading ? <Skeleton className="h-8 w-16" /> : stat.value}
@@ -915,7 +915,7 @@ export default function WorkspaceDashboardPage() {
             <section className="space-y-12 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-[32px] font-black text-[#035D5B] dark:text-[#C7F964] tracking-tight uppercase">Dự án trọng tâm</h2>
+                  <h2 className="text-3xl font-black text-[#035D5B] dark:text-[#C7F964] tracking-tight uppercase">Dự án trọng tâm</h2>
                   <p className="text-sm text-[#3F4948] dark:text-[#E5F4EF]/40 font-medium">Bốn mảnh ghép chiến lược đang được kiến tạo.</p>
                 </div>
                 <Button
@@ -1014,7 +1014,7 @@ export default function WorkspaceDashboardPage() {
                             <div className="space-y-2 pb-2">
                               <h3 className={cn(
                                 "font-black text-slate-900 dark:text-foreground leading-tight tracking-tighter transition-all duration-500 uppercase",
-                                isHero ? "text-4xl lg:text-5xl" : "text-lg",
+                                isHero ? "text-3xl lg:text-4xl" : "text-lg",
                                 "group-hover:text-teal-600 dark:group-hover:text-teal-400"
                               )}>
                                 {project.name}
@@ -1335,7 +1335,7 @@ export default function WorkspaceDashboardPage() {
                       <div>
                         <p className="text-[10px] font-black text-white/50 dark:text-brand-primary/80 uppercase tracking-[0.2em] mb-2">Dự án hoàn tất</p>
                         <div className="flex items-end gap-2">
-                          <span className="text-5xl font-black text-white tracking-tighter drop-shadow-sm">
+                          <span className="text-4xl font-black text-white tracking-tighter drop-shadow-sm">
                             {allProjectsData?.projects?.filter((p: any) => p.status === 'COMPLETED').length || 0}
                           </span>
                           <span className="text-xs font-bold text-white/30 mb-1.5 uppercase tracking-widest">

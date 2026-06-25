@@ -20,6 +20,7 @@ export interface AssetFolder {
     parentFolderId: string | null;
     name: string;
     visibility: "PUBLIC" | "PRIVATE";
+    isPinned?: boolean;
     createdBy: string | { name: string; profilePicture?: string };
     createdAt: string;
     updatedAt: string;
@@ -40,6 +41,7 @@ export interface ProjectAsset {
     fileType: string;
     category: "GENERAL" | "STRATEGY" | "DELIVERABLE";
     status: "PENDING" | "APPROVED" | "REJECTED";
+    isPinned?: boolean;
     createdBy: string | { name: string; profilePicture?: string };
     createdAt: string;
     updatedAt: string;

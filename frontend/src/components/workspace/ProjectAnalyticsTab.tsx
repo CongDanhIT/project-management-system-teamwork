@@ -139,10 +139,10 @@ const TaskDeadlineCard = ({ task, type, onClick }: { task: any, type: 'overdue' 
 
 const PerformanceCard = ({ title, value, subtitle, icon: Icon, color }: { title: string, value: string | number, subtitle: string, icon: any, color: 'emerald' | 'red' | 'amber' }) => (
   <div className={cn(
-    "p-6 rounded-[32px] border backdrop-blur-md transition-all duration-500 group relative overflow-hidden",
-    color === 'emerald' ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20" :
-    color === 'red' ? "bg-red-50/50 dark:bg-red-500/5 border-red-100 dark:border-red-500/20" :
-    "bg-amber-50/50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/20"
+    "p-5 rounded-[24px] border backdrop-blur-md transition-all duration-500 group relative overflow-hidden shadow-neumorphic dark:shadow-ambient hover:-translate-y-1 hover:shadow-lg",
+    color === 'emerald' ? "bg-gradient-to-br from-white to-emerald-50/80 dark:from-emerald-900/20 dark:to-emerald-950/10 border-emerald-100 dark:border-emerald-500/20" :
+    color === 'red' ? "bg-gradient-to-br from-white to-red-50/80 dark:from-red-900/20 dark:to-red-950/10 border-red-100 dark:border-red-500/20" :
+    "bg-gradient-to-br from-white to-amber-50/80 dark:from-amber-900/20 dark:to-amber-950/10 border-amber-100 dark:border-amber-500/20"
   )}>
     <div className={cn(
       "absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 transition-all duration-700 group-hover:scale-150",
@@ -177,6 +177,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
   const [isExporting, setIsExporting] = React.useState(false);
   const [isExportingExcel, setIsExportingExcel] = React.useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = React.useState(false);
+  const [historyDays, setHistoryDays] = React.useState<number>(14);
 
   React.useEffect(() => {
     if (projects && projects.length > 0 && !selectedProjectId) {
@@ -207,8 +208,8 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
   });
 
   const { data: historyData } = useQuery({
-    queryKey: ['projectAnalyticsHistory', workspaceId, selectedProjectId],
-    queryFn: () => projectService.getProjectAnalyticsHistory(workspaceId as string, selectedProjectId as string),
+    queryKey: ['projectAnalyticsHistory', workspaceId, selectedProjectId, historyDays],
+    queryFn: () => projectService.getProjectAnalyticsHistory(workspaceId as string, selectedProjectId as string, historyDays),
     enabled: !!workspaceId && !!selectedProjectId,
   });
 
@@ -438,7 +439,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
     <>
       <div id="project-analytics-tab-export" className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 bg-transparent dark:bg-transparent">
       {/* Selector Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-xl p-8 rounded-[32px] border border-white dark:border-white/10 shadow-ambient">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-xl p-6 rounded-[24px] border border-white dark:border-white/10 shadow-ambient">
         <div className="space-y-1">
           <h2 className="text-2xl font-black text-[#035D5B] dark:text-[#C7F964] tracking-tight uppercase">Điểm tin dự án</h2>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chọn một dự án để xem hiệu suất chi tiết và rủi ro tiềm ẩn.</p>
@@ -472,29 +473,29 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
           variant="outline" 
           onClick={handleExportExcel}
           disabled={isExportingExcel}
-          className="h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200/60 dark:border-emerald-500/20 shadow-sm whitespace-nowrap text-emerald-600 dark:text-emerald-400"
+          className="h-12 rounded-2xl bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20 border border-primary/20 dark:border-primary/30 shadow-sm whitespace-nowrap text-primary transition-all font-bold"
         >
           {isExportingExcel ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
-          <span className="font-bold">Xuất Excel</span>
+          <span>Xuất Excel</span>
         </Button>
 
         <Button 
           variant="outline" 
           onClick={handleExportPDF}
           disabled={isExporting}
-          className="h-12 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border-slate-200/60 dark:border-white/10 shadow-sm whitespace-nowrap"
+          className="h-12 rounded-2xl bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20 border border-primary/20 dark:border-primary/30 shadow-sm whitespace-nowrap text-primary transition-all font-bold"
         >
-          {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2 text-rose-500" />}
-          <span className="font-bold text-slate-700 dark:text-slate-200">Xuất PDF</span>
+          {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          <span>Xuất PDF</span>
         </Button>
 
         <Button 
           onClick={() => setIsInsightsOpen(true)}
           disabled={!selectedProjectId}
-          className="h-12 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-glow border-none transition-all duration-300 group whitespace-nowrap px-6"
+          className="h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow-combined border-none transition-all duration-300 group font-bold px-6"
         >
-          <Sparkles className="w-5 h-5 mr-2 text-yellow-300 group-hover:animate-pulse" />
-          <span className="font-black tracking-wide">Phân tích AI</span>
+          <Sparkles className="w-4 h-4 mr-2 group-hover:animate-pulse" />
+          <span>Phân tích AI</span>
         </Button>
         </div>
       </div>
@@ -570,7 +571,11 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
 
           {/* Row 1: History Trend Chart - Full Width */}
           <div className="w-full">
-            <ProjectAnalyticsChart data={historyData || []} />
+            <ProjectAnalyticsChart 
+              data={historyData || []} 
+              historyDays={historyDays}
+              onDaysChange={setHistoryDays}
+            />
           </div>
 
           {/* Row 2: Secondary Insights (Distributed Grid) */}
@@ -593,10 +598,15 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                         outerRadius={60}
                         paddingAngle={5}
                         cornerRadius={6}
+                        stroke="none"
                         dataKey="value"
                       >
                         {statusData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]} 
+                            style={{ filter: `drop-shadow(0 4px 6px ${COLORS[index % COLORS.length]}80)` }}
+                          />
                         ))}
                       </Pie>
                       <RechartsTooltip 
@@ -622,7 +632,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                   </div>
                   
                   {/* Custom Progress Bar */}
-                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex overflow-hidden">
+                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex gap-1 overflow-hidden p-0.5">
                     {statusData.map((item: any, index: number) => {
                       const percentage = analytics?.totalTasks > 0 
                         ? (item.value / analytics.totalTasks) * 100 
@@ -634,9 +644,10 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                           key={`progress-${index}`}
                           style={{ 
                             width: `${percentage}%`,
-                            backgroundColor: COLORS[index % COLORS.length]
+                            backgroundColor: COLORS[index % COLORS.length],
+                            boxShadow: `0 4px 10px ${COLORS[index % COLORS.length]}66`
                           }}
-                          className="h-full transition-all duration-1000 relative group"
+                          className="h-full rounded-full transition-all duration-1000 relative group"
                         >
                           {/* Tooltip on hover */}
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
@@ -686,10 +697,15 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                         outerRadius={60}
                         paddingAngle={5}
                         cornerRadius={6}
+                        stroke="none"
                         dataKey="count"
                       >
                         {priorityData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.fill} 
+                            style={{ filter: `drop-shadow(0 4px 6px ${entry.fill}80)` }}
+                          />
                         ))}
                       </Pie>
                       <RechartsTooltip 
@@ -718,7 +734,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                   </div>
                   
                   {/* Custom Progress Bar */}
-                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex overflow-hidden">
+                  <div className="h-3 w-full bg-slate-100 dark:bg-white/5 rounded-full flex gap-1 overflow-hidden p-0.5">
                     {priorityData.map((item: any, index: number) => {
                       const percentage = analytics?.totalTasks > 0 
                         ? (item.count / analytics.totalTasks) * 100 
@@ -730,9 +746,10 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                           key={`priority-progress-${index}`}
                           style={{ 
                             width: `${percentage}%`,
-                            backgroundColor: item.fill
+                            backgroundColor: item.fill,
+                            boxShadow: `0 4px 10px ${item.fill}66`
                           }}
-                          className="h-full transition-all duration-1000 relative group"
+                          className="h-full rounded-full transition-all duration-1000 relative group"
                         >
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
                             <div className="bg-slate-800 text-white text-[9px] py-1 px-2 rounded-lg whitespace-nowrap font-bold">
@@ -781,11 +798,9 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
           </div>
 
           {/* Row 2.5: Task Explorer (Filter & Table) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="my-10 bg-white dark:bg-slate-900/40 backdrop-blur-2xl border border-slate-100 dark:border-white/5 rounded-[40px] p-8 shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden"
+          <div 
+            id="report-charts" 
+            className="my-10 bg-white dark:bg-slate-900/40 backdrop-blur-2xl border border-slate-100 dark:border-white/5 rounded-[32px] p-6 shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden"
           >
              {/* Decorative Background Element */}
              <div className="absolute -top-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[100px]" />
@@ -964,12 +979,13 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                                <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Giai đoạn</TableHead>
                                <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</TableHead>
                                <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ưu tiên</TableHead>
+                               <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Thời gian</TableHead>
                                <TableHead className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Người thực hiện</TableHead>
                             </TableRow>
                          </TableHeader>
                          <TableBody>
                             {explorerTasksLoading ? (
-                               <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 italic">Đang tải dữ liệu...</TableCell></TableRow>
+                               <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 italic">Đang tải dữ liệu...</TableCell></TableRow>
                             ) : filteredTasks.length > 0 ? (
                                filteredTasks.map((task: any) => (
                                   <TableRow 
@@ -1009,6 +1025,23 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                                          </div>
                                       </TableCell>
                                      <TableCell className="px-6 py-5 text-center"><PriorityBadge priority={task.priority as any} /></TableCell>
+                                     <TableCell className="px-6 py-5 text-center">
+                                        <div className="flex flex-col items-center gap-1">
+                                           {task.startDate && (
+                                             <span className="text-[10px] text-slate-500 font-medium">
+                                                Bắt đầu: {new Date(task.startDate).toLocaleDateString('vi-VN')}
+                                             </span>
+                                           )}
+                                           {task.dueDate && (
+                                             <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">
+                                                Hạn: {new Date(task.dueDate).toLocaleDateString('vi-VN')}
+                                             </span>
+                                           )}
+                                           {!task.startDate && !task.dueDate && (
+                                              <span className="text-[10px] text-slate-400 font-medium italic opacity-60">---</span>
+                                           )}
+                                        </div>
+                                     </TableCell>
                                      <TableCell className="px-6 py-5">
                                         <div className="flex justify-end -space-x-2">
                                            {task.assignedTo?.map((u: any) => (
@@ -1025,7 +1058,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                                ))
                             ) : (
                                <TableRow>
-                                  <TableCell colSpan={5} className="px-6 py-24 text-center">
+                                  <TableCell colSpan={6} className="px-6 py-24 text-center">
                                      <div className="flex flex-col items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center">
                                            <Search className="w-6 h-6 text-slate-200" />
@@ -1060,7 +1093,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                    </div>
                 </div>
              </div>
-          </motion.div>
+          </div>
 
           {/* Row 3: Detail Insights (8-4 Layout) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -1107,7 +1140,15 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                             />
                           ))
                         ) : (
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2 opacity-50">Không có task quá hạn</p>
+                          <div className="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100/50 dark:border-emerald-500/10">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                              <p className="text-[12px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">Tất cả đúng hạn</p>
+                              <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/70 font-medium mt-0.5">Không có công việc nào bị trễ deadline</p>
+                            </div>
+                          </div>
                         )}
                      </div>
                   </div>
@@ -1135,19 +1176,19 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
                             />
                           ))
                         ) : (
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2 opacity-50">Không có task gấp</p>
+                          <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-white/5">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 shadow-sm border border-slate-100 dark:border-white/5">
+                              <Timer className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-[12px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Thảnh thơi</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">Không có công việc nào cần xử lý gấp</p>
+                            </div>
+                          </div>
                         )}
                      </div>
                   </div>
 
-                  {(!analytics?.overdueTasksList?.length && !analytics?.upcomingTasksList?.length) && (
-                     <div className="absolute inset-0 flex items-center justify-center p-8 bg-white/20 dark:bg-slate-900/20 backdrop-blur-sm z-10 rounded-[32px]">
-                       <div className="text-center">
-                          <Activity className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tuyệt vời! Không có task gấp</p>
-                       </div>
-                     </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1242,7 +1283,7 @@ export default function ProjectAnalyticsTab({ workspaceId, projects, onTaskClick
 function MetricCard({ label, value, icon: Icon, color, subValue, tooltip }: any) {
   return (
     <Card className="group/metric rounded-[28px] border-white/40 dark:border-white/5 bg-white/40 dark:bg-card/40 backdrop-blur-md shadow-ambient hover:shadow-lg transition-all duration-500 relative overflow-visible">
-      <CardContent className="p-6">
+      <CardContent className="p-5">
         {tooltip && (
           <div className="absolute top-4 right-4 z-20 group/info cursor-help">
             <Info className="w-3 h-3 text-slate-300 opacity-50 group-hover/info:opacity-100 transition-opacity" />

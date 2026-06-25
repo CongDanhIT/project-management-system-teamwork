@@ -1,0 +1,8 @@
+feat(workspace): nâng cấp toàn diện UI/UX, AI Embedding và thống kê
+
+- Cập nhật logo nhận diện thương hiệu mới (định dạng SVG) cho toàn bộ ứng dụng bao gồm Layout, Sidebar, Login, Register và thay thế favicon.
+- Tinh chỉnh lại tỷ lệ, padding và hiệu ứng đổ bóng (shadows/glassmorphism) cho các thành phần UI (Card, Sidebar, Modal) mang lại cảm giác thiết kế Premium.
+- Cập nhật và tinh chỉnh hàng loạt các thành phần phân tích (QuickStatsWidget, TagManagerWidget, TeamWidget, WorkspaceMemberPanel) trên bảng điều khiển.
+- Cải tiến và bổ sung hệ thống AI Service ở Backend, tích hợp cơ chế Vector Embedding mới (RAG) kèm theo các script migration.
+- Thêm mới các tài liệu phân tích và lập kế hoạch chiến lược (Nâng cấp Roadmap, Nâng cấp AI RAG) để chuẩn bị cho phase tiếp theo.
+- Tối ưu hóa layout toàn cục và sửa các lỗi hiển thị nhỏ.

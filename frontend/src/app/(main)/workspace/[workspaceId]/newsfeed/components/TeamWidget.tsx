@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { workspaceService } from '@/services/workspace.service';
 import { Users, Plus } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { useWorkspaceRole } from '@/hooks/useWorkspaceRole';
 import { cn } from '@/lib/utils';
@@ -22,18 +21,18 @@ export function TeamWidget() {
   });
 
   return (
-    <section className="space-y-6 pb-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[16px] font-black text-slate-800 dark:text-[#C7F964] tracking-tight flex items-center gap-3 uppercase">
-          <Users className="w-5 h-5 text-brand-primary" />
-          Đội ngũ
-        </h3>
-        <span className="text-[10px] font-black text-brand-primary bg-brand-primary/5 dark:bg-brand-primary/10 px-3 py-1 rounded-full uppercase tracking-widest">
-          {membersData?.members?.length || 0} Nhân sự
-        </span>
-      </div>
-      
-      <Card className="rounded-[32px] border border-white dark:border-white/10 bg-white/70 dark:bg-surface-secondary backdrop-blur-xl shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none p-6 transition-all duration-500 overflow-visible">
+    <section className="pb-4">
+      <div className="p-6 rounded-[32px] bg-white dark:bg-surface-secondary shadow-[0_8px_30px_-12px_rgba(0,0,0,0.08)] dark:shadow-none transition-all duration-500 overflow-visible">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[16px] font-black text-slate-800 dark:text-[#C7F964] tracking-tight flex items-center gap-3 uppercase">
+            <Users className="w-5 h-5 text-brand-primary" />
+            Đội ngũ
+          </h3>
+          <span className="text-[10px] font-black text-brand-primary bg-brand-primary/5 dark:bg-brand-primary/10 px-3 py-1 rounded-full uppercase tracking-widest">
+            {membersData?.members?.length || 0} Nhân sự
+          </span>
+        </div>
+        
         <div className="grid grid-cols-4 gap-x-4 gap-y-8">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -113,7 +112,7 @@ export function TeamWidget() {
             </div>
           )}
         </div>
-      </Card>
+      </div>
     </section>
   );
 }

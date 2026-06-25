@@ -59,8 +59,17 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
     return null;
   };
 
-  const renderChartCard = (title: string, dataKey: string, color: string, suffix?: string, subtitle?: string) => (
-    <div className="bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm hover:shadow-md transition-all duration-500">
+  const renderChartCard = (
+    title: string, 
+    dataKey: string, 
+    gradientColors: [string, string], 
+    suffix?: string, 
+    subtitle?: string,
+    usePattern?: boolean
+  ) => {
+    const gradientId = `grad-${dataKey}`;
+    return (
+    <div className="bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[32px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none transition-all duration-500">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">{title}</h3>
@@ -80,10 +89,28 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
             data={chartData}
             layout="vertical"
             margin={{ top: 5, right: 40, left: 40, bottom: 5 }}
-            barSize={12}
+            barSize={16}
           >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(203, 213, 225, 0.2)" />
-            <XAxis type="number" hide />
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={gradientColors[0]} stopOpacity={0.8} />
+                <stop offset="100%" stopColor={gradientColors[1]} stopOpacity={1} />
+              </linearGradient>
+              {usePattern && (
+                <pattern id="overdue-pattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <rect width="8" height="8" fill={gradientColors[0]} />
+                  <line x1="0" y1="0" x2="0" y2="8" stroke={gradientColors[1]} strokeWidth="4" />
+                </pattern>
+              )}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd5e1" strokeOpacity={0.4} />
+            <XAxis 
+              type="number" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 600 }}
+              tickFormatter={(value) => suffix === "%" ? `${value}%` : value}
+            />
             <YAxis 
               dataKey="name" 
               type="category" 
@@ -98,9 +125,21 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
               radius={[0, 10, 10, 0]}
               animationDuration={1500}
             >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={color} />
-              ))}
+              {chartData.map((entry, index) => {
+                const opacity = Math.max(0.3, 1 - index * 0.15); // Fade out theo rank
+                const fill = usePattern ? "url(#overdue-pattern)" : `url(#${gradientId})`;
+                // Parse the hex to rgb for shadow if needed, or just use the raw color + hex alpha
+                // gradientColors[1] is the end color, e.g., #10b981. Append '66' for ~40% opacity glow.
+                const shadowColor = gradientColors[1] + '66';
+                return (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={fill} 
+                    fillOpacity={opacity}
+                    style={{ filter: `drop-shadow(0 4px 6px ${shadowColor})` }}
+                  />
+                );
+              })}
               <LabelList 
                 dataKey={dataKey} 
                 position="right" 
@@ -115,6 +154,7 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
       </div>
     </div>
   );
+  };
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700">
@@ -144,12 +184,12 @@ const MemberPerformanceEvaluation: React.FC<MemberPerformanceEvaluationProps> = 
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Row 1 */}
-          {renderChartCard("Khối lượng công việc", "total", "#035D5B", "công việc", "Tổng số task được giao")}
-          {renderChartCard("Công việc hoàn thành", "completed", "#10b981", "công việc", "Số task đã về trạng thái Done")}
+          {renderChartCard("Khối lượng công việc", "total", ["#035D5B", "#0d9488"], "công việc", "Tổng số task được giao")}
+          {renderChartCard("Công việc hoàn thành", "completed", ["#059669", "#10b981"], "công việc", "Số task đã về trạng thái Done")}
 
           {/* Row 2 */}
-          {renderChartCard("Công việc quá hạn", "overdue", "#ef4444", "công việc", "Task chưa xong và đã trễ hạn")}
-          {renderChartCard("Tỉ lệ hoàn thành", "rate", "#8b5cf6", "%", "Hiệu suất hoàn thành (%)")}
+          {renderChartCard("Công việc quá hạn", "overdue", ["#fca5a5", "#ef4444"], "công việc", "Task chưa xong và đã trễ hạn", true)}
+          {renderChartCard("Tỉ lệ hoàn thành", "rate", ["#7c3aed", "#8b5cf6"], "%", "Hiệu suất hoàn thành (%)")}
         </div>
       )}
     </div>

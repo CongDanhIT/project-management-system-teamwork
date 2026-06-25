@@ -23,6 +23,9 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowUpDown, 
+  ArrowUp,
+  ArrowDown,
+  Copy, 
   Loader2, 
   FilterX, 
   Download, 
@@ -56,6 +59,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -65,8 +69,24 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
+const STATUS_OPTIONS = [
+  TaskStatus.TODO,
+  TaskStatus.IN_PROGRESS,
+  TaskStatus.INREVIEW,
+  TaskStatus.COMPLETED
+];
 
+const PRIORITY_OPTIONS = [
+  TaskPriority.LOW,
+  TaskPriority.MEDIUM,
+  TaskPriority.HIGH
+];
 
 export default function ProjectTablePage() {
   const params = useParams();
@@ -102,6 +122,70 @@ export default function ProjectTablePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Table Column Resize State
+  const [colWidths, setColWidths] = useState({
+    code: 160,
+    title: 350,
+    status: 160,
+    priority: 140,
+    assignee: 180,
+    dueDate: 160,
+    tags: 150,
+    actions: 100
+  });
+  // Table Column Sort State
+  type SortKey = 'code' | 'title' | 'status' | 'priority' | 'dueDate';
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: SortKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const [resizingCol, setResizingCol] = useState<keyof typeof colWidths | null>(null);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
+
+  const handleResizeStart = (e: React.MouseEvent, col: keyof typeof colWidths) => {
+    setResizingCol(col);
+    setStartX(e.clientX);
+    setStartWidth(colWidths[col]);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingCol) return;
+      const diff = e.clientX - startX;
+      setColWidths(prev => ({
+        ...prev,
+        [resizingCol]: Math.max(60, startWidth + diff) // Giới hạn chiều rộng tối thiểu 60px
+      }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingCol(null);
+    };
+
+    if (resizingCol) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingCol, startX, startWidth]);
 
   // Queries
   const { data: projectData, isLoading: isProjectLoading } = useQuery({
@@ -164,6 +248,13 @@ export default function ProjectTablePage() {
   // Derived variables
   const loading = isProjectLoading || isRootTasksLoading || isSubtasksLoading || isMembersLoading;
 
+  // Helper to get skillTags for a user
+  const getMemberTags = (userId: string) => {
+    if (!workspaceData?.members) return [];
+    const member = workspaceData.members.find((m: any) => m.userId?._id === userId);
+    return member?.skillTags || [];
+  };
+
   // Effects
   useEffect(() => {
       if (phase?.isLocked && !isPrivileged && !loading) {
@@ -174,11 +265,7 @@ export default function ProjectTablePage() {
 
   useEffect(() => {
     if (workspaceData?.members) {
-      // Map to the user object inside each member record
-      const memberUsers = workspaceData.members
-        .map((m: any) => m.userId)
-        .filter((u: any) => !!u); // Remove null/undefined
-      setMembers(memberUsers);
+      setMembers(workspaceData.members);
     }
   }, [workspaceData]);
 
@@ -412,6 +499,45 @@ export default function ProjectTablePage() {
     }
   };
 
+  const handleCopyLink = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}${window.location.pathname}?taskId=${taskId}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Đã sao chép liên kết');
+  };
+
+  const handleDuplicateTask = async (task: Task, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const newTask: any = { 
+        ...task, 
+        title: `${task.title} [Copy]`,
+        assignedTo: task.assignedTo?.map(u => u._id || u) || [],
+        phaseId: typeof task.phaseId === 'object' ? (task.phaseId as any)?._id : task.phaseId,
+        projectId: typeof task.projectId === 'object' ? (task.projectId as any)?._id : task.projectId,
+        workspaceId: typeof task.workspaceId === 'object' ? (task.workspaceId as any)?._id : task.workspaceId,
+        parentId: typeof task.parentId === 'object' ? (task.parentId as any)?._id : task.parentId,
+        tags: task.tags?.map((t: any) => t._id || t) || []
+      };
+      // @ts-ignore
+      delete newTask._id;
+      // @ts-ignore
+      delete newTask.createdAt;
+      // @ts-ignore
+      delete newTask.updatedAt;
+      // @ts-ignore
+      delete newTask.id;
+      
+      await taskService.createTask(workspaceId, projectId, newTask);
+      queryClient.invalidateQueries({ queryKey: ['project-root-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['project-all-subtasks'] });
+      toast.success('Đã nhân bản công việc');
+    } catch (error) {
+      console.error(error);
+      toast.error('Nhân bản thất bại');
+    }
+  };
+
   const topLevelTasks = tasks.filter(t => !t.parentId);
 
   const getParentIdStr = (parentId: any) => {
@@ -433,7 +559,40 @@ export default function ProjectTablePage() {
   const getFilteredData = () => {
     const results: { parent: Task; subtasks: Task[] }[] = [];
 
-    topLevelTasks.forEach(parent => {
+    let sortedParents = [...topLevelTasks];
+    
+    // Sort Helper
+    const sortTasks = (tasksToSort: Task[]) => {
+      if (!sortConfig) return tasksToSort;
+      return [...tasksToSort].sort((a, b) => {
+        let aVal: any = '';
+        let bVal: any = '';
+        switch (sortConfig.key) {
+          case 'code':
+            aVal = a.taskCode; bVal = b.taskCode; break;
+          case 'title':
+            aVal = a.title; bVal = b.title; break;
+          case 'status':
+            aVal = a.status; bVal = b.status; break;
+          case 'priority':
+            const pMap = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+            aVal = pMap[a.priority as keyof typeof pMap] || 0;
+            bVal = pMap[b.priority as keyof typeof pMap] || 0;
+            break;
+          case 'dueDate':
+            aVal = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+            bVal = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+            break;
+        }
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    };
+
+    sortedParents = sortTasks(sortedParents);
+
+    sortedParents.forEach(parent => {
       const parentIdStr = String(parent._id);
       const parentMatches = parent.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         parent.taskCode.toLowerCase().includes(searchQuery.toLowerCase());
@@ -445,7 +604,8 @@ export default function ProjectTablePage() {
       );
 
       if (parentMatches || matchingSubTasks.length > 0) {
-        const subtasksToShow = searchQuery ? (parentMatches ? allSubtasks : matchingSubTasks) : allSubtasks;
+        let subtasksToShow = searchQuery ? (parentMatches ? allSubtasks : matchingSubTasks) : allSubtasks;
+        subtasksToShow = sortTasks(subtasksToShow);
         results.push({ parent, subtasks: subtasksToShow });
       }
     });
@@ -472,7 +632,7 @@ export default function ProjectTablePage() {
   }
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-6 min-h-[calc(100vh-240px)] flex flex-col">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -661,26 +821,64 @@ export default function ProjectTablePage() {
         </div>
       </div>
 
-      {/* Database Table */}
-      <div className="flex-1 bg-white dark:bg-slate-900/50 dark:backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm flex flex-col min-h-0">
+      {/* Database Table - Full Bleed */}
+      <div className="-mx-8 lg:-mx-12 flex-1 bg-transparent flex flex-col min-h-0 border-t border-slate-200 dark:border-white/10">
         <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
+          <table className="w-full text-left border-collapse" style={{ tableLayout: 'fixed', minWidth: Object.values(colWidths).reduce((a, b) => a + b, 0) }}>
             <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-white/10 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                <th className="px-6 py-4 w-24">Mã</th>
-                <th className="px-6 py-4 flex-1">Tên công việc</th>
-                <th className="px-6 py-4 w-36">
-                  <div className="flex items-center gap-1">Trạng thái <ArrowUpDown className="w-3 h-3" /></div>
+              <tr className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <th className="group/th relative px-6 lg:pl-12 py-4 border-r border-slate-200/50 dark:border-white/5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none" style={{ width: colWidths.code }} onClick={() => handleSort('code')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 flex-shrink-0" />
+                      <span>Mã</span>
+                    </div>
+                    {sortConfig?.key === 'code' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-primary" /> : <ArrowDown className="w-3 h-3 text-brand-primary" />) : <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/th:opacity-50 transition-opacity" />}
+                  </div>
+                  <div onMouseDown={(e) => { e.stopPropagation(); handleResizeStart(e, 'code'); }} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
                 </th>
-                <th className="px-6 py-4 w-32">Ưu tiên</th>
-                <th className="px-6 py-4 w-36">Người thực hiện</th>
-                <th className="px-6 py-4 w-36">Hạn chót</th>
-                <th className="px-6 py-4 w-16"></th>
+                <th className="group/th relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none" style={{ width: colWidths.title }} onClick={() => handleSort('title')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Tên công việc</span>
+                    {sortConfig?.key === 'title' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-primary" /> : <ArrowDown className="w-3 h-3 text-brand-primary" />) : <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/th:opacity-50 transition-opacity" />}
+                  </div>
+                  <div onMouseDown={(e) => { e.stopPropagation(); handleResizeStart(e, 'title'); }} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="group/th relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none" style={{ width: colWidths.status }} onClick={() => handleSort('status')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Trạng thái</span>
+                    {sortConfig?.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-primary" /> : <ArrowDown className="w-3 h-3 text-brand-primary" />) : <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/th:opacity-50 transition-opacity" />}
+                  </div>
+                  <div onMouseDown={(e) => { e.stopPropagation(); handleResizeStart(e, 'status'); }} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="group/th relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none" style={{ width: colWidths.priority }} onClick={() => handleSort('priority')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Ưu tiên</span>
+                    {sortConfig?.key === 'priority' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-primary" /> : <ArrowDown className="w-3 h-3 text-brand-primary" />) : <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/th:opacity-50 transition-opacity" />}
+                  </div>
+                  <div onMouseDown={(e) => { e.stopPropagation(); handleResizeStart(e, 'priority'); }} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5 select-none" style={{ width: colWidths.assignee }}>
+                  Người thực hiện
+                  <div onMouseDown={(e) => handleResizeStart(e, 'assignee')} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="group/th relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none" style={{ width: colWidths.dueDate }} onClick={() => handleSort('dueDate')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Thời gian</span>
+                    {sortConfig?.key === 'dueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-primary" /> : <ArrowDown className="w-3 h-3 text-brand-primary" />) : <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/th:opacity-50 transition-opacity" />}
+                  </div>
+                  <div onMouseDown={(e) => { e.stopPropagation(); handleResizeStart(e, 'dueDate'); }} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="relative px-6 py-4 border-r border-slate-200/50 dark:border-white/5" style={{ width: colWidths.tags }}>
+                  Nhãn
+                  <div onMouseDown={(e) => handleResizeStart(e, 'tags')} className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-brand-primary/20 z-20 transition-colors" />
+                </th>
+                <th className="px-6 lg:pr-12 py-4" style={{ width: colWidths.actions }}></th>
+                <th className="w-full"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/40 dark:divide-white/5">
-              {filteredData.length > 0 ? (
-                filteredData.map(({ parent, subtasks }) => {
+              {filteredData.map(({ parent, subtasks }) => {
                   const parentIdStr = String(parent._id);
                   const isExpanded = expandedRows.has(parentIdStr) || searchQuery.length > 0;
                   const hasSubtasks = subtasks.length > 0;
@@ -691,77 +889,227 @@ export default function ProjectTablePage() {
                       <tr 
                         onClick={() => handleTaskClick(parent)}
                         className={cn(
-                          "group hover:bg-slate-50/80 dark:hover:bg-white/[0.03] cursor-pointer transition-all duration-300 relative",
-                          hasSubtasks && isExpanded && "bg-slate-50/40 dark:bg-white/[0.02]"
+                          "group bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-white/[0.03] cursor-pointer transition-all duration-300 relative",
+                          hasSubtasks && isExpanded && "bg-slate-50/30 dark:bg-white/[0.02]"
                         )}
                       >
-                        <td className="px-6 py-5 whitespace-nowrap relative">
+                        <td className="px-6 lg:pl-12 py-5 whitespace-nowrap relative border-r border-slate-200/50 dark:border-white/5">
                           <div className="flex items-center gap-3">
                             {hasSubtasks ? (
                               <button 
                                 onClick={(e) => toggleRow(parentIdStr, e)}
-                                className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-brand-primary/10 text-slate-400 hover:text-brand-primary transition-all z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10"
+                                className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-brand-primary/10 text-slate-400 hover:text-brand-primary transition-all z-10 bg-transparent flex-shrink-0"
                               >
                                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                               </button>
                             ) : (
-                              <div className="w-5" />
+                              <div className="w-5 flex-shrink-0" />
                             )}
-                            <span className="text-[10px] font-mono font-bold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded tracking-tighter uppercase">
+                            <span className="text-[10px] font-mono font-bold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded tracking-tighter uppercase truncate">
                               {parent.taskCode}
                             </span>
                           </div>
                           {hasSubtasks && isExpanded && (
-                            <div className="absolute left-[34px] top-[44px] bottom-0 w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
+                            <div className="absolute left-[34px] lg:left-[58px] top-[44px] bottom-0 w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                           )}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight transition-colors group-hover:text-brand-primary">
+                        <td className="px-6 py-4 border-r border-slate-200/50 dark:border-white/5">
+                          <div className="flex flex-col truncate">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight transition-colors group-hover:text-brand-primary truncate">
                               {parent.title}
                             </span>
                             {parent.description && (
-                              <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 font-normal italic">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 font-normal italic">
                                 {parent.description}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-5"><StatusBadge status={parent.status} /></td>
-                        <td className="px-6 py-5"><PriorityBadge priority={parent.priority} /></td>
-                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400">
-                          {parent.assignedTo && parent.assignedTo.length > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <Avatar className="w-6 h-6 ring-1 ring-slate-200 dark:ring-white/10">
-                                <AvatarImage src={parent.assignedTo[0].profilePicture} />
-                                <AvatarFallback className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold uppercase">
-                                  {parent.assignedTo[0].name?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm truncate max-w-[100px]">{parent.assignedTo[0].name}</span>
+                        <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button type="button" className="cursor-pointer group/badge flex items-center gap-1.5 outline-none" onClick={(e) => e.stopPropagation()}>
+                                  <StatusBadge status={parent.status} />
+                                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                </button>
+                              }
+                            />
+                            <DropdownMenuContent align="start" className="w-40">
+                              {STATUS_OPTIONS.map(status => (
+                                <DropdownMenuItem key={status} onClick={(e) => { e.stopPropagation(); handleUpdateTask(parent._id, { status }); }}>
+                                  <StatusBadge status={status} />
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                        <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button type="button" className="cursor-pointer group/badge flex items-center gap-1.5 outline-none" onClick={(e) => e.stopPropagation()}>
+                                  <PriorityBadge priority={parent.priority} />
+                                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                </button>
+                              }
+                            />
+                            <DropdownMenuContent align="start" className="w-40">
+                              {PRIORITY_OPTIONS.map(priority => (
+                                <DropdownMenuItem key={priority} onClick={(e) => { e.stopPropagation(); handleUpdateTask(parent._id, { priority }); }}>
+                                  <PriorityBadge priority={priority} />
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400 border-r border-slate-200/50 dark:border-white/5">
+                          {parent.assignedTo && parent.assignedTo.length === 1 ? (
+                            <div className="flex flex-col gap-1.5 py-0.5">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="w-6 h-6 ring-1 ring-slate-200 dark:ring-white/10 flex-shrink-0">
+                                  <AvatarImage src={parent.assignedTo[0].profilePicture} />
+                                  <AvatarFallback className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold uppercase">
+                                    {parent.assignedTo[0].name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm truncate max-w-[100px]">{parent.assignedTo[0].name}</span>
+                              </div>
+                              {getMemberTags(parent.assignedTo[0]._id).length > 0 && (
+                                <div className="flex flex-wrap gap-x-2 gap-y-1 pl-8 mt-[-2px]">
+                                  {getMemberTags(parent.assignedTo[0]._id).map((tag: any) => (
+                                    <div key={tag._id} className="flex items-center gap-1.5">
+                                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium leading-none">
+                                        {tag.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+                          ) : parent.assignedTo && parent.assignedTo.length > 1 ? (
+                            <Popover>
+                              <PopoverTrigger
+                                render={
+                                  <button type="button" className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1.5 -ml-1.5 rounded-lg transition-colors group/assignee w-fit max-w-full outline-none text-left" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex -space-x-2">
+                                      {parent.assignedTo.slice(0, 3).map((u: any, idx: number) => (
+                                        <Avatar key={u._id} className="w-6 h-6 ring-2 ring-white dark:ring-slate-900 z-[3] relative" style={{ zIndex: 3 - idx }}>
+                                          <AvatarImage src={u.profilePicture} />
+                                          <AvatarFallback className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold uppercase">
+                                            {u.name?.[0]}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[90px]">
+                                        {parent.assignedTo[0].name}
+                                      </span>
+                                      <span className="text-[10px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                        +{parent.assignedTo.length - 1}
+                                      </span>
+                                    </div>
+                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 opacity-50 group-hover/assignee:opacity-100 transition-opacity ml-0.5 flex-shrink-0" />
+                                  </button>
+                                }
+                              />
+                              <PopoverContent className="w-64 p-3 rounded-xl shadow-xl border-slate-100 dark:border-white/10 dark:bg-slate-900" align="start" onClick={(e) => e.stopPropagation()}>
+                                <div className="space-y-3">
+                                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Người thực hiện ({parent.assignedTo.length})</h4>
+                                  <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                    {parent.assignedTo.map((u: any) => (
+                                      <div key={u._id} className="flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-white/5">
+                                        <div className="flex items-center gap-2">
+                                          <Avatar className="w-6 h-6 shadow-sm">
+                                            <AvatarImage src={u.profilePicture} />
+                                            <AvatarFallback className="text-[10px] bg-brand-primary text-white font-bold uppercase">
+                                              {u.name?.[0]}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{u.name}</span>
+                                        </div>
+                                        {getMemberTags(u._id).length > 0 && (
+                                          <div className="flex flex-wrap gap-x-2 gap-y-1 pl-8 mt-[-2px]">
+                                            {getMemberTags(u._id).map((tag: any) => (
+                                              <div key={tag._id} className="flex items-center gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                                                <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium leading-none">
+                                                  {tag.name}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center">
+                              <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center flex-shrink-0">
                                 <User className="w-3 h-3 text-slate-300 dark:text-slate-500" />
                               </div>
-                              <span className="text-xs italic">Chưa gán</span>
+                              <span className="text-xs italic truncate">Chưa gán</span>
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                            <span className="text-xs font-semibold tracking-wider text-slate-600 dark:text-slate-300">
-                              {parent.dueDate ? format(new Date(parent.dueDate), 'dd MMM, yyyy', { locale: vi }) : '--'}
-                            </span>
+                        <td className="px-6 py-5 text-slate-500 dark:text-slate-400 whitespace-nowrap border-r border-slate-200/50 dark:border-white/5">
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-1.5 opacity-60">
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <span className="text-[10px] uppercase tracking-widest truncate">
+                                Bắt đầu: {parent.startDate ? format(new Date(parent.startDate), 'dd/MM/yyyy', { locale: vi }) : '--'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-brand-primary flex-shrink-0" />
+                              <span className="text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-200 truncate">
+                                {parent.dueDate ? format(new Date(parent.dueDate), 'dd MMM, yyyy', { locale: vi }) : '--'}
+                              </span>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-5 text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
+                        <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5">
+                          {parent.tags && parent.tags.length > 0 ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {parent.tags.map(tag => (
+                                <span key={tag._id} className="text-[10px] px-2 py-0.5 rounded-md font-medium border truncate max-w-full" style={{ backgroundColor: `${tag.color}15`, color: tag.color, borderColor: `${tag.color}30` }}>
+                                  {tag.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">--</span>
+                          )}
                         </td>
+                        <td className="px-6 lg:pr-12 py-5 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={(e) => handleCopyLink(parent._id, e)}>
+                                <Copy className="w-4 h-4 mr-2" /> Sao chép liên kết
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => handleDuplicateTask(parent, e)}>
+                                <Layers className="w-4 h-4 mr-2" /> Nhân bản
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" onClick={(e) => { e.stopPropagation(); handleDeleteTask(parent._id); }}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Xóa công việc
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                        <td></td>
                       </tr>
 
                       {/* Subtask Rows */}
@@ -771,69 +1119,252 @@ export default function ProjectTablePage() {
                           <tr 
                             key={subtask._id} 
                             onClick={() => handleTaskClick(subtask)}
-                            className="group hover:bg-brand-primary/[0.02] dark:hover:bg-white/[0.02] cursor-pointer transition-all duration-300 relative border-b border-slate-100/50 dark:border-white/[0.02] last:border-none"
+                            className="group bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] cursor-pointer transition-all duration-300 relative border-b border-slate-100/50 dark:border-white/[0.02] last:border-none"
                           >
-                            <td className="px-6 py-3.5 whitespace-nowrap relative">
+                            <td className="px-6 lg:pl-12 py-3.5 whitespace-nowrap relative border-r border-slate-200/50 dark:border-white/5">
                               {!isLast ? (
-                                <div className="absolute left-[34px] top-0 bottom-0 w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
+                                <div className="absolute left-[34px] lg:left-[58px] top-0 bottom-0 w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               ) : (
-                                <div className="absolute left-[34px] top-0 h-[50%] w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
+                                <div className="absolute left-[34px] lg:left-[58px] top-0 h-[50%] w-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               )}
-                              <div className="absolute left-[34px] top-1/2 -translate-y-1/2 w-4 h-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
+                              <div className="absolute left-[34px] lg:left-[58px] top-1/2 -translate-y-1/2 w-4 h-[1.5px] bg-slate-200 dark:bg-white/10 group-hover:bg-brand-primary/30 transition-colors" />
                               <div className="flex items-center gap-3 pl-8">
-                                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 group-hover:bg-brand-primary/10 group-hover:text-brand-primary px-1.5 py-0.5 rounded transition-all">
+                                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/5 group-hover:bg-brand-primary/10 group-hover:text-brand-primary px-1.5 py-0.5 rounded transition-all truncate">
                                   {subtask.taskCode}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-6 py-3">
-                              <span className="text-sm font-medium text-slate-600 dark:text-slate-400 transition-colors group-hover:text-brand-primary">
+                            <td className="px-6 py-3 border-r border-slate-200/50 dark:border-white/5">
+                              <span className="text-sm font-medium text-slate-600 dark:text-slate-400 transition-colors group-hover:text-brand-primary truncate block">
                                 {subtask.title}
                               </span>
                             </td>
-                            <td className="px-6 py-3"><StatusBadge status={subtask.status} /></td>
-                            <td className="px-6 py-3"><PriorityBadge priority={subtask.priority} /></td>
-                            <td className="px-6 py-3.5">
-                              {subtask.assignedTo && subtask.assignedTo.length > 0 ? (
-                                <div className="flex items-center gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
-                                  <Avatar className="w-5 h-5 ring-1 ring-slate-100 dark:ring-white/10 shadow-sm">
-                                    <AvatarImage src={subtask.assignedTo[0].profilePicture} />
-                                    <AvatarFallback className="text-[9px] bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase">
-                                      {subtask.assignedTo[0].name?.[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[80px]">{subtask.assignedTo[0].name}</span>
+                            <td className="px-6 py-3 border-r border-slate-200/50 dark:border-white/5">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button type="button" className="cursor-pointer group/badge flex items-center gap-1.5 outline-none" onClick={(e) => e.stopPropagation()}>
+                                      <StatusBadge status={subtask.status} />
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                    </button>
+                                  }
+                                />
+                                <DropdownMenuContent align="start" className="w-40">
+                                  {STATUS_OPTIONS.map(status => (
+                                    <DropdownMenuItem key={status} onClick={(e) => { e.stopPropagation(); handleUpdateTask(subtask._id, { status }); }}>
+                                      <StatusBadge status={status} />
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td className="px-6 py-3 border-r border-slate-200/50 dark:border-white/5">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <button type="button" className="cursor-pointer group/badge flex items-center gap-1.5 outline-none" onClick={(e) => e.stopPropagation()}>
+                                      <PriorityBadge priority={subtask.priority} />
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                    </button>
+                                  }
+                                />
+                                <DropdownMenuContent align="start" className="w-40">
+                                  {PRIORITY_OPTIONS.map(priority => (
+                                    <DropdownMenuItem key={priority} onClick={(e) => { e.stopPropagation(); handleUpdateTask(subtask._id, { priority }); }}>
+                                      <PriorityBadge priority={priority} />
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td className="px-6 py-3.5 border-r border-slate-200/50 dark:border-white/5">
+                              {subtask.assignedTo && subtask.assignedTo.length === 1 ? (
+                                <div className="flex flex-col gap-1 py-0.5">
+                                  <div className="flex items-center gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
+                                    <Avatar className="w-5 h-5 ring-1 ring-slate-100 dark:ring-white/10 shadow-sm flex-shrink-0">
+                                      <AvatarImage src={subtask.assignedTo[0].profilePicture} />
+                                      <AvatarFallback className="text-[9px] bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase">
+                                        {subtask.assignedTo[0].name?.[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[80px]">{subtask.assignedTo[0].name}</span>
+                                  </div>
+                                  {getMemberTags(subtask.assignedTo[0]._id).length > 0 && (
+                                    <div className="flex flex-wrap gap-x-2 gap-y-1 pl-7 mt-[-2px]">
+                                      {getMemberTags(subtask.assignedTo[0]._id).map((tag: any) => (
+                                        <div key={tag._id} className="flex items-center gap-1">
+                                          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                                          <span className="text-[9.5px] text-slate-400 dark:text-slate-500 whitespace-nowrap font-medium leading-none">
+                                            {tag.name}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
+                              ) : subtask.assignedTo && subtask.assignedTo.length > 1 ? (
+                                <Popover>
+                                  <PopoverTrigger
+                                    render={
+                                      <button type="button" className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1 -ml-1 rounded-lg transition-colors group/assignee w-fit max-w-full outline-none text-left" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex -space-x-1.5">
+                                          {subtask.assignedTo.slice(0, 3).map((u: any, idx: number) => (
+                                            <Avatar key={u._id} className="w-5 h-5 ring-1 ring-white dark:ring-slate-900 z-[3] relative shadow-sm" style={{ zIndex: 3 - idx }}>
+                                              <AvatarImage src={u.profilePicture} />
+                                              <AvatarFallback className="text-[9px] bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase">
+                                                {u.name?.[0]}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                          ))}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 truncate">
+                                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate max-w-[80px]">
+                                            {subtask.assignedTo[0].name}
+                                          </span>
+                                          <span className="text-[9px] font-bold text-brand-primary bg-brand-primary/10 px-1 py-0.5 rounded whitespace-nowrap">
+                                            +{subtask.assignedTo.length - 1}
+                                          </span>
+                                        </div>
+                                        <ChevronDown className="w-3 h-3 text-slate-400 opacity-0 group-hover/assignee:opacity-100 transition-opacity ml-0.5 flex-shrink-0" />
+                                      </button>
+                                    }
+                                  />
+                                  <PopoverContent className="w-60 p-3 rounded-xl shadow-xl border-slate-100 dark:border-white/10 dark:bg-slate-900" align="start" onClick={(e) => e.stopPropagation()}>
+                                    <div className="space-y-3">
+                                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Người thực hiện ({subtask.assignedTo.length})</h4>
+                                      <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                        {subtask.assignedTo.map((u: any) => (
+                                          <div key={u._id} className="flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-white/5">
+                                            <div className="flex items-center gap-2">
+                                              <Avatar className="w-6 h-6 shadow-sm">
+                                                <AvatarImage src={u.profilePicture} />
+                                                <AvatarFallback className="text-[10px] bg-brand-primary text-white font-bold uppercase">
+                                                  {u.name?.[0]}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{u.name}</span>
+                                            </div>
+                                            {getMemberTags(u._id).length > 0 && (
+                                              <div className="flex flex-wrap gap-x-2 gap-y-1 pl-8 mt-[-2px]">
+                                                {getMemberTags(u._id).map((tag: any) => (
+                                                  <div key={tag._id} className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-none">
+                                                      {tag.name}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
                               ) : (
-                                <span className="text-[10px] text-slate-300 dark:text-slate-600 italic pl-7 font-medium">Chưa gán</span>
+                                <span className="text-[10px] text-slate-300 dark:text-slate-600 italic pl-7 font-medium truncate">Chưa gán</span>
                               )}
                             </td>
-                            <td className="px-6 py-3.5 text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-3 h-3 opacity-50" />
-                                <span className="text-[10px] font-medium tracking-wider">
-                                  {subtask.dueDate ? format(new Date(subtask.dueDate), 'dd MMM', { locale: vi }) : '--'}
-                                </span>
+                            <td className="px-6 py-3.5 text-slate-400 dark:text-slate-500 whitespace-nowrap border-r border-slate-200/50 dark:border-white/5">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 opacity-60">
+                                  <Calendar className="w-[10px] h-[10px] flex-shrink-0" />
+                                  <span className="text-[9px] uppercase tracking-widest truncate">
+                                    Từ: {subtask.startDate ? format(new Date(subtask.startDate), 'dd/MM/yy', { locale: vi }) : '--'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-brand-primary/70 flex-shrink-0" />
+                                  <span className="text-[11px] font-semibold tracking-wider text-slate-600 dark:text-slate-300 truncate">
+                                    Đến: {subtask.dueDate ? format(new Date(subtask.dueDate), 'dd MMM', { locale: vi }) : '--'}
+                                  </span>
+                                </div>
                               </div>
                             </td>
-                            <td className="px-6 py-3 text-right">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-200">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
-                              </Button>
+                            <td className="px-6 py-3.5 border-r border-slate-200/50 dark:border-white/5">
+                              {subtask.tags && subtask.tags.length > 0 ? (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {subtask.tags.map(tag => (
+                                    <span key={tag._id} className="text-[10px] px-2 py-0.5 rounded-md font-medium border truncate max-w-full" style={{ backgroundColor: `${tag.color}15`, color: tag.color, borderColor: `${tag.color}30` }}>
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-300 italic">--</span>
+                              )}
                             </td>
+                            <td className="px-6 lg:pr-12 py-3 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  render={
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:bg-white/10 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <MoreHorizontal className="w-3.5 h-3.5" />
+                                    </Button>
+                                  }
+                                />
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={(e) => handleCopyLink(subtask._id, e)}>
+                                    <Copy className="w-4 h-4 mr-2" /> Sao chép liên kết
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => handleDuplicateTask(subtask, e)}>
+                                    <Layers className="w-4 h-4 mr-2" /> Nhân bản
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" onClick={(e) => { e.stopPropagation(); handleDeleteTask(subtask._id); }}>
+                                    <Trash2 className="w-4 h-4 mr-2" /> Xóa công việc
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                            <td></td>
                           </tr>
                         );
                       })}
                     </React.Fragment>
                   );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center text-slate-500 italic">
-                    Không tìm thấy công việc nào.
+                })}
+
+              {/* Empty Filler Rows */}
+              {Array.from({ length: Math.max(0, pageSize - filteredData.length) }).map((_, i) => (
+                <tr key={`empty-${i}`} className="group bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors border-b border-slate-100/50 dark:border-white/[0.02] last:border-none">
+                  <td className="px-6 lg:pl-12 py-5 whitespace-nowrap relative border-r border-slate-200/50 dark:border-white/5">
+                    {i === 0 ? (
+                      <button 
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-3 w-full text-left outline-none"
+                      >
+                        <div className="w-5 flex-shrink-0 flex items-center justify-center text-slate-400 group-hover:text-brand-primary transition-colors">
+                          <Plus className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-400 group-hover:text-brand-primary transition-colors tracking-wide">
+                          MỚI
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="text-transparent select-none">-</span>
+                    )}
                   </td>
+                  <td className="px-6 py-4 border-r border-slate-200/50 dark:border-white/5">
+                    {i === 0 && (
+                      <button 
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="text-sm font-medium text-slate-400 group-hover:text-brand-primary transition-colors w-full text-left outline-none"
+                      >
+                        Thêm công việc mới...
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td className="px-6 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td className="px-6 lg:pr-12 py-5 border-r border-slate-200/50 dark:border-white/5"></td>
+                  <td></td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>

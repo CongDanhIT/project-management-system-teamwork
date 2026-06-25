@@ -46,7 +46,7 @@ const ProjectOverviewTable: React.FC<ProjectOverviewTableProps> = ({ projects })
         </div>
       </div>
 
-      <div className="bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[40px] border border-slate-100 dark:border-white/5 shadow-glow-combined overflow-hidden">
+      <div className="bg-white/40 dark:bg-card/40 backdrop-blur-md rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none overflow-hidden">
         <div className="h-[450px] overflow-y-auto scrollbar-hide">
           <Table>
             <TableHeader className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-20">

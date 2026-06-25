@@ -46,7 +46,7 @@ export default function AutomationIndexPage() {
   }
 
   return (
-    <div className="container max-w-5xl py-10 px-6">
+    <div className="w-full py-10 px-6 lg:px-10 max-w-[1800px] mx-auto">
       <div className="mb-10 flex items-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary/10">
           <Zap className="h-7 w-7 text-brand-primary" />
@@ -66,7 +66,7 @@ export default function AutomationIndexPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
           {projects.map((project: any) => (
             <Card
               key={project._id}

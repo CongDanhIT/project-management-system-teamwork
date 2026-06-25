@@ -64,7 +64,7 @@ export default function NewsfeedPage() {
   const announcements: Announcement[] = data?.announcements || [];
 
   return (
-    <div className="-m-8 lg:-m-12 min-h-[calc(100vh-73px)] bg-slate-50/50 dark:bg-background overflow-auto hidden-scrollbar pb-20">
+    <div className="-m-8 lg:-m-12 min-h-[calc(100vh-73px)] bg-slate-50/50 dark:bg-background pb-20">
       <div className="w-full px-8 lg:px-12 py-10 mt-7">
         
         {/* Header (Simplified in Obsidian Flow) */}

@@ -122,6 +122,28 @@ export default function DocumentsPage() {
     }
   });
 
+  const togglePinFolderMutation = useMutation({
+      mutationFn: ({ folderId, isPinned }: { folderId: string, isPinned: boolean }) => AssetService.updateFolder(folderId, { isPinned }),
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["workspace-explorer", workspaceId] });
+          toast.success('Đã cập nhật trạng thái ghim thư mục');
+      },
+      onError: () => {
+          toast.error('Không thể ghim thư mục');
+      }
+  });
+
+  const togglePinAssetMutation = useMutation({
+      mutationFn: ({ assetId, isPinned }: { assetId: string, isPinned: boolean }) => AssetService.updateAsset(assetId, { isPinned }),
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["workspace-explorer", workspaceId] });
+          toast.success('Đã cập nhật trạng thái ghim tài liệu');
+      },
+      onError: () => {
+          toast.error('Không thể ghim tài liệu');
+      }
+  });
+
   useEffect(() => {
     const projectId = searchParams?.get("projectId");
     const folderId = searchParams?.get("folderId");
@@ -190,6 +212,12 @@ export default function DocumentsPage() {
       return matchesSearch && matchesProject && matchesParent;
     });
   }, [folders, searchQuery, selectedProjectId, selectedFolderId]);
+
+  const pinnedFolders = useMemo(() => filteredFolders.filter((f: any) => f.isPinned), [filteredFolders]);
+  const unpinnedFolders = useMemo(() => filteredFolders.filter((f: any) => !f.isPinned), [filteredFolders]);
+
+  const pinnedAssets = useMemo(() => filteredAssets.filter((a: any) => a.isPinned), [filteredAssets]);
+  const unpinnedAssets = useMemo(() => filteredAssets.filter((a: any) => !a.isPinned), [filteredAssets]);
 
   const selectedProject = useMemo(() => {
     if (selectedProjectId === "all") return null;
@@ -340,67 +368,83 @@ export default function DocumentsPage() {
       <ScrollArea className="flex-1">
         <div className="p-8">
           {/* Section: Folders */}
-          {filteredFolders.length > 0 && (
-            <section className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
+          {/* Section: Pinned Folders */}
+          {pinnedFolders.length > 0 && (
+            <section className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
-                  {selectedFolderId ? "Thư mục con" : "Thư mục"} ({filteredFolders.length})
+                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  Thư mục đã ghim ({pinnedFolders.length})
                 </h2>
                 <div className="h-px flex-1 bg-border/50" />
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-                {filteredFolders.map((folder: any) => (
+                {pinnedFolders.map((folder: any) => (
                   <div 
                     key={folder._id}
                     onClick={() => handleFolderClick(folder)}
-                    className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-4 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative"
+                    className="group bg-white dark:bg-slate-900 shadow-sm border border-transparent dark:border-white/5 p-4 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
                         <Folder className="w-5 h-5 fill-amber-500/20" />
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="w-4 h-4 text-slate-400" />
-                            </Button>
-                          }
-                        />
-                       <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
-                           <DropdownMenuItem 
-                               className="rounded-xl font-bold cursor-pointer"
+                      <div className="flex items-center gap-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                togglePinFolderMutation.mutate({ folderId: folder._id, isPinned: !folder.isPinned });
+                            }}
+                            className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-all focus:opacity-100 z-10",
+                                folder.isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                            )}
+                        >
+                            <Star className={cn("w-4 h-4 transition-all hover:scale-110", folder.isPinned ? "fill-amber-400 text-amber-400" : "text-slate-400")} />
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            render={
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                              </Button>
+                            }
+                          />
+                         <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                             <DropdownMenuItem 
+                                 className="rounded-xl font-bold cursor-pointer"
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     setEditingFolder(folder);
+                                     setIsFolderModalOpen(true);
+                                 }}
+                             >
+                                 <Edit2 className="w-4 h-4 mr-2" />
+                                 Đổi tên thư mục
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem className="rounded-xl font-bold cursor-pointer gap-2">
+                               <Share2 className="w-4 h-4" /> Chia sẻ
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem 
+                               className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   setEditingFolder(folder);
-                                   setIsFolderModalOpen(true);
+                                 e.stopPropagation();
+                                 deleteFolderMutation.mutate(folder._id);
                                }}
-                           >
-                               <Edit2 className="w-4 h-4 mr-2" />
-                               Đổi tên thư mục
-                           </DropdownMenuItem>
-                           <DropdownMenuSeparator />
-                           <DropdownMenuItem className="rounded-xl font-bold cursor-pointer gap-2">
-                             <Share2 className="w-4 h-4" /> Chia sẻ
-                           </DropdownMenuItem>
-                           <DropdownMenuSeparator />
-                           <DropdownMenuItem 
-                             className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               deleteFolderMutation.mutate(folder._id);
-                             }}
-                           >
-                             <Trash2 className="w-4 h-4 mr-2" /> Xóa
-                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                             >
+                               <Trash2 className="w-4 h-4 mr-2" /> Xóa
+                             </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-sm truncate group-hover:text-primary transition-colors">{folder.name}</span>
@@ -419,97 +463,329 @@ export default function DocumentsPage() {
             </section>
           )}
 
-          {/* Section: Files */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Tệp tin ({filteredAssets.length})</h2>
-              <div className="h-px flex-1 bg-border/50" />
-            </div>
-
-            {viewMode === "grid" ? (
+          {/* Section: Folders */}
+          {unpinnedFolders.length > 0 && (
+            <section className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                  {selectedFolderId ? "Thư mục con" : "Thư mục"} ({unpinnedFolders.length})
+                </h2>
+                <div className="h-px flex-1 bg-border/50" />
+              </div>
+              
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-                {filteredAssets.map((asset: any) => (
+                {unpinnedFolders.map((folder: any) => (
                   <div 
-                    key={asset._id}
-                    onClick={() => handleOpenFile(asset.fileUrl)}
-                    className="group h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden relative flex flex-col"
+                    key={folder._id}
+                    onClick={() => handleFolderClick(folder)}
+                    className="group bg-white dark:bg-slate-900 shadow-sm border border-transparent dark:border-white/5 p-4 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative"
                   >
-                    <div className="aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center relative group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
-                       {asset.fileType.includes("image") ? (
-                         <img src={asset.fileUrl} alt={asset.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                       ) : (
-                         <div className="scale-[2] opacity-40">{getFileIcon(asset.fileType)}</div>
-                       )}
-                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                          <Button 
-                            size="icon" 
-                            onClick={(e) => handleDownload(e, asset.fileUrl, asset.name)}
-                            className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger 
-                              render={
-                                <Button 
-                                  size="icon" 
-                                  className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
-                              <DropdownMenuItem 
-                                  className="rounded-xl font-bold cursor-pointer"
-                                  onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRenamingFile(asset);
-                                  }}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300">
+                        <Folder className="w-5 h-5 fill-amber-500/20" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                togglePinFolderMutation.mutate({ folderId: folder._id, isPinned: !folder.isPinned });
+                            }}
+                            className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-all focus:opacity-100 z-10",
+                                folder.isPinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                            )}
+                        >
+                            <Star className={cn("w-4 h-4 transition-all hover:scale-110", folder.isPinned ? "fill-amber-400 text-amber-400" : "text-slate-400")} />
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            onClick={(e) => e.stopPropagation()}
+                            render={
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                               >
-                                  <Edit2 className="w-4 h-4 mr-2" />
-                                  Đổi tên tài liệu
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                  className="rounded-xl font-bold cursor-pointer"
-                                  onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedFile(asset);
-                                  }}
-                              >
-                                  <ArrowRight className="w-4 h-4 mr-2" />
-                                  Xem chi tiết
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteAssetMutation.mutate(asset._id);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" /> Xóa tài liệu
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                       </div>
+                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                              </Button>
+                            }
+                          />
+                         <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                             <DropdownMenuItem 
+                                 className="rounded-xl font-bold cursor-pointer"
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     setEditingFolder(folder);
+                                     setIsFolderModalOpen(true);
+                                 }}
+                             >
+                                 <Edit2 className="w-4 h-4 mr-2" />
+                                 Đổi tên thư mục
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem className="rounded-xl font-bold cursor-pointer gap-2">
+                               <Share2 className="w-4 h-4" /> Chia sẻ
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem 
+                               className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 deleteFolderMutation.mutate(folder._id);
+                               }}
+                             >
+                               <Trash2 className="w-4 h-4 mr-2" /> Xóa
+                             </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                    <div className="p-4 flex flex-col flex-1">
-                       <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-sm">{asset.name}</h4>
-                       <div className="flex items-center justify-between mt-2 gap-2">
-                           <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={asset.fileType}>
-                               {asset.fileType.includes('spreadsheetml') ? 'XLSX' : 
-                                asset.fileType.includes('wordprocessingml') ? 'DOCX' : 
-                                asset.fileType.includes('presentationml') ? 'PPTX' :
-                                asset.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
-                           </p>
-                           <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(asset.fileSize / 1024).toFixed(2)} KB</p>
-                       </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm truncate group-hover:text-primary transition-colors">{folder.name}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] grayscale group-hover:grayscale-0 transition-all">
+                          {projects.find((p: any) => p._id === folder.projectId)?.emoji || "📁"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-wider">
+                          {projects.find((p: any) => p._id === folder.projectId)?.name}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            {viewMode === "grid" && filteredAssets.length === 0 && (
+               <div className="py-32 text-center flex flex-col items-center gap-4 opacity-40">
+                 <Files className="w-16 h-16 text-muted-foreground/40" />
+                 <div className="space-y-1">
+                   <p className="text-lg font-medium">Không tìm thấy tài liệu nào</p>
+                   <p className="text-sm text-muted-foreground">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+                 </div>
+               </div>
+            )}
+
+            {viewMode === "grid" ? (
+              <div className="space-y-8">
+                {/* Pinned Assets Grid */}
+                {pinnedAssets.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        Tệp tin đã ghim ({pinnedAssets.length})
+                      </h2>
+                      <div className="h-px flex-1 bg-border/50" />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+                      {pinnedAssets.map((asset: any) => (
+                        <div 
+                          key={asset._id}
+                          onClick={() => handleOpenFile(asset.fileUrl)}
+                          className="group h-full bg-white dark:bg-slate-900 shadow-sm border border-transparent dark:border-white/5 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden relative flex flex-col"
+                        >
+                          <div className="aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center relative group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                            {asset.fileType.includes("image") ? (
+                              <img src={asset.fileUrl} alt={asset.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            ) : (
+                              <div className="scale-[2] opacity-40">{getFileIcon(asset.fileType)}</div>
+                            )}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        togglePinAssetMutation.mutate({ assetId: asset._id, isPinned: !asset.isPinned });
+                                    }}
+                                    className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center bg-background/80 backdrop-blur-md shadow-lg transition-all focus:opacity-100 z-10",
+                                        asset.isPinned ? "opacity-100" : "text-foreground hover:text-primary"
+                                    )}
+                                >
+                                    <Star className={cn("w-4 h-4 transition-all hover:scale-110", asset.isPinned ? "fill-amber-400 text-amber-400" : "")} />
+                                </button>
+                                <Button 
+                                  size="icon" 
+                                  onClick={(e) => handleDownload(e, asset.fileUrl, asset.name)}
+                                  className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger 
+                                    onClick={(e) => e.stopPropagation()}
+                                    render={
+                                      <Button 
+                                        size="icon" 
+                                        className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                      </Button>
+                                    }
+                                  />
+                                  <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                                    <DropdownMenuItem 
+                                        className="rounded-xl font-bold cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingFile(asset);
+                                        }}
+                                    >
+                                        <Edit2 className="w-4 h-4 mr-2" />
+                                        Đổi tên tài liệu
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="rounded-xl font-bold cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedFile(asset);
+                                        }}
+                                    >
+                                        <ArrowRight className="w-4 h-4 mr-2" />
+                                        Xem chi tiết
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteAssetMutation.mutate(asset._id);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" /> Xóa tài liệu
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                          </div>
+                          <div className="p-4 flex flex-col flex-1">
+                            <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-sm">{asset.name}</h4>
+                            <div className="flex items-center justify-between mt-2 gap-2">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={asset.fileType}>
+                                    {asset.fileType.includes('spreadsheetml') ? 'XLSX' : 
+                                      asset.fileType.includes('wordprocessingml') ? 'DOCX' : 
+                                      asset.fileType.includes('presentationml') ? 'PPTX' :
+                                      asset.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(asset.fileSize / 1024).toFixed(2)} KB</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Unpinned Assets Grid */}
+                {unpinnedAssets.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                        Tệp tin ({unpinnedAssets.length})
+                      </h2>
+                      <div className="h-px flex-1 bg-border/50" />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+                      {unpinnedAssets.map((asset: any) => (
+                        <div 
+                          key={asset._id}
+                          onClick={() => handleOpenFile(asset.fileUrl)}
+                          className="group h-full bg-white dark:bg-slate-900 shadow-sm border border-transparent dark:border-white/5 rounded-[20px] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden relative flex flex-col"
+                        >
+                          <div className="aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center relative group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                            {asset.fileType.includes("image") ? (
+                              <img src={asset.fileUrl} alt={asset.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            ) : (
+                              <div className="scale-[2] opacity-40">{getFileIcon(asset.fileType)}</div>
+                            )}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        togglePinAssetMutation.mutate({ assetId: asset._id, isPinned: !asset.isPinned });
+                                    }}
+                                    className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center bg-background/80 backdrop-blur-md shadow-lg transition-all focus:opacity-100 z-10",
+                                        asset.isPinned ? "opacity-100" : "text-foreground hover:text-primary"
+                                    )}
+                                >
+                                    <Star className={cn("w-4 h-4 transition-all hover:scale-110", asset.isPinned ? "fill-amber-400 text-amber-400" : "")} />
+                                </button>
+                                <Button 
+                                  size="icon" 
+                                  onClick={(e) => handleDownload(e, asset.fileUrl, asset.name)}
+                                  className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger 
+                                    onClick={(e) => e.stopPropagation()}
+                                    render={
+                                      <Button 
+                                        size="icon" 
+                                        className="h-8 w-8 bg-background/80 backdrop-blur-md rounded-full shadow-lg text-foreground hover:text-primary transition-colors"
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                      </Button>
+                                    }
+                                  />
+                                  <DropdownMenuContent align="end" className="rounded-2xl p-2 border-none shadow-xl bg-white dark:bg-slate-900">
+                                    <DropdownMenuItem 
+                                        className="rounded-xl font-bold cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingFile(asset);
+                                        }}
+                                    >
+                                        <Edit2 className="w-4 h-4 mr-2" />
+                                        Đổi tên tài liệu
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="rounded-xl font-bold cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedFile(asset);
+                                        }}
+                                    >
+                                        <ArrowRight className="w-4 h-4 mr-2" />
+                                        Xem chi tiết
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="rounded-xl text-rose-500 focus:text-rose-500 focus:bg-rose-50 dark:focus:bg-rose-500/10 font-bold cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteAssetMutation.mutate(asset._id);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" /> Xóa tài liệu
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                          </div>
+                          <div className="p-4 flex flex-col flex-1">
+                            <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1 text-sm">{asset.name}</h4>
+                            <div className="flex items-center justify-between mt-2 gap-2">
+                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest truncate flex-1" title={asset.fileType}>
+                                    {asset.fileType.includes('spreadsheetml') ? 'XLSX' : 
+                                      asset.fileType.includes('wordprocessingml') ? 'DOCX' : 
+                                      asset.fileType.includes('presentationml') ? 'PPTX' :
+                                      asset.fileType.split('/').pop()?.split('.').pop() || 'FILE'}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-bold whitespace-nowrap">{(asset.fileSize / 1024).toFixed(2)} KB</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
@@ -524,7 +800,7 @@ export default function DocumentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAssets.map((asset: any) => (
+                    {[...pinnedAssets, ...unpinnedAssets].map((asset: any) => (
                       <tr 
                         key={asset._id} 
                         onClick={() => handleOpenFile(asset.fileUrl)}
@@ -552,6 +828,17 @@ export default function DocumentsPage() {
                              <Button 
                                variant="ghost" 
                                size="icon" 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 togglePinAssetMutation.mutate({ assetId: asset._id, isPinned: !asset.isPinned });
+                               }}
+                               className={cn("h-8 w-8", asset.isPinned ? "opacity-100 text-amber-400" : "text-muted-foreground")}
+                             >
+                               <Star className={cn("w-4 h-4 transition-all hover:scale-110", asset.isPinned ? "fill-amber-400" : "")} />
+                             </Button>
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
                                onClick={(e) => handleDownload(e, asset.fileUrl, asset.name)}
                                className="h-8 w-8"
                              >
@@ -561,12 +848,12 @@ export default function DocumentsPage() {
                              
                              <DropdownMenu>
                                 <DropdownMenuTrigger 
+                                  onClick={(e) => e.stopPropagation()}
                                   render={
                                     <Button 
                                       variant="ghost" 
                                       size="icon" 
                                       className="h-8 w-8"
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                     </Button>
@@ -615,7 +902,7 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            {filteredAssets.length === 0 && (
+            {viewMode === "list" && filteredAssets.length === 0 && (
                <div className="py-32 text-center flex flex-col items-center gap-4 opacity-40">
                  <Files className="w-16 h-16 text-muted-foreground/40" />
                  <div className="space-y-1">

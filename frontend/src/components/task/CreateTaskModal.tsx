@@ -56,9 +56,11 @@ interface CreateTaskModalProps {
   initialStatus?: TaskStatus;
   workspaceId?: string; // Dùng để fetch tasks và members
   phaseId?: string; // [FIX] Liên kết task với Phase hiện tại
+  defaultProjectId?: string; // [FIX] Liên kết task với Dự án hiện tại
   projectName?: string; // [NEW] Hiển thị trong breadcrumb
   phaseName?: string; // [NEW] Hiển thị trong breadcrumb
   isAdminOrOwner?: boolean; // [NEW] Phân quyền cho option phê duyệt
+  defaultAssigneeId?: string; // [NEW] Gán sẵn người thực hiện
 }
 
 const getInitials = (name: string) => {
@@ -92,13 +94,15 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   initialStatus = TaskStatus.TODO,
   workspaceId,
   phaseId,
+  defaultProjectId,
   projectName,
   phaseName,
   isAdminOrOwner = false,
+  defaultAssigneeId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [projectId, setProjectId] = useState<string>('');
+  const [projectId, setProjectId] = useState<string>(defaultProjectId || '');
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
   const [loggedHours, setLoggedHours] = useState<number | ''>('');
@@ -108,7 +112,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [dueTime, setDueTime] = useState('23:59');
   const [selectedParentId, setSelectedParentId] = useState<string>(parentId || 'none');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(defaultAssigneeId ? [defaultAssigneeId] : []);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -192,10 +196,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   // Set default project when list changes
   React.useEffect(() => {
-    if (projects.length > 0 && !projectId) {
-      setProjectId(projects[0]._id);
+    if (isOpen) {
+      if (defaultProjectId) {
+        setProjectId(defaultProjectId);
+      } else if (projects.length > 0 && !projectId) {
+        setProjectId(projects[0]._id);
+      }
     }
-  }, [projects, projectId]);
+  }, [isOpen, defaultProjectId, projects]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,7 +261,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSelectedSubtasks([]);
       setAiSubtaskSuggestions([]);
       setSelectedTagIds([]);
-      setSelectedAssigneeIds([]);
+      setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setRequiresApproval(false);
       onClose();
     } catch (error) {

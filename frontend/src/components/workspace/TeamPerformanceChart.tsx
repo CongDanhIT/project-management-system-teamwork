@@ -211,11 +211,20 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                     <stop offset="0%" stopColor="#FF4D4D" stopOpacity={0.9}/>
                     <stop offset="100%" stopColor="#D92D2D" stopOpacity={0.9}/>
                   </linearGradient>
+                  <pattern id="overdue-pattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <rect width="8" height="8" fill="#FF4D4D" />
+                    <line x1="0" y1="0" x2="0" y2="8" stroke="#D92D2D" strokeWidth="4" />
+                  </pattern>
                 </defs>
                 
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.03)" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd5e1" strokeOpacity={0.4} />
                 
-                <XAxis type="number" hide />
+                <XAxis 
+                  type="number" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 600 }}
+                />
                 <YAxis 
                   type="category" 
                   dataKey="name" 
@@ -252,7 +261,9 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorCompleted)" 
                   barSize={20}
-                  radius={[0, 10, 10, 0]}
+                  radius={[4, 4, 4, 4]}
+                  className="stroke-white dark:stroke-slate-900"
+                  strokeWidth={2}
                 />
                 <Bar 
                   dataKey="completedLate" 
@@ -260,7 +271,9 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorLate)" 
                   barSize={20}
-                  radius={[0, 10, 10, 0]}
+                  radius={[4, 4, 4, 4]}
+                  className="stroke-white dark:stroke-slate-900"
+                  strokeWidth={2}
                 />
                 <Bar 
                   dataKey="inProgress" 
@@ -268,15 +281,19 @@ const TeamPerformanceChart = ({ members, className }: TeamPerformanceChartProps)
                   stackId="performance" 
                   fill="url(#colorInProgress)" 
                   barSize={20}
-                  radius={[0, 10, 10, 0]}
+                  radius={[4, 4, 4, 4]}
+                  className="stroke-white dark:stroke-slate-900"
+                  strokeWidth={2}
                 />
                 <Bar 
                   dataKey="overdue" 
                   name="Quá hạn" 
                   stackId="performance" 
-                  fill="url(#colorOverdue)" 
+                  fill="url(#overdue-pattern)" 
                   barSize={20}
-                  radius={[0, 10, 10, 0]}
+                  radius={[4, 4, 4, 4]}
+                  className="stroke-white dark:stroke-slate-900"
+                  strokeWidth={2}
                 />
                 
                 {/* Ghost bar to host the Task Count Label - ensures it always shows even if segments are 0 */}
