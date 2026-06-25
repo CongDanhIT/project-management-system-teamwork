@@ -26,7 +26,15 @@ import {
   startOfDay,
   addDays,
   isWithinInterval,
-  getDaysInMonth
+  getDaysInMonth,
+  startOfWeek,
+  endOfWeek,
+  startOfQuarter,
+  endOfQuarter,
+  addWeeks,
+  subWeeks,
+  addQuarters,
+  subQuarters
 } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -61,8 +69,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Loader from "@/components/ui/Loader";
 import { cn } from "@/lib/utils";
-
-const COLUMN_WIDTH = 40;
 const ROW_HEIGHT = 48;
 
 export default function RoadmapPage() {
@@ -70,8 +76,17 @@ export default function RoadmapPage() {
   const router = useRouter();
   const workspaceId = params?.workspaceId as string;
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [zoomLevel, setZoomLevel] = useState<'week' | 'month' | 'quarter'>('month');
+  const [groupBy, setGroupBy] = useState<'project' | 'resource'>('project');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+
+  const getColWidth = () => {
+    if (zoomLevel === 'week') return 150;
+    if (zoomLevel === 'quarter') return 80;
+    return 40; // month
+  };
+  const COLUMN_WIDTH = getColWidth();
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -114,10 +129,29 @@ export default function RoadmapPage() {
   });
 
   const days = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    return eachDayOfInterval({ start, end });
-  }, [currentMonth]);
+    if (zoomLevel === 'week') {
+      const start = startOfWeek(currentMonth, { weekStartsOn: 1 });
+      const end = endOfWeek(currentMonth, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start, end });
+    }
+    if (zoomLevel === 'month') {
+      const start = startOfMonth(currentMonth);
+      const end = endOfMonth(currentMonth);
+      return eachDayOfInterval({ start, end });
+    }
+    if (zoomLevel === 'quarter') {
+      const start = startOfQuarter(currentMonth);
+      const end = endOfQuarter(currentMonth);
+      const weeks = [];
+      let current = startOfWeek(start, { weekStartsOn: 1 });
+      while (current <= end) {
+        weeks.push(current);
+        current = addWeeks(current, 1);
+      }
+      return weeks;
+    }
+    return [];
+  }, [currentMonth, zoomLevel]);
 
   // Cuộn đến ngày hiện tại nếu đang ở tháng hiện tại
   useEffect(() => {
@@ -146,11 +180,18 @@ export default function RoadmapPage() {
     });
   }, [unscheduledTasks, selectedProjectIds]);
 
-  // Lọc task chỉ hiển thị những cái có trong tháng hiện tại để tối ưu không gian
-  const tasks = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+  const { viewStart, viewEnd } = useMemo(() => {
+    if (!days.length) return { viewStart: startOfMonth(currentMonth), viewEnd: endOfMonth(currentMonth) };
+    const vs = days[0];
+    let ve = days[days.length - 1];
+    if (zoomLevel === 'quarter') {
+      ve = endOfWeek(ve, { weekStartsOn: 1 });
+    }
+    return { viewStart: startOfDay(vs), viewEnd: endOfDay(ve) };
+  }, [days, zoomLevel, currentMonth]);
 
+  // Lọc task chỉ hiển thị những cái có trong khoảng thời gian hiện tại để tối ưu không gian
+  const tasks = useMemo(() => {
     return allTasks.filter((task: any) => {
       const startRaw = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
       const endRaw = task.dueDate ? new Date(task.dueDate) : (task.startDate ? new Date(task.startDate) : null);
@@ -160,15 +201,12 @@ export default function RoadmapPage() {
       const start = startOfDay(startRaw);
       const end = startOfDay(endRaw);
 
-      // Kiểm tra giao thoa với tháng hiện tại
-      return start <= monthEnd && end >= monthStart;
+      // Kiểm tra giao thoa với khoảng thời gian hiện tại
+      return start <= viewEnd && end >= viewStart;
     });
-  }, [allTasks, currentMonth]);
+  }, [allTasks, viewStart, viewEnd]);
 
   const phasesInMonth = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-
     return allPhases.map((phase: any) => {
       let pStart = phase.startDate ? new Date(phase.startDate) : null;
       let pEnd = phase.endDate ? new Date(phase.endDate) : null;
@@ -191,9 +229,110 @@ export default function RoadmapPage() {
       if (!phase.calculatedStart || !phase.calculatedEnd) return false;
       const start = startOfDay(phase.calculatedStart);
       const end = startOfDay(phase.calculatedEnd);
-      return start <= monthEnd && end >= monthStart;
+      return start <= viewEnd && end >= viewStart;
     });
-  }, [allPhases, allTasks, currentMonth]);
+  }, [allPhases, allTasks, viewStart, viewEnd]);
+
+  const displayGroups = useMemo(() => {
+    if (groupBy === 'project') {
+      return filteredProjects.map((project: any) => {
+        const projectTasks = tasks.filter((t: any) => (t.projectId?._id?.toString() || t.projectId?.toString()) === project._id?.toString());
+        return {
+          id: project._id,
+          name: project.name,
+          icon: project.icon || "🎯",
+          tasks: projectTasks,
+          type: 'project'
+        };
+      });
+    } else {
+      const userMap = new Map();
+      if (membersData) {
+        membersData.forEach((m: any) => {
+          userMap.set(m._id, {
+            id: m._id,
+            name: m.name,
+            avatar: m.profilePicture,
+            tasks: [],
+            type: 'resource'
+          });
+        });
+      }
+
+      tasks.forEach((task: any) => {
+        if (task.assignedTo && task.assignedTo.length > 0) {
+          const user = task.assignedTo[0];
+          const userId = user._id?.toString() || user.toString();
+          if (!userMap.has(userId)) {
+            userMap.set(userId, {
+              id: userId,
+              name: user.name || 'Unknown',
+              avatar: user.profilePicture,
+              tasks: [],
+              type: 'resource'
+            });
+          }
+          userMap.get(userId).tasks.push(task);
+        } else {
+          if (!userMap.has('unassigned')) {
+            userMap.set('unassigned', {
+              id: 'unassigned',
+              name: 'Chưa phân công',
+              avatar: null,
+              tasks: [],
+              type: 'resource'
+            });
+          }
+          userMap.get('unassigned').tasks.push(task);
+        }
+      });
+
+      return Array.from(userMap.values());
+    }
+  }, [groupBy, filteredProjects, tasks, membersData]);
+
+  const getBarPosition = (startDate: Date, endDate: Date) => {
+    const barStart = startDate < viewStart ? viewStart : startDate;
+    const barEnd = endDate > viewEnd ? viewEnd : endDate;
+
+    let startOffset = differenceInDays(barStart, viewStart);
+    let duration = differenceInDays(barEnd, barStart) + 1;
+
+    if (zoomLevel === 'quarter') {
+      startOffset = startOffset / 7;
+      duration = duration / 7;
+    }
+
+    return {
+      left: startOffset * COLUMN_WIDTH,
+      width: duration * COLUMN_WIDTH
+    };
+  };
+
+  const handlePrevDate = () => {
+    if (zoomLevel === 'week') setCurrentMonth(prev => subWeeks(prev, 1));
+    else if (zoomLevel === 'month') setCurrentMonth(prev => subMonths(prev, 1));
+    else if (zoomLevel === 'quarter') setCurrentMonth(prev => subQuarters(prev, 1));
+  };
+
+  const handleNextDate = () => {
+    if (zoomLevel === 'week') setCurrentMonth(prev => addWeeks(prev, 1));
+    else if (zoomLevel === 'month') setCurrentMonth(prev => addMonths(prev, 1));
+    else if (zoomLevel === 'quarter') setCurrentMonth(prev => addQuarters(prev, 1));
+  };
+
+  const getDisplayDateText = () => {
+    if (zoomLevel === 'week') {
+      const start = startOfWeek(currentMonth, { weekStartsOn: 1 });
+      const end = endOfWeek(currentMonth, { weekStartsOn: 1 });
+      return `${format(start, "dd/MM")} - ${format(end, "dd/MM, yyyy")}`;
+    }
+    if (zoomLevel === 'quarter') {
+      const q = Math.floor(currentMonth.getMonth() / 3) + 1;
+      return `Quý ${q}, ${currentMonth.getFullYear()}`;
+    }
+    return format(currentMonth, "MMMM, yyyy", { locale: vi });
+  };
 
   const handleNavigateToProject = (projectId: string) => {
     router.push(`/workspace/${workspaceId}/projects/${projectId}/phases`);
@@ -220,21 +359,63 @@ export default function RoadmapPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              onClick={handlePrevDate}
               className="h-8 w-8 hover:bg-background shadow-sm"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div className="px-4 text-sm font-medium min-w-[140px] text-center">
-              {format(currentMonth, "MMMM, yyyy", { locale: vi })}
+              {getDisplayDateText()}
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              onClick={handleNextDate}
               className="h-8 w-8 hover:bg-background shadow-sm"
             >
               <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center bg-muted/50 rounded-xl border border-border p-1">
+            <Button
+              variant={zoomLevel === 'week' ? 'secondary' : 'ghost'}
+              onClick={() => setZoomLevel('week')}
+              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'week' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+            >
+              Tuần
+            </Button>
+            <Button
+              variant={zoomLevel === 'month' ? 'secondary' : 'ghost'}
+              onClick={() => setZoomLevel('month')}
+              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'month' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+            >
+              Tháng
+            </Button>
+            <Button
+              variant={zoomLevel === 'quarter' ? 'secondary' : 'ghost'}
+              onClick={() => setZoomLevel('quarter')}
+              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'quarter' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+            >
+              Quý
+            </Button>
+          </div>
+
+          <div className="flex items-center bg-muted/50 rounded-xl border border-border p-1 mr-2">
+            <Button
+              variant={groupBy === 'project' ? 'secondary' : 'ghost'}
+              onClick={() => setGroupBy('project')}
+              className={cn("h-8 px-3 text-xs shadow-sm gap-2", groupBy === 'project' ? "bg-background text-primary" : "hover:bg-background/50 text-muted-foreground")}
+            >
+              <Target className="w-3.5 h-3.5" /> Dự án
+            </Button>
+            <Button
+              variant={groupBy === 'resource' ? 'secondary' : 'ghost'}
+              onClick={() => setGroupBy('resource')}
+              className={cn("h-8 px-3 text-xs shadow-sm gap-2", groupBy === 'resource' ? "bg-background text-primary" : "hover:bg-background/50 text-muted-foreground")}
+            >
+              <Avatar className="w-4 h-4"><AvatarImage src="" /><AvatarFallback className="bg-primary/20 text-primary text-[8px]"><MoreHorizontal className="w-2 h-2"/></AvatarFallback></Avatar>
+              Thành viên
             </Button>
           </div>
 
@@ -361,26 +542,36 @@ export default function RoadmapPage() {
           </div>
           <ScrollArea className="flex-1">
             <div className="py-3">
-              {filteredProjects.map((project: any) => {
-                const projectTasks = tasks.filter((t: any) => (t.projectId?._id?.toString() || t.projectId?.toString()) === project._id?.toString());
+              {displayGroups.map((group: any) => {
+                const groupTasks = group.tasks;
                 return (
-                  <div key={project._id} className="mb-4">
+                  <div key={group.id} className="mb-4">
                     <div
                       className="h-12 px-6 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer group transition-all duration-200 border-l-2 border-l-transparent hover:border-l-primary relative overflow-hidden"
-                      onClick={() => handleNavigateToProject(project._id)}
+                      onClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
                     >
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 relative z-10" />
-                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate flex-1 relative z-10">{project.name}</span>
-                      <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400 relative z-10" />
+                      {group.type === 'resource' && group.avatar !== undefined ? (
+                        <Avatar className="w-6 h-6 border border-white dark:border-slate-900 shadow-sm shrink-0 relative z-10">
+                          <AvatarImage src={group.avatar} />
+                          <AvatarFallback className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-500 font-bold">
+                            {group.name?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 relative z-10" />
+                      )}
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate flex-1 relative z-10">{group.name}</span>
+                      {group.type === 'project' && <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity text-slate-400 relative z-10" />}
                       
-                      {/* Watermark Icon */}
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[44px] opacity-[0.03] group-hover:opacity-10 group-hover:scale-110 group-hover:-translate-x-2 transition-all duration-500 ease-out pointer-events-none select-none z-0 grayscale group-hover:grayscale-0">
-                        {project.icon || "🎯"}
-                      </div>
+                      {group.type === 'project' && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[44px] opacity-[0.03] group-hover:opacity-10 group-hover:scale-110 group-hover:-translate-x-2 transition-all duration-500 ease-out pointer-events-none select-none z-0 grayscale group-hover:grayscale-0">
+                          {group.icon}
+                        </div>
+                      )}
                     </div>
-                    {/* Tasks of this project */}
+                    {/* Tasks of this project/resource */}
                     <div className="relative">
-                    {projectTasks.map((task: any, index: number) => {
+                    {groupTasks.map((task: any, index: number) => {
                       const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
                       let badgeColorClass = "bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400";
                       if (task.status === "DONE") badgeColorClass = "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400";
@@ -391,12 +582,12 @@ export default function RoadmapPage() {
                         <div
                           key={task._id}
                           className="h-12 ml-10 mr-2 pl-3 pr-3 flex items-center rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all duration-200 cursor-pointer relative"
-                          onClick={() => handleNavigateToProject(project._id)}
+                          onClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
                         >
                           {/* Tree guide lines */}
                           <div className={cn(
                             "absolute left-[-13px] top-0 w-px bg-border",
-                            index === projectTasks.length - 1 ? "bottom-1/2" : "bottom-0"
+                            index === groupTasks.length - 1 ? "bottom-1/2" : "bottom-0"
                           )} />
                           <div className="absolute left-[-13px] top-1/2 w-3 h-px bg-border" />
 
@@ -493,32 +684,26 @@ export default function RoadmapPage() {
 
               {/* Content Rows */}
               <div className="py-2">
-                {filteredProjects.map((project: any) => (
-                  <div key={project._id} className="mb-4 relative">
+                {displayGroups.map((group: any) => (
+                  <div key={group.id} className="mb-4 relative">
                     {/* Project timeline background row */}
                     <div className="h-12 relative border-b border-border/30">
                       {/* Phase Shading */}
-                      {phasesInMonth
-                        .filter((phase: any) => (phase.projectId?._id?.toString() || phase.projectId?.toString()) === project._id?.toString())
+                      {group.type === 'project' && phasesInMonth
+                        .filter((phase: any) => (phase.projectId?._id?.toString() || phase.projectId?.toString()) === group.id?.toString())
                         .map((phase: any) => {
                           const pStart = startOfDay(new Date(phase.calculatedStart));
                           const pEnd = startOfDay(new Date(phase.calculatedEnd));
-                          const monthStart = startOfMonth(currentMonth);
-                          const monthEnd = endOfMonth(currentMonth);
-
-                          const barStart = pStart < monthStart ? monthStart : pStart;
-                          const barEnd = pEnd > monthEnd ? monthEnd : pEnd;
-
-                          const startOffset = differenceInDays(barStart, monthStart);
-                          const duration = differenceInDays(barEnd, barStart) + 1;
+                          
+                          const pos = getBarPosition(pStart, pEnd);
 
                           return (
                             <div
                               key={phase._id}
                               className="absolute inset-y-0 bg-primary/[0.03] border-x border-primary/10 flex items-start justify-start px-2 py-1"
                               style={{
-                                left: startOffset * COLUMN_WIDTH,
-                                width: duration * COLUMN_WIDTH
+                                left: pos.left,
+                                width: pos.width
                               }}
                             >
                               <span className="text-[8px] font-bold uppercase text-primary/30 truncate tracking-tighter">
@@ -527,10 +712,51 @@ export default function RoadmapPage() {
                             </div>
                           );
                         })}
+
+                      {/* Resource Overload Heatmap */}
+                      {group.type === 'resource' && days.map((day) => {
+                        const dayStart = startOfDay(day);
+                        let dayEnd = endOfDay(day);
+                        if (zoomLevel === 'quarter') {
+                          dayEnd = endOfDay(endOfWeek(day, { weekStartsOn: 1 }));
+                        }
+
+                        // Tính số task song song
+                        const activeTasks = group.tasks.filter((t: any) => {
+                          const tStartRaw = t.startDate ? new Date(t.startDate) : (t.dueDate ? new Date(t.dueDate) : null);
+                          const tEndRaw = t.dueDate ? new Date(t.dueDate) : (t.startDate ? new Date(t.startDate) : null);
+                          if (!tStartRaw || !tEndRaw || isNaN(tStartRaw.getTime()) || isNaN(tEndRaw.getTime())) return false;
+                          
+                          const tStart = startOfDay(tStartRaw);
+                          const tEnd = startOfDay(tEndRaw);
+                          
+                          return tStart <= dayEnd && tEnd >= dayStart;
+                        });
+
+                        // 3 tasks song song là quá tải
+                        if (activeTasks.length >= 3) {
+                          const pos = getBarPosition(dayStart, dayEnd);
+                          return (
+                            <div
+                              key={`heat-${day.toString()}`}
+                              className="absolute inset-y-0 bg-rose-500/10 border-x border-rose-500/20"
+                              style={{
+                                left: pos.left,
+                                width: pos.width
+                              }}
+                            >
+                              <div className="absolute inset-x-0 bottom-1 flex justify-center">
+                                <span className="text-[9px] font-bold text-rose-500 opacity-60">Overload</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
 
-                    {/* Tasks within project */}
-                    {tasks.filter((t: any) => (t.projectId?._id?.toString() || t.projectId?.toString()) === project._id?.toString()).map((task: any) => {
+                    {/* Tasks within project/resource */}
+                    {group.tasks.map((task: any) => {
                       const startDateRaw = task.startDate ? new Date(task.startDate) : (task.dueDate ? new Date(task.dueDate) : null);
                       const endDateRaw = task.dueDate ? new Date(task.dueDate) : (task.startDate ? new Date(task.startDate) : null);
 
@@ -539,22 +765,12 @@ export default function RoadmapPage() {
                       const startDate = startOfDay(startDateRaw);
                       const endDate = startOfDay(endDateRaw);
 
-                      // Tháng hiện tại
-                      const monthStart = startOfMonth(currentMonth);
-                      const monthEnd = endOfMonth(currentMonth);
+                      // Logic kiểm tra giao thoa: Task bắt đầu trước khi viewEnd VÀ kết thúc sau khi viewStart
+                      const isTaskInView = startDate <= viewEnd && endDate >= viewStart;
 
-                      // Logic kiểm tra giao thoa: Task bắt đầu trước khi tháng kết thúc VÀ kết thúc sau khi tháng bắt đầu
-                      const isTaskInMonth = startDate <= monthEnd && endDate >= monthStart;
+                      if (!isTaskInView) return null;
 
-                      if (!isTaskInMonth) return null;
-
-                      // Tính toán vị trí hiển thị thực tế trên thanh timeline (cắt bớt nếu tràn lề tháng)
-                      const barStart = startDate < monthStart ? monthStart : startDate;
-                      const barEnd = endDate > monthEnd ? monthEnd : endDate;
-
-                      const startOffset = differenceInDays(barStart, monthStart);
-                      const displayDuration = differenceInDays(barEnd, barStart) + 1;
-
+                      const pos = getBarPosition(startDate, endDate);
                       const isOverdue = task.status !== "DONE" && endDate < startOfDay(new Date());
 
                       return (
@@ -573,10 +789,10 @@ export default function RoadmapPage() {
                                           "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
                                   )}
                                   style={{
-                                    left: startOffset * COLUMN_WIDTH + 4,
-                                    width: displayDuration * COLUMN_WIDTH - 8
+                                    left: pos.left + 4,
+                                    width: pos.width - 8
                                   }}
-                                  onClick={() => handleNavigateToProject(project._id)}
+                                  onClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
                                 >
                                   <div className={cn(
                                     "w-1.5 h-1.5 rounded-full ml-2",
