@@ -7,7 +7,6 @@ import { getWorkspaceRoadmap } from "@/services/roadmap.service";
 import { workspaceService } from "@/services/workspace.service";
 import { taskService } from "@/services/task.service";
 import { toast } from "sonner";
-import { toast } from "sonner";
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
 import { DndContext, DragEndEvent, useDroppable, useDraggable, DragOverlay } from '@dnd-kit/core';
@@ -27,6 +26,7 @@ import {
   isWeekend,
   differenceInDays,
   startOfDay,
+  endOfDay,
   addDays,
   isWithinInterval,
   getDaysInMonth,
@@ -41,7 +41,7 @@ import {
 } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
-  Map,
+  Map as MapIcon,
   ChevronLeft,
   ChevronRight,
   PanelRightOpen,
@@ -83,18 +83,7 @@ function DroppableRow({ id, children, className }: any) {
   );
 }
 
-function DraggableTask({ task, onClick }: any) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task._id,
-    data: task,
-  });
-  
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: isDragging ? 50 : 'auto',
-    opacity: isDragging ? 0.5 : 1,
-  } : undefined;
-
+function TaskCard({ task, className }: { task: any, className?: string }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
   let badgeColorClass = "bg-blue-100/80 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400";
   if (task.status === "DONE") badgeColorClass = "bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400";
@@ -103,15 +92,10 @@ function DraggableTask({ task, onClick }: any) {
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
       className={cn(
-        "p-3 rounded-xl bg-card border hover:border-primary/20 hover:shadow-md transition-all cursor-grab active:cursor-grabbing group flex flex-col gap-1.5",
-        isDragging ? "shadow-xl border-primary ring-2 ring-primary/20 opacity-50 z-50" : "border-border"
+        "p-3 rounded-xl bg-card border group flex flex-col gap-1.5 w-full",
+        className
       )}
-      onClick={onClick}
     >
       <div className="flex items-center justify-between gap-3 pointer-events-none">
         <div className="flex items-center gap-2 min-w-0">
@@ -132,6 +116,35 @@ function DraggableTask({ task, onClick }: any) {
           <span className="font-medium text-foreground/70">{task.projectId?.name}</span> {task.phaseId && `| ${task.phaseId.name}`}
         </span>
       </div>
+    </div>
+  );
+}
+
+function DraggableTask({ task, onClick }: any) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task._id,
+    data: task,
+  });
+  
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-all rounded-xl",
+        isDragging && "shadow-xl ring-2 ring-primary/20 opacity-50 z-50"
+      )}
+      onClick={onClick}
+    >
+      <TaskCard task={task} className={isDragging ? "border-primary" : "hover:border-primary/20 border-border"} />
     </div>
   );
 }
@@ -165,6 +178,8 @@ export default function RoadmapPage() {
     enabled: !!workspaceId,
   });
 
+  const [activeTask, setActiveTask] = useState<any>(null);
+
   const handleDragResizeTask = async (task: any, newStartDate: Date, newDueDate: Date) => {
     // Optimistic Update
     queryClient.setQueryData(["workspace-roadmap", workspaceId], (oldData: any) => {
@@ -193,9 +208,21 @@ export default function RoadmapPage() {
     }
   };
 
+  const handleDragStart = (event: any) => {
+    const { active } = event;
+    const task = unscheduledTasks.find((t: any) => t._id === active.id);
+    if (task) setActiveTask(task);
+  };
+
+  const handleDragCancel = () => {
+    setActiveTask(null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over, pointerCoordinates } = event;
-    if (!over || !pointerCoordinates) return;
+    setActiveTask(null);
+    const { active, over } = event;
+    const translatedRect = active.rect.current?.translated;
+    if (!over || !translatedRect) return;
     
     const container = document.getElementById("timeline-grid-container");
     if (!container) return;
@@ -205,7 +232,7 @@ export default function RoadmapPage() {
     if (!scrollContainer) return;
 
     // Use absolute X coordinate offset by scroll position
-    const localX = pointerCoordinates.x - rect.left;
+    const localX = translatedRect.left - rect.left;
     
     let dayIndex = Math.floor(localX / COLUMN_WIDTH);
     if (dayIndex < 0) dayIndex = 0;
@@ -229,15 +256,16 @@ export default function RoadmapPage() {
     if (groupBy === 'project') {
       updates.projectId = targetGroup;
     } else {
-      updates.assignedTo = [targetGroup];
+      updates.assignedTo = targetGroup === 'unassigned' ? [] : [targetGroup];
     }
 
-    handleUpdateTask(taskId, updates);
+    handleUpdateTask(taskId, updates, task);
   };
 
-  const handleUpdateTask = async (taskId: string, data: any) => {
+  const handleUpdateTask = async (taskId: string, data: any, taskObj?: any) => {
     try {
-      const pId = typeof selectedTask?.projectId === 'object' ? selectedTask.projectId._id : selectedTask?.projectId;
+      const targetTask = taskObj || selectedTask;
+      const pId = typeof targetTask?.projectId === 'object' ? targetTask.projectId._id : targetTask?.projectId;
       await taskService.updateTask(workspaceId, pId || 'any', taskId, data);
       queryClient.invalidateQueries({ queryKey: ["workspace-roadmap", workspaceId] });
       toast.success("Đã cập nhật công việc");
@@ -290,13 +318,18 @@ export default function RoadmapPage() {
 
   // Cuộn đến ngày hiện tại nếu đang ở tháng hiện tại
   useEffect(() => {
-    if (isToday(new Date()) && format(currentMonth, 'MM-yyyy') === format(new Date(), 'MM-yyyy')) {
-      const todayIndex = new Date().getDate() - 1;
-      if (scrollRef.current) {
-        scrollRef.current.scrollLeft = (todayIndex * COLUMN_WIDTH) - 200;
+    if (isLoading || !days.length) return;
+    const todayIndex = days.findIndex(day => {
+      if (zoomLevel === 'quarter') {
+        return isWithinInterval(new Date(), { start: day, end: endOfWeek(day, { weekStartsOn: 1 }) });
       }
+      return isToday(day);
+    });
+    
+    if (todayIndex !== -1 && scrollRef.current) {
+      scrollRef.current.scrollLeft = (todayIndex * COLUMN_WIDTH) - 200;
     }
-  }, [currentMonth, isLoading]);
+  }, [currentMonth, zoomLevel, isLoading, days, COLUMN_WIDTH]);
 
   const { projects = [], tasks: allTasks = [], unscheduledTasks = [], phases: allPhases = [] } = data || {};
 
@@ -381,18 +414,23 @@ export default function RoadmapPage() {
         };
       });
     } else {
-      const userMap = new Map();
-      if (membersData) {
-        membersData.forEach((m: any) => {
-          userMap.set(m._id, {
-            id: m._id,
-            name: m.name,
-            avatar: m.profilePicture,
-            tasks: [],
-            type: 'resource'
-          });
+      const userMap = new Map<string, any>();
+      const membersList = membersData?.members || (Array.isArray(membersData) ? membersData : []);
+      membersList.forEach((m: any) => {
+        const user = m.userId;
+        if (!user) return; // Bỏ qua các thành viên chưa tham gia (Pending Invites) hoặc lỗi data
+        
+        const mId = user._id || user.id;
+        if (!mId) return;
+        
+        userMap.set(mId, {
+          id: mId,
+          name: user.name || user.email || 'Thành viên',
+          avatar: user.profilePicture,
+          tasks: [],
+          type: 'resource'
         });
-      }
+      });
 
       tasks.forEach((task: any) => {
         if (task.assignedTo && task.assignedTo.length > 0) {
@@ -476,13 +514,13 @@ export default function RoadmapPage() {
   if (isLoading) return <div className="h-full flex items-center justify-center"><Loader /></div>;
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
       {/* Header */}
       <header className="p-6 border-b border-border flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10">
-            <Map className="w-6 h-6 text-primary" />
+            <MapIcon className="w-6 h-6 text-primary" />
           </div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Lộ trình Workspace</h1>
@@ -513,50 +551,74 @@ export default function RoadmapPage() {
             </Button>
           </div>
 
-          <div className="flex items-center bg-muted/50 rounded-xl border border-border p-1">
+          <div className="flex items-center bg-muted/50 rounded-xl border border-border/50 p-1 shadow-inner mr-2">
             <Button
-              variant={zoomLevel === 'week' ? 'secondary' : 'ghost'}
+              variant="ghost"
               onClick={() => setZoomLevel('week')}
-              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'week' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+              className={cn(
+                "h-8 px-3 text-xs transition-all duration-200", 
+                zoomLevel === 'week' 
+                  ? "bg-white dark:bg-slate-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold rounded-lg" 
+                  : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-muted-foreground shadow-none"
+              )}
             >
               Tuần
             </Button>
             <Button
-              variant={zoomLevel === 'month' ? 'secondary' : 'ghost'}
+              variant="ghost"
               onClick={() => setZoomLevel('month')}
-              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'month' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+              className={cn(
+                "h-8 px-3 text-xs transition-all duration-200", 
+                zoomLevel === 'month' 
+                  ? "bg-white dark:bg-slate-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold rounded-lg" 
+                  : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-muted-foreground shadow-none"
+              )}
             >
               Tháng
             </Button>
             <Button
-              variant={zoomLevel === 'quarter' ? 'secondary' : 'ghost'}
+              variant="ghost"
               onClick={() => setZoomLevel('quarter')}
-              className={cn("h-8 px-3 text-xs shadow-sm", zoomLevel === 'quarter' ? "bg-background text-foreground" : "hover:bg-background/50 text-muted-foreground")}
+              className={cn(
+                "h-8 px-3 text-xs transition-all duration-200", 
+                zoomLevel === 'quarter' 
+                  ? "bg-white dark:bg-slate-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold rounded-lg" 
+                  : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-muted-foreground shadow-none"
+              )}
             >
               Quý
             </Button>
           </div>
 
-          <div className="flex items-center bg-muted/50 rounded-xl border border-border p-1 mr-2">
+          <div className="flex items-center bg-muted/50 rounded-xl border border-border/50 p-1 shadow-inner mr-2">
             <Button
-              variant={groupBy === 'project' ? 'secondary' : 'ghost'}
+              variant="ghost"
               onClick={() => setGroupBy('project')}
-              className={cn("h-8 px-3 text-xs shadow-sm gap-2", groupBy === 'project' ? "bg-background text-primary" : "hover:bg-background/50 text-muted-foreground")}
+              className={cn(
+                "h-8 px-3 text-xs transition-all duration-200", 
+                groupBy === 'project' 
+                  ? "bg-white dark:bg-slate-800 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold rounded-lg" 
+                  : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-muted-foreground shadow-none"
+              )}
             >
-              <Target className="w-3.5 h-3.5" /> Dự án
+              Dự án
             </Button>
             <Button
-              variant={groupBy === 'resource' ? 'secondary' : 'ghost'}
+              variant="ghost"
               onClick={() => setGroupBy('resource')}
-              className={cn("h-8 px-3 text-xs shadow-sm gap-2", groupBy === 'resource' ? "bg-background text-primary" : "hover:bg-background/50 text-muted-foreground")}
+              className={cn(
+                "h-8 px-3 text-xs transition-all duration-200", 
+                groupBy === 'resource' 
+                  ? "bg-white dark:bg-slate-800 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold rounded-lg" 
+                  : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-muted-foreground shadow-none"
+              )}
             >
-              <Avatar className="w-4 h-4"><AvatarImage src="" /><AvatarFallback className="bg-primary/20 text-primary text-[8px]"><MoreHorizontal className="w-2 h-2"/></AvatarFallback></Avatar>
               Thành viên
             </Button>
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-[180px] h-9 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium text-xs shadow-sm flex items-center px-3 hover:bg-muted/50 transition-colors">
+            <DropdownMenuTrigger className="w-[180px] h-9 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium text-xs shadow-[0_2px_4px_rgba(0,0,0,0.02)] flex items-center px-3 hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-2 w-full min-w-0">
                 <Filter className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span className="flex-1 text-left truncate">
@@ -605,7 +667,7 @@ export default function RoadmapPage() {
 
           <div className="h-6 w-px bg-border mx-2" />
 
-          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen} modal={false}>
             <SheetTrigger
               render={
                 <Button variant="outline" className="gap-2 border-border bg-background shadow-sm hover:bg-muted">
@@ -619,7 +681,7 @@ export default function RoadmapPage() {
                 </Button>
               }
             />
-            <SheetContent className="bg-background border-l border-border text-foreground !w-[400px] sm:!w-[400px] !max-w-[400px]">
+            <SheetContent hideOverlay className="bg-background border-l border-border text-foreground !w-[400px] sm:!w-[400px] !max-w-[400px] shadow-2xl">
               <SheetHeader className="mb-6">
                 <SheetTitle className="text-foreground flex items-center gap-2">
                   <Inbox className="w-5 h-5 text-muted-foreground" />
@@ -788,16 +850,35 @@ export default function RoadmapPage() {
               </div>
 
               {/* Today Marker */}
-              {format(currentMonth, 'MM-yyyy') === format(new Date(), 'MM-yyyy') && (
-                <div
-                  className="absolute inset-y-0 z-10 w-[1.5px] bg-primary/30 pointer-events-none"
-                  style={{ left: (new Date().getDate() - 1) * COLUMN_WIDTH + (COLUMN_WIDTH / 2) }}
-                >
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary text-[9px] font-bold text-white shadow-[0_0_10px_rgba(3,93,91,0.4)] mt-2 tracking-widest uppercase">
-                    Hôm nay
+              {(() => {
+                const todayIndex = days.findIndex(day => {
+                  if (zoomLevel === 'quarter') {
+                    return isWithinInterval(new Date(), { start: day, end: endOfWeek(day, { weekStartsOn: 1 }) });
+                  }
+                  return isToday(day);
+                });
+
+                if (todayIndex === -1) return null;
+
+                let offsetPercentage = 0.5; // middle of the column
+                if (zoomLevel === 'quarter') {
+                   const today = new Date();
+                   const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
+                   const diffDays = differenceInDays(today, startOfThisWeek);
+                   offsetPercentage = (diffDays + 0.5) / 7;
+                }
+
+                return (
+                  <div
+                    className="absolute inset-y-0 z-10 w-[1.5px] bg-primary/40 pointer-events-none"
+                    style={{ left: todayIndex * COLUMN_WIDTH + (COLUMN_WIDTH * offsetPercentage) }}
+                  >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary text-[9px] font-bold text-white shadow-[0_0_10px_rgba(3,93,91,0.4)] mt-2 tracking-widest uppercase whitespace-nowrap">
+                      Hôm nay
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Content Rows */}
               <div className="py-2">
@@ -894,74 +975,70 @@ export default function RoadmapPage() {
                         <div key={task._id} className="h-12 relative flex items-center border-b border-border/5">
                           <TooltipProvider>
                             <Tooltip delayDuration={0}>
-                              <TooltipTrigger asChild>
-                                <div className="absolute inset-y-0" style={{ left: pos.left, width: pos.width }}>
-                                  <Rnd
-                                    dragAxis="x"
-                                    bounds="parent"
-                                    enableResizing={{ left: true, right: true, top: false, bottom: false, topLeft: false, topRight: false, bottomLeft: false, bottomRight: false }}
-                                    position={{ x: 4, y: 10 }}
-                                    size={{ width: pos.width - 8, height: 28 }}
-                                    onDragStop={(e, d) => {
-                                      const deltaX = d.x - 4;
-                                      let daysShifted = Math.round(deltaX / COLUMN_WIDTH);
-                                      if (zoomLevel === 'quarter') daysShifted *= 7;
-                                      
-                                      if (daysShifted !== 0) {
-                                        const newStart = addDays(startDate, daysShifted);
-                                        const newEnd = addDays(endDate, daysShifted);
-                                        handleDragResizeTask(task, newStart, newEnd);
-                                      }
-                                    }}
-                                    onResizeStop={(e, direction, ref, delta, position) => {
-                                      let newStart = startDate;
-                                      let newEnd = endDate;
-                                      
-                                      if (direction === 'left') {
-                                        const deltaX = position.x - 4;
-                                        let daysShifted = Math.round(deltaX / COLUMN_WIDTH);
-                                        if (zoomLevel === 'quarter') daysShifted *= 7;
-                                        newStart = addDays(startDate, daysShifted);
-                                      } else if (direction === 'right') {
-                                        const deltaWidth = parseInt(ref.style.width, 10) - (pos.width - 8);
-                                        let daysAdded = Math.round(deltaWidth / COLUMN_WIDTH);
-                                        if (zoomLevel === 'quarter') daysAdded *= 7;
-                                        newEnd = addDays(endDate, daysAdded);
-                                      }
-                                      
-                                      if (newStart.getTime() !== startDate.getTime() || newEnd.getTime() !== endDate.getTime()) {
-                                        handleDragResizeTask(task, newStart, newEnd);
-                                      }
-                                    }}
-                                    className="z-10 group"
+                              <Rnd
+                                dragAxis="x"
+                                bounds="parent"
+                                enableResizing={{ left: true, right: true, top: false, bottom: false, topLeft: false, topRight: false, bottomLeft: false, bottomRight: false }}
+                                position={{ x: pos.left + 4, y: 10 }}
+                                size={{ width: pos.width - 8, height: 28 }}
+                                onDragStop={(e, d) => {
+                                  const deltaX = d.x - (pos.left + 4);
+                                  let daysShifted = Math.round(deltaX / COLUMN_WIDTH);
+                                  if (zoomLevel === 'quarter') daysShifted *= 7;
+                                  
+                                  if (daysShifted !== 0) {
+                                    const newStart = addDays(startDate, daysShifted);
+                                    const newEnd = addDays(endDate, daysShifted);
+                                    handleDragResizeTask(task, newStart, newEnd);
+                                  }
+                                }}
+                                onResizeStop={(e, direction, ref, delta, position) => {
+                                  let daysChanged = Math.round(delta.width / COLUMN_WIDTH);
+                                  if (zoomLevel === 'quarter') daysChanged *= 7;
+
+                                  if (daysChanged !== 0) {
+                                    let newStart = startDate;
+                                    let newEnd = endDate;
+                                    if (direction === 'right') {
+                                      newEnd = addDays(endDate, daysChanged);
+                                    } else if (direction === 'left') {
+                                      newStart = addDays(startDate, -daysChanged);
+                                    }
+                                    
+                                    if (newStart.getTime() !== startDate.getTime() || newEnd.getTime() !== endDate.getTime()) {
+                                      handleDragResizeTask(task, newStart, newEnd);
+                                    }
+                                  }
+                                }}
+                                className="z-10 group absolute"
+                              >
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={cn(
+                                      "h-full w-full rounded-md flex items-center px-1 border cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
+                                      task.status === "DONE" ? "bg-gradient-to-r from-emerald-100 to-emerald-50/50 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/10" :
+                                        isOverdue ? "bg-gradient-to-r from-amber-100 to-amber-50/50 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-500/20 shadow-amber-500/10" :
+                                          task.priority === "HIGH" ? "bg-gradient-to-r from-rose-100 to-rose-50/50 dark:from-rose-500/20 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/20 shadow-rose-500/10" :
+                                            "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
+                                    )}
+                                    onDoubleClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
                                   >
-                                    <div
-                                      className={cn(
-                                        "h-full w-full rounded-md flex items-center px-1 border cursor-pointer hover:scale-[1.02] transition-all shadow-sm",
-                                        task.status === "DONE" ? "bg-gradient-to-r from-emerald-100 to-emerald-50/50 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/10" :
-                                          isOverdue ? "bg-gradient-to-r from-amber-100 to-amber-50/50 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-500/20 shadow-amber-500/10" :
-                                            task.priority === "HIGH" ? "bg-gradient-to-r from-rose-100 to-rose-50/50 dark:from-rose-500/20 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/20 shadow-rose-500/10" :
-                                              "bg-gradient-to-r from-blue-100 to-blue-50/50 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-500/20 shadow-blue-500/10"
-                                      )}
-                                      onDoubleClick={() => group.type === 'project' && handleNavigateToProject(group.id)}
-                                    >
-                                      <div className={cn(
-                                        "w-1.5 h-1.5 rounded-full ml-2",
-                                        task.status === "DONE" ? "bg-emerald-500" :
-                                          isOverdue ? "bg-amber-500 animate-pulse" :
-                                            task.priority === "HIGH" ? "bg-rose-500" :
-                                              "bg-blue-500"
-                                      )} />
-                                      <Avatar className="h-5 w-5 ml-auto border border-background pointer-events-none">
-                                        <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
-                                        <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
-                                          {task.assignedTo?.[0]?.name?.[0]}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    </div>
-                                  </Rnd>
-                                </div>
-                              </TooltipTrigger>
+                                    <div className={cn(
+                                      "w-1.5 h-1.5 rounded-full ml-2",
+                                      task.status === "DONE" ? "bg-emerald-500" :
+                                        isOverdue ? "bg-amber-500 animate-pulse" :
+                                          task.priority === "HIGH" ? "bg-rose-500" :
+                                            "bg-blue-500"
+                                    )} />
+                                    <Avatar className="h-5 w-5 ml-auto border border-background pointer-events-none">
+                                      <AvatarImage src={task.assignedTo?.[0]?.profilePicture} />
+                                      <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
+                                        {task.assignedTo?.[0]?.name?.[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </div>
+                                </TooltipTrigger>
+                              </Rnd>
                               <TooltipContent side="top" className="bg-popover border-border text-popover-foreground p-3 rounded-xl shadow-2xl z-50">
                                 <div className="space-y-2 min-w-[200px]">
                                   <div className="flex items-center justify-between gap-4">
@@ -1060,9 +1137,20 @@ export default function RoadmapPage() {
           setSelectedTask(null);
         }}
         task={selectedTask}
-        onUpdateTask={handleUpdateTask}
-        onDeleteTask={handleDeleteTask}
+        onUpdate={handleUpdateTask}
+        onDelete={handleDeleteTask}
+        members={membersData?.members || []}
+        tasks={allTasks || []}
+        isAdminOrOwner={true}
       />
+      </div>
+      <DragOverlay>
+        {activeTask ? (
+          <div className="w-[300px] pointer-events-none opacity-80 scale-105 transition-transform shadow-2xl rounded-xl">
+            <TaskCard task={activeTask} className="border-primary" />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

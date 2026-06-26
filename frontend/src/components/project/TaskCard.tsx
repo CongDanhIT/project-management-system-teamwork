@@ -89,8 +89,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'group bg-white dark:bg-surface-primary backdrop-blur-xl border border-border-subtle p-5 rounded-2xl cursor-pointer transition-all duration-200 shadow-depth-1',
-        'shadow-glow-combined hover:shadow-glow-combined-strong'
+        'group bg-white dark:bg-surface-primary backdrop-blur-xl border border-border-subtle p-5 rounded-2xl cursor-pointer transition-all duration-300 shadow-depth-1',
+        'shadow-glow-combined hover:shadow-glow-combined-strong hover:-translate-y-1 hover:border-brand-primary/30 dark:hover:border-brand-secondary/30'
       )}
     >
       {isSmartScannerActive && workspaceId && projectId && (
@@ -108,9 +108,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, subTasks = [], onClick
         </button>
       </div>
 
-      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 mb-3 leading-relaxed">
-        {task.title}
-      </h4>
+      <div className="mb-3 space-y-1">
+        <h4 className="text-[14.5px] font-bold tracking-tight text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors duration-200">
+          {task.title}
+        </h4>
+        {task.description && (
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-snug">
+            {task.description}
+          </p>
+        )}
+      </div>
 
       {/* Tags Row */}
       {task.tags && task.tags.length > 0 && (

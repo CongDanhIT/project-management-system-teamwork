@@ -123,8 +123,15 @@ export function ProjectFormDialog({ open, onClose, workspaceId, project }: Proje
       onClose();
     },
 
-    onError: () => {
-      toast.error('Có lỗi xảy ra, thử lại nhé!');
+    onError: (error: any) => {
+      const responseData = error.response?.data;
+      if (responseData?.errorCode === 'VALIDATION_ERROR' && responseData.errors?.length > 0) {
+        toast.error(responseData.errors[0].message);
+      } else if (responseData?.message) {
+        toast.error(responseData.message);
+      } else {
+        toast.error('Có lỗi xảy ra, thử lại nhé!');
+      }
     },
   });
 

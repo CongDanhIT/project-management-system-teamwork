@@ -32,6 +32,12 @@ Tất cả các ảnh đại diện người dùng phải sử dụng component 
 - **Shadow:** `6px 6px 18px rgba(0, 0, 0, 0.05), 15px 15px 35px rgba(3, 93, 91, 0.1), -12px -12px 30px rgba(255, 255, 255, 1)`
 - **Vật liệu:** `bg-gradient-to-br from-white to-[#F8FAFC]` để tạo chiều sâu cho bề mặt thẻ.
 
+### 2.3. Triết lý Tinted Glass (Ánh sáng môi trường & Kính mờ)
+Đây là kỹ thuật chủ đạo để đưa màu sắc thương hiệu (Brand Colors) vào UI một cách tinh tế mà không làm UI bị gắt (Clinical to Premium transition).
+- **Lớp đáy (Ambient Background):** Tuyệt đối không dùng nền trắng phẳng hay xám đặc. Sử dụng các **Quầng sáng môi trường (Glow Orbs)** khổng lồ, mờ ảo (opacity 5-10%) đặt chìm dưới đáy màn hình (ví dụ: Teal ở góc trên, Lime ở góc dưới).
+- **Lớp giữa (Glassmorphism):** Các cấu trúc chứa nội dung lớn (Sidebar, Bảng Kanban, Dashboard Cards) phải sử dụng vật liệu kính mờ (`bg-white/70` hoặc `bg-white/80` kết hợp `backdrop-blur-xl`). Điều này cho phép ánh sáng môi trường từ lớp đáy "thấm" (bleed) xuyên qua, tạo ra một không gian đa tầng (Multi-layered UI).
+- **Lớp trên cùng (Vibrant Accents):** Các nút bấm chính (Primary Action) và trạng thái Active phải dùng màu đặc (Solid) kết hợp đổ bóng phát sáng cùng màu (Glow/Colored Shadow) thay vì đổ bóng đen thông thường.
+
 ## 3. Typography & Spacing
 
 ### 3.1. Dashboard Layout

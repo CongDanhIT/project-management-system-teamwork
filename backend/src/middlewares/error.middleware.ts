@@ -15,17 +15,7 @@ export const errorHandler = (
     res: Response,
     next: NextFunction
 ) => {
-    // 1. Ghi log lỗi vào hệ thống (Winston sẽ bắt lấy stack trace từ AppError)
-    logger.error(`[${req.method}] ${req.url} - ${err.message}`, {
-        statusCode: err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        errorCode: err.errorCode,
-        body: req.body,
-        params: req.params,
-        query: req.query,
-        stack: err.stack,
-    });
-
-    // 2. Xác định mã trạng thái và mã lỗi nghiệp vụ
+    // 1. Xác định mã trạng thái và mã lỗi nghiệp vụ
     let statusCode = err.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
     let message = err.message || "Lỗi máy chủ nội bộ";
     let errorCode = err.errorCode || "INTERNAL_SERVER_ERROR";
@@ -38,6 +28,16 @@ export const errorHandler = (
         errorCode = "VALIDATION_ERROR";
         errors = err.issues;
     }
+
+    // 2. Ghi log lỗi vào hệ thống (Winston sẽ bắt lấy stack trace từ AppError)
+    logger.error(`[${req.method}] ${req.url} - ${err instanceof ZodError ? JSON.stringify(err.issues, null, 2) : err.message}`, {
+        statusCode: statusCode,
+        errorCode: errorCode,
+        body: req.body,
+        params: req.params,
+        query: req.query,
+        stack: err.stack,
+    });
 
     // 3. Trả về thông báo cho người dùng
     res.status(statusCode).json({

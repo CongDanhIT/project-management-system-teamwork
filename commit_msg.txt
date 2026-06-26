@@ -1,8 +1,12 @@
-feat(workspace): nâng cấp toàn diện UI/UX, AI Embedding và thống kê
+feat(ui): Nâng cấp giao diện Editorial Tech và tối ưu AI Services
 
-- Cập nhật logo nhận diện thương hiệu mới (định dạng SVG) cho toàn bộ ứng dụng bao gồm Layout, Sidebar, Login, Register và thay thế favicon.
-- Tinh chỉnh lại tỷ lệ, padding và hiệu ứng đổ bóng (shadows/glassmorphism) cho các thành phần UI (Card, Sidebar, Modal) mang lại cảm giác thiết kế Premium.
-- Cập nhật và tinh chỉnh hàng loạt các thành phần phân tích (QuickStatsWidget, TagManagerWidget, TeamWidget, WorkspaceMemberPanel) trên bảng điều khiển.
-- Cải tiến và bổ sung hệ thống AI Service ở Backend, tích hợp cơ chế Vector Embedding mới (RAG) kèm theo các script migration.
-- Thêm mới các tài liệu phân tích và lập kế hoạch chiến lược (Nâng cấp Roadmap, Nâng cấp AI RAG) để chuẩn bị cho phase tiếp theo.
-- Tối ưu hóa layout toàn cục và sửa các lỗi hiển thị nhỏ.
+- **Frontend (UI/UX):**
+  - Áp dụng triết lý "Tinted Glass" vào `Sidebar.tsx`: Thêm Glow Gradient ở góc trên và ẩn thanh cuộn thô cứng (`scrollbar-hide`).
+  - Thêm Custom Scrollbar siêu mỏng, sang trọng vào `globals.css` dành cho toàn bộ ứng dụng.
+  - Nâng cấp `TaskCard.tsx`: Tối ưu Typography (chữ đậm, tracking-tight) và thêm hiệu ứng nảy (Hover Depth) để tạo cảm giác 3D.
+- **Backend (Services):**
+  - Sửa lỗi cú pháp Template Literal trong `ai.service.ts` gây lỗi biên dịch.
+  - Cải thiện Prompt của Tool `createTask` giúp LLM tự động gán Priority và Status.
+- **Tài liệu (Docs):**
+  - Bổ sung nguyên lý thiết kế "Tinted Glass" (Ánh sáng môi trường & Kính mờ) vào `DESIGN.md`.
+  - Khởi tạo tài liệu phân tích triển khai Giai đoạn cuối (`KeHoachTrienKhai-TintedGlass.md`).

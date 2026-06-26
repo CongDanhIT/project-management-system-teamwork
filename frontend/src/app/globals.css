@@ -479,4 +479,35 @@
       transform: scale(1.2, 1);
     }
   }
+
+  /* Custom Scrollbar (Editorial Tech) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(3, 93, 91, 0.1);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(3, 93, 91, 0.3);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(199, 249, 100, 0.1);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(199, 249, 100, 0.3);
+  }
+  
+  /* Hide scrollbar utility */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

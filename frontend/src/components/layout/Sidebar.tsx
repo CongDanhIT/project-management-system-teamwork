@@ -51,7 +51,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const params = useParams();
-  
+
   // Lấy workspaceId từ params hoặc fallback từ pathname nếu params bị rỗng (thường gặp khi đang chuyển hướng hoặc hydration)
   const workspaceIdFromParams = params?.workspaceId as string;
   const workspaceIdFromPath = pathname?.split('/')[2];
@@ -113,10 +113,10 @@ export default function Sidebar() {
       {/* Logo & Workspace Selector */}
       <div className="p-5 space-y-5">
         <div className="flex items-center gap-1.5 px-2">
-          <img 
-            src="/logos/logo thương hiệu.svg" 
-            alt="TeamFlow Logo" 
-            className="w-12 h-12 object-contain -my-2 drop-shadow-md" 
+          <img
+            src="/logos/logo thương hiệu.svg"
+            alt="TeamFlow Logo"
+            className="w-12 h-12 object-contain -my-2 drop-shadow-md"
           />
           <span className="text-[1.35rem] font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-accent-ai dark:from-brand-secondary dark:to-white">
             TeamFlow
@@ -134,7 +134,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 px-4 py-4 space-y-6 overflow-y-auto scrollbar-hide">
         {[
           {
             group: 'TỔNG QUAN',
@@ -176,7 +176,7 @@ export default function Sidebar() {
             </span>
             {section.items.map((item: any) => {
               const isActive = pathname === item.href || (item.href !== `/workspace/${workspaceId}` && pathname?.startsWith(item.href));
-              
+
               if (item.hasDropdown) {
                 return (
                   <div key={item.label} className="space-y-1">
@@ -203,8 +203,8 @@ export default function Sidebar() {
                           href={item.href}
                           className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] transition-all",
-                            pathname === item.href 
-                              ? "text-brand-primary dark:text-brand-secondary font-bold" 
+                            pathname === item.href
+                              ? "text-brand-primary dark:text-brand-secondary font-bold"
                               : "text-slate-500 dark:text-slate-400 hover:text-brand-primary dark:hover:text-brand-secondary"
                           )}
                         >
@@ -299,21 +299,21 @@ export default function Sidebar() {
         {/* Favorite Projects Section */}
         {favoriteProjects && favoriteProjects.length > 0 && (
           <div className="pt-6 space-y-2">
-            <button 
+            <button
               onClick={() => setIsFavoritesOpen(!isFavoritesOpen)}
               className="flex items-center justify-between w-full px-4 mb-2 group outline-none"
             >
               <span className="text-[9px] font-black text-slate-400 dark:text-slate-100/30 uppercase tracking-[0.2em] group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
                 Dự án yêu thích
               </span>
-              <ChevronDown 
+              <ChevronDown
                 className={cn(
                   "w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-300",
                   !isFavoritesOpen && "-rotate-90"
-                )} 
+                )}
               />
             </button>
-            
+
             {isFavoritesOpen && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
                 {favoriteProjects.map((project) => {
@@ -332,8 +332,8 @@ export default function Sidebar() {
                     >
                       <div className={cn(
                         "w-2 h-2 rounded-full transition-all duration-300",
-                        isActive 
-                          ? "bg-brand-primary shadow-[0_0_8px_rgba(3,93,91,0.4)] dark:bg-brand-secondary dark:shadow-[0_0_8px_rgba(199,249,100,0.4)]" 
+                        isActive
+                          ? "bg-brand-primary shadow-[0_0_8px_rgba(3,93,91,0.4)] dark:bg-brand-secondary dark:shadow-[0_0_8px_rgba(199,249,100,0.4)]"
                           : "bg-slate-200 dark:bg-slate-700 group-hover:bg-brand-primary/60 dark:group-hover:bg-brand-secondary/60"
                       )} />
                       <span className="truncate">{project.name}</span>
@@ -352,72 +352,72 @@ export default function Sidebar() {
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-slate-400/30 dark:via-brand-secondary/10 to-transparent" />
         <div className="p-4">
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <button className="w-full group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:bg-[#035D5B]/5 dark:hover:bg-[#C7F964]/5 outline-none">
-                <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-2xl" />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button className="w-full group relative flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:bg-[#035D5B]/5 dark:hover:bg-[#C7F964]/5 outline-none">
+                  <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-2xl" />
 
-                <div className="relative pt-2"> {/* Added padding to prevent clipping when floating */}
-                  {/* Detached Shadow Element */}
-                  <div className="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-8 h-1 bg-black/20 dark:bg-black/40 rounded-[50%] blur-[2px] opacity-60 scale-90 transition-all duration-500 group-hover:opacity-100 group-hover:scale-125 group-hover:blur-[6px]" />
+                  <div className="relative pt-2"> {/* Added padding to prevent clipping when floating */}
+                    {/* Detached Shadow Element */}
+                    <div className="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-8 h-1 bg-black/20 dark:bg-black/40 rounded-[50%] blur-[2px] opacity-60 scale-90 transition-all duration-500 group-hover:opacity-100 group-hover:scale-125 group-hover:blur-[6px]" />
 
-                  <div className="absolute -inset-1.5 bg-gradient-to-tr from-brand-primary/20 to-teal-500/10 rounded-xl blur-[8px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <UserAvatar
-                    user={user || { name: 'User' }}
-                    size="default"
-                    showShadow={false}
-                    className="w-10 h-10 border-2 border-white dark:border-white/10 shadow-sm relative z-10 -translate-y-1 group-hover:-translate-y-3 transition-all duration-500"
-                  />
+                    <div className="absolute -inset-1.5 bg-gradient-to-tr from-brand-primary/20 to-teal-500/10 rounded-xl blur-[8px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <UserAvatar
+                      user={user || { name: 'User' }}
+                      size="default"
+                      showShadow={false}
+                      className="w-10 h-10 border-2 border-white dark:border-white/10 shadow-sm relative z-10 -translate-y-1 group-hover:-translate-y-3 transition-all duration-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col items-start min-w-0 flex-1 relative z-10 text-left">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/20 uppercase tracking-widest leading-none mb-1">
+                      Tài khoản
+                    </span>
+                    <span className="text-sm font-bold text-[#3F4948] dark:text-slate-50 truncate w-full group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
+                      {user?.name || 'Guest'}
+                    </span>
+                  </div>
+
+                  <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                </button>
+              }
+            />
+            <DropdownMenuContent
+              align="end"
+              side="right"
+              sideOffset={12}
+              className="w-72 rounded-[28px] p-4 shadow-depth-3 border-ghost glass mb-4 ml-1 animate-in fade-in slide-in-from-left-2 duration-300 z-50 text-left"
+            >
+              <DropdownMenuGroup className="px-3 py-2">
+                <div className="flex items-center gap-3 mb-1">
+                  <UserAvatar user={user || { name: 'User' }} size="default" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-slate-800 dark:text-white truncate">{user?.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tighter">{user?.email}</p>
+                  </div>
                 </div>
-
-                <div className="flex flex-col items-start min-w-0 flex-1 relative z-10 text-left">
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-100/20 uppercase tracking-widest leading-none mb-1">
-                    Tài khoản
-                  </span>
-                  <span className="text-sm font-bold text-[#3F4948] dark:text-slate-50 truncate w-full group-hover:text-brand-primary dark:group-hover:text-brand-secondary transition-colors">
-                    {user?.name || 'Guest'}
-                  </span>
-                </div>
-
-                <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-              </button>
-            }
-          />
-          <DropdownMenuContent
-            align="end"
-            side="right"
-            sideOffset={12}
-            className="w-72 rounded-[28px] p-4 shadow-depth-3 border-ghost glass mb-4 ml-1 animate-in fade-in slide-in-from-left-2 duration-300 z-50 text-left"
-          >
-            <DropdownMenuGroup className="px-3 py-2">
-              <div className="flex items-center gap-3 mb-1">
-                <UserAvatar user={user || { name: 'User' }} size="default" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-800 dark:text-white truncate">{user?.name}</p>
-                  <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tighter">{user?.email}</p>
-                </div>
-              </div>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="bg-divider/20 my-2" />
-            <DropdownMenuGroup className="space-y-1">
-              <DropdownMenuItem
-                onClick={() => router.push('/settings/profile')}
-                className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-teal-50 dark:hover:bg-teal-500/10 text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-400"
-              >
-                <Users className="w-4.5 h-4.5 mr-3 text-teal-400 group-hover:text-teal-600 transition-colors" />
-                Thông tin cá nhân
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400"
-              >
-                <LogOut className="w-4.5 h-4.5 mr-3 text-rose-400 group-hover:text-rose-600 transition-colors" />
-                Đăng xuất
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator className="bg-divider/20 my-2" />
+              <DropdownMenuGroup className="space-y-1">
+                <DropdownMenuItem
+                  onClick={() => router.push('/settings/profile')}
+                  className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-teal-50 dark:hover:bg-teal-500/10 text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-400"
+                >
+                  <Users className="w-4.5 h-4.5 mr-3 text-teal-400 group-hover:text-teal-600 transition-colors" />
+                  Thông tin cá nhân
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="group rounded-[18px] font-bold cursor-pointer py-3.5 px-4 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400"
+                >
+                  <LogOut className="w-4.5 h-4.5 mr-3 text-rose-400 group-hover:text-rose-600 transition-colors" />
+                  Đăng xuất
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
