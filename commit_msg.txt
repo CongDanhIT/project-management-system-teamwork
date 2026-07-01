@@ -1,12 +1,8 @@
-feat(ui): Nâng cấp giao diện Editorial Tech và tối ưu AI Services
+feat(ai): nâng cấp danh sách model AI và tinh chỉnh prompt tạo task
 
-- **Frontend (UI/UX):**
-  - Áp dụng triết lý "Tinted Glass" vào `Sidebar.tsx`: Thêm Glow Gradient ở góc trên và ẩn thanh cuộn thô cứng (`scrollbar-hide`).
-  - Thêm Custom Scrollbar siêu mỏng, sang trọng vào `globals.css` dành cho toàn bộ ứng dụng.
-  - Nâng cấp `TaskCard.tsx`: Tối ưu Typography (chữ đậm, tracking-tight) và thêm hiệu ứng nảy (Hover Depth) để tạo cảm giác 3D.
-- **Backend (Services):**
-  - Sửa lỗi cú pháp Template Literal trong `ai.service.ts` gây lỗi biên dịch.
-  - Cải thiện Prompt của Tool `createTask` giúp LLM tự động gán Priority và Status.
-- **Tài liệu (Docs):**
-  - Bổ sung nguyên lý thiết kế "Tinted Glass" (Ánh sáng môi trường & Kính mờ) vào `DESIGN.md`.
-  - Khởi tạo tài liệu phân tích triển khai Giai đoạn cuối (`KeHoachTrienKhai-TintedGlass.md`).
+- Backend & Frontend: Thay thế model Qwen3 80B miễn phí bằng model Google Gemma 4 31B (Bản trả phí) trên OpenRouter nhằm tăng tính ổn định cho quá trình phân tích dữ liệu.
+- Backend (AI Service): Cập nhật prompt (câu lệnh) cho AI Tool Calling khi tạo công việc:
+  + Bắt buộc trả về định dạng ngày tháng `YYYY-MM-DD` cho `startDate` và `dueDate`.
+  + Hỗ trợ thêm trường `endDate` như một alias (tên gọi khác) cho `dueDate`.
+  + Nhấn mạnh nghiêm ngặt việc truyền ID (ObjectId 24 ký tự) cho `assignedTo` thay vì dùng tên người dùng thô.
+- Backend (Embedding): Cập nhật chú thích hàm rõ ràng hơn để dễ bảo trì.

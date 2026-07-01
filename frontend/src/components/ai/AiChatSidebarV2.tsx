@@ -52,7 +52,7 @@ export const AiChatSidebarV2: React.FC<AiChatSidebarV2Props> = ({ isOpen, onClos
     { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', name: 'Llama 3.3', provider: 'Together' },
     { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'OpenRouter' },
     { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B', provider: 'OpenRouter' },
-    { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 80B', provider: 'OpenRouter' },
+    { id: 'google/gemma-4-31b-it', name: 'Gemma 4 (Paid)', provider: 'OpenRouter' },
   ];
 
   const params = useParams();

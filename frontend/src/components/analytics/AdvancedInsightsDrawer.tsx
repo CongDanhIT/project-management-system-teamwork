@@ -202,10 +202,10 @@ export function AdvancedInsightsDrawer({
                       <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Rất Dễ Quá Tải)</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="qwen/qwen3-next-80b-a3b-instruct:free" className="cursor-pointer">
+                  <SelectItem value="google/gemma-4-31b-it" className="cursor-pointer">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Qwen3 Next 80B</span>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">OpenRouter (Rất Dễ Quá Tải)</span>
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Gemma 4 31B (Paid)</span>
+                      <span className="text-[10px] text-emerald-600 uppercase tracking-wider font-semibold">OpenRouter (Bản Trả Phí - Ổn Định)</span>
                     </div>
                   </SelectItem>
                 </SelectContent>

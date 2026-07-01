@@ -33,6 +33,9 @@ export const AI_MODELS = {
     OPENROUTER_LLAMA_3_3_70B: "meta-llama/llama-3.3-70b-instruct:free",
     OPENROUTER_QWEN3_80B: "qwen/qwen3-next-80b-a3b-instruct:free",
     OPENROUTER_LAGUNA_M1: "poolside/laguna-m.1:free",
+    
+    // OpenRouter Paid Models
+    OPENROUTER_GEMMA_4_31B_PAID: "google/gemma-4-31b-it",
 };
 
 // Cấu hình Vercel AI SDK Provider cho Groq
@@ -61,7 +64,7 @@ const OPENROUTER_MODEL_IDS = [
     AI_MODELS.OPENROUTER_GEMMA_4_31B,
     AI_MODELS.OPENROUTER_GPT_OSS_120B,
     AI_MODELS.OPENROUTER_LLAMA_3_3_70B,
-    AI_MODELS.OPENROUTER_QWEN3_80B,
+    AI_MODELS.OPENROUTER_GEMMA_4_31B_PAID,
     AI_MODELS.OPENROUTER_LAGUNA_M1,
 ];
 
@@ -783,12 +786,13 @@ QUY TẮC VẬN HÀNH:
                 tasks: z.array(z.object({
                     title: z.string().describe("Tiêu đề công việc."),
                     description: z.string().optional().describe("Mô tả chi tiết."),
-                    phaseId: z.string().describe("ID của giai đoạn (lấy từ getProjectPhases HOẶC lấy trực tiếp từ BỐI CẢNH HIỆN TẠI nếu có)."),
+                    phaseId: z.string().optional().describe("ID của giai đoạn (lấy từ getProjectPhases HOẶC lấy trực tiếp từ BỐI CẢNH HIỆN TẠI nếu có). NẾU KHÔNG CÓ, BẮT BUỘC HỎI LẠI NGƯỜI DÙNG."),
                     assignedTo: z.string().optional().describe("ID của người được gán (userId lấy từ getWorkspaceMembers). Tuyệt đối KHÔNG truyền tên người vào đây, BẮT BUỘC phải truyền ObjectId 24 ký tự."),
                     priority: z.string().optional().describe("Mức độ ưu tiên. BẮT BUỘC IN HOA (VD: 'LOW', 'MEDIUM', 'HIGH'). Nếu dùng tiếng Việt hãy tự dịch sang 3 từ này."),
                     status: z.string().optional().describe("Trạng thái công việc. Nhận các giá trị: TODO (Cần làm), IN_PROGRESS (Đang làm), INREVIEW (Đang duyệt), DONE (Hoàn thành)."),
-                    startDate: z.string().optional().describe("Ngày bắt đầu (ISO date)."),
-                    dueDate: z.string().optional().describe("Hạn chót/Ngày kết thúc (ISO date).")
+                    startDate: z.string().optional().describe("Ngày bắt đầu (Bắt buộc dùng format YYYY-MM-DD)."),
+                    dueDate: z.string().optional().describe("Hạn chót/Ngày kết thúc (Bắt buộc dùng format YYYY-MM-DD)."),
+                    endDate: z.string().optional().describe("Alias của dueDate, nếu dùng thì cũng bắt buộc YYYY-MM-DD.")
                 })).describe("Danh sách các công việc cần tạo. Luôn truyền dạng mảng kể cả khi chỉ tạo 1 công việc.")
             }),
             execute: async ({ tasks }: { tasks: any[] }) => {
@@ -853,7 +857,7 @@ QUY TẮC VẬN HÀNH:
                             priority: finalPriority,
                             status: finalStatus,
                             startDate: taskData.startDate,
-                            dueDate: taskData.dueDate,
+                            dueDate: taskData.dueDate || taskData.endDate,
                             taskCode,
                             projectId,
                             workspaceId,

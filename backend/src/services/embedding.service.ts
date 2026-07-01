@@ -29,7 +29,7 @@ export const generateEmbeddingService = async (text: string): Promise<number[]> 
 };
 
 /**
- * Sinh vector cho mảng nhiều đoạn text (Batching)
+ * Sinh vector cho mảng nhiều đoạn text (Batching) - dùng cho các document cũ chưa cập nhật vector
  */
 export const generateManyEmbeddingsService = async (texts: string[]): Promise<number[][]> => {
     if (!texts || texts.length === 0) return [];
