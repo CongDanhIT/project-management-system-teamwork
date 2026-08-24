@@ -25,13 +25,78 @@ interface AIInsightsWordParams {
     to: string;
   };
   data: {
-    bottlenecks: string[];
-    velocity_analysis: string;
-    team_performance: string[];
-    risk_forecast: string;
-    recommendations: string[];
-    deep_insights?: string;
-  };
+    insights: {
+      bottlenecks: string[];
+      velocity_analysis: string;
+      team_performance: string[];
+      risk_forecast: string;
+      recommendations: string[];
+      deep_insights?: string;
+      criticalIncidents?: string[];
+    };
+      reportStats?: {
+        overallStats: {
+          totalTasks: number;
+          completedTasks: number;
+          completionRate: number;
+          inProgressTasks: number;
+          inReviewTasks: number;
+          highPriorityTasks: number;
+          unassignedTasks: number;
+          overdueTasks: number;
+          totalEstimatedHours: number;
+          totalLoggedHours: number;
+        };
+        memberStats: Array<{
+          name: string;
+          email: string;
+          total: number;
+          todo: number;
+          inProgress: number;
+          inReview: number;
+          done: number;
+          completionRate: number;
+        }>;
+      };
+      filteredReportStats?: {
+        overallStats: {
+          totalTasks: number;
+          completedTasks: number;
+          completionRate: number;
+          inProgressTasks: number;
+          inReviewTasks: number;
+          highPriorityTasks: number;
+          unassignedTasks: number;
+          overdueTasks: number;
+          totalEstimatedHours: number;
+          totalLoggedHours: number;
+          priorityDistribution?: {
+            URGENT: number;
+            HIGH: number;
+            MEDIUM: number;
+            LOW: number;
+          };
+          statusDistribution?: {
+            TODO: number;
+            IN_PROGRESS: number;
+            INREVIEW: number;
+            DONE: number;
+          };
+        };
+        memberStats: Array<{
+          name: string;
+          email: string;
+          total: number;
+          todo: number;
+          inProgress: number;
+          inReview: number;
+          done: number;
+          estimatedHours?: number;
+          loggedHours?: number;
+          completionRate: number;
+        }>;
+      };
+    };
 }
 
 // Định nghĩa màu sắc thương hiệu TeamFlow
@@ -484,6 +549,7 @@ export const exportAIInsightsToWord = async ({
   analysisPeriod,
   data 
 }: AIInsightsWordParams) => {
+  const { insights, reportStats, filteredReportStats } = data;
   const doc = new Document({
     styles: {
       paragraphStyles: [
@@ -611,8 +677,36 @@ export const exportAIInsightsToWord = async ({
             })
           ] : [new Paragraph({ spacing: { after: 400 } })]),
 
+          // -1. Báo động đỏ (Critical Incidents)
+          ...(insights.criticalIncidents && insights.criticalIncidents.length > 0 ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "⚠️ CẢNH BÁO NGHIÊM TRỌNG (CRITICAL INCIDENTS)",
+                  font: "Arial",
+                  bold: true,
+                  size: 26,
+                  color: "EF4444", // Red 500
+                }),
+              ],
+              spacing: { before: 200, after: 150 },
+            }),
+            ...insights.criticalIncidents.map(
+              (incident) =>
+                new Paragraph({
+                  indent: { left: 360, hanging: 360 },
+                  children: [
+                    new TextRun({ text: "• ", font: "Arial", size: 22, color: "EF4444", bold: true }),
+                    new TextRun({ text: incident, font: "Arial", size: 22, color: "991B1B", bold: true }),
+                  ],
+                  spacing: { before: 120, after: 120 },
+                })
+            ),
+            new Paragraph({ spacing: { after: 400 } })
+          ] : []),
+
           // 0. Deep Insights (Góc nhìn chuyên sâu - Hybrid Architecture) - Use Table for padding
-          ...(data.deep_insights ? [
+          ...(insights.deep_insights ? [
             new Paragraph({
               children: [
                 new TextRun({
@@ -643,7 +737,7 @@ export const exportAIInsightsToWord = async ({
                         new Paragraph({
                           children: [
                             new TextRun({
-                              text: data.deep_insights,
+                              text: insights.deep_insights,
                               font: "Arial",
                               italics: true,
                               color: SLATE_COLOR,
@@ -677,7 +771,7 @@ export const exportAIInsightsToWord = async ({
           new Paragraph({
             children: [
               new TextRun({
-                text: data.velocity_analysis,
+                text: insights.velocity_analysis,
                 font: "Arial",
                 size: 22,
                 color: SLATE_COLOR,
@@ -702,7 +796,7 @@ export const exportAIInsightsToWord = async ({
           new Paragraph({
             children: [
               new TextRun({
-                text: data.risk_forecast || "Chưa có dữ liệu rủi ro cụ thể.",
+                text: insights.risk_forecast || "Chưa có dữ liệu rủi ro cụ thể.",
                 font: "Arial",
                 size: 22,
                 color: SLATE_COLOR,
@@ -724,7 +818,7 @@ export const exportAIInsightsToWord = async ({
             ],
             spacing: { before: 200, after: 150 },
           }),
-          ...(Array.isArray(data.bottlenecks) && data.bottlenecks.length > 0 ? data.bottlenecks : ["Không có điểm nghẽn nghiêm trọng nào được phát hiện."]).map(
+          ...(Array.isArray(insights.bottlenecks) && insights.bottlenecks.length > 0 ? insights.bottlenecks : ["Không có điểm nghẽn nghiêm trọng nào được phát hiện."]).map(
             (item) =>
               new Paragraph({
                 indent: { left: 360, hanging: 360 }, // Proper bullet indent
@@ -750,7 +844,7 @@ export const exportAIInsightsToWord = async ({
             ],
             spacing: { before: 200, after: 150 },
           }),
-          ...(Array.isArray(data.team_performance) && data.team_performance.length > 0 ? data.team_performance : ["Chưa có dữ liệu thành viên."]).map(
+          ...(Array.isArray(insights.team_performance) && insights.team_performance.length > 0 ? insights.team_performance : ["Chưa có dữ liệu thành viên."]).map(
             (item) =>
               new Paragraph({
                 indent: { left: 360, hanging: 360 },
@@ -785,7 +879,7 @@ export const exportAIInsightsToWord = async ({
               right: { style: BorderStyle.NONE },
               insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" }, // Light divider
             },
-            rows: (Array.isArray(data.recommendations) ? data.recommendations : []).map(
+            rows: (Array.isArray(insights.recommendations) ? insights.recommendations : []).map(
               (rec, index) =>
                 new TableRow({
                   children: [
@@ -823,6 +917,581 @@ export const exportAIInsightsToWord = async ({
                 })
             ),
           }),
+
+          // 6. Bảng Thống kê chi tiết (Detailed Stats from reportStats)
+          ...(reportStats ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "06. BẢNG SỐ LIỆU THỐNG KÊ CHI TIẾT",
+                  font: "Arial",
+                  bold: true,
+                  size: 26,
+                  color: BRAND_COLOR,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "A. THỐNG KÊ TỔNG QUAN DỰ ÁN",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 200, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tổng Task", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Hoàn thành", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Đang thực hiện", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Chờ duyệt", font: "Arial", bold: true, size: 20 })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.totalTasks?.toString() || "0", font: "Arial", size: 20 })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.completedTasks?.toString() || "0", font: "Arial", size: 20, color: "10B981", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.inProgressTasks?.toString() || "0", font: "Arial", size: 20, color: "3B82F6", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.inReviewTasks?.toString() || "0", font: "Arial", size: 20, color: "F59E0B", bold: true })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Quan trọng (High)", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Trễ hạn (Overdue)", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Chưa phân công", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tỷ lệ hoàn thành", font: "Arial", bold: true, size: 20 })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.highPriorityTasks?.toString() || "0", font: "Arial", size: 20, color: "EF4444", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.overdueTasks?.toString() || "0", font: "Arial", size: 20, color: "EF4444", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: reportStats.overallStats.unassignedTasks?.toString() || "0", font: "Arial", size: 20 })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: `${reportStats.overallStats.completionRate || 0}%`, font: "Arial", size: 20, color: "10B981", bold: true })] })] }),
+                  ]
+                })
+              ]
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "B. THỐNG KÊ CHI TIẾT THEO THÀNH VIÊN",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                // Header row
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ children: [new TextRun({ text: "Thành viên", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tổng", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "To-do", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "In Prog", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Review", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Xong", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tỷ lệ", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                  ]
+                }),
+                // Data rows
+                ...(reportStats.memberStats || []).map(member => 
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [
+                          new Paragraph({ children: [new TextRun({ text: member.name || "N/A", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] }),
+                          new Paragraph({ children: [new TextRun({ text: member.email || "N/A", font: "Arial", size: 16, color: TEXT_SECONDARY })] })
+                        ]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.total?.toString() || "0", font: "Arial", size: 18 })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.todo?.toString() || "0", font: "Arial", size: 18 })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.inProgress?.toString() || "0", font: "Arial", size: 18, color: "3B82F6" })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.inReview?.toString() || "0", font: "Arial", size: 18, color: "F59E0B" })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.done?.toString() || "0", font: "Arial", size: 18, color: "10B981", bold: true })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${member.completionRate || 0}%`, font: "Arial", size: 18, color: "10B981", bold: true })] })]
+                      }),
+                    ]
+                  })
+                )
+              ]
+            })
+          ] : []),
+
+          // 7. Bảng Thống kê trong khoảng thời gian lọc (Detailed Stats from filteredReportStats)
+          ...(filteredReportStats ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "07. SỐ LIỆU TRONG KHOẢNG THỜI GIAN LỌC",
+                  font: "Arial",
+                  bold: true,
+                  size: 26,
+                  color: BRAND_COLOR,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "A. TỔNG QUAN DỰ ÁN TRONG KỲ LỌC",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 200, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tổng Task", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Hoàn thành", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Đang thực hiện", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Chờ duyệt", font: "Arial", bold: true, size: 20 })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.totalTasks?.toString() || "0", font: "Arial", size: 20 })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.completedTasks?.toString() || "0", font: "Arial", size: 20, color: "10B981", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.inProgressTasks?.toString() || "0", font: "Arial", size: 20, color: "3B82F6", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.inReviewTasks?.toString() || "0", font: "Arial", size: 20, color: "F59E0B", bold: true })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Quan trọng (High)", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Trễ hạn (Overdue)", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Chưa phân công", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tỷ lệ hoàn thành", font: "Arial", bold: true, size: 20 })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.highPriorityTasks?.toString() || "0", font: "Arial", size: 20, color: "EF4444", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.overdueTasks?.toString() || "0", font: "Arial", size: 20, color: "EF4444", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: filteredReportStats.overallStats.unassignedTasks?.toString() || "0", font: "Arial", size: 20 })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: `${filteredReportStats.overallStats.completionRate || 0}%`, font: "Arial", size: 20, color: "10B981", bold: true })] })] }),
+                  ]
+                })
+              ]
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "B. CHI TIẾT THÀNH VIÊN TRONG KỲ LỌC",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                // Header row
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ children: [new TextRun({ text: "Thành viên", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tổng", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "To-do", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "In Prog", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Review", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Xong", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tỷ lệ", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                  ]
+                }),
+                // Data rows
+                ...(filteredReportStats.memberStats || []).map(member => 
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [
+                          new Paragraph({ children: [new TextRun({ text: member.name || "N/A", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] }),
+                          new Paragraph({ children: [new TextRun({ text: member.email || "N/A", font: "Arial", size: 16, color: TEXT_SECONDARY })] })
+                        ]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.total?.toString() || "0", font: "Arial", size: 18 })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.todo?.toString() || "0", font: "Arial", size: 18 })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.inProgress?.toString() || "0", font: "Arial", size: 18, color: "3B82F6" })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.inReview?.toString() || "0", font: "Arial", size: 18, color: "F59E0B" })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: member.done?.toString() || "0", font: "Arial", size: 18, color: "10B981", bold: true })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${member.completionRate || 0}%`, font: "Arial", size: 18, color: "10B981", bold: true })] })]
+                      }),
+                    ]
+                  })
+                )
+              ]
+            })
+          ] : []),
+
+          // 8. Phân tích chuyên sâu (Bảng số liệu)
+          ...(filteredReportStats ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "08. PHÂN TÍCH CHUYÊN SÂU (BẢNG SỐ LIỆU)",
+                  font: "Arial",
+                  bold: true,
+                  size: 26,
+                  color: BRAND_COLOR,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "A. PHÂN BỔ ĐỘ ƯU TIÊN (PRIORITY)",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 200, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Cấp bách (Urgent)", font: "Arial", bold: true, size: 20, color: "EF4444" })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Cao (High)", font: "Arial", bold: true, size: 20, color: "F59E0B" })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Trung bình (Medium)", font: "Arial", bold: true, size: 20, color: "3B82F6" })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Thấp (Low)", font: "Arial", bold: true, size: 20, color: "10B981" })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.priorityDistribution?.URGENT?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.priorityDistribution?.HIGH?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.priorityDistribution?.MEDIUM?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.priorityDistribution?.LOW?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                  ]
+                }),
+              ]
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "B. PHÂN BỔ TRẠNG THÁI (STATUS)",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 300, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Cần làm (To-Do)", font: "Arial", bold: true, size: 20, color: SLATE_COLOR })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Đang thực hiện (In Progress)", font: "Arial", bold: true, size: 20, color: "3B82F6" })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Chờ duyệt (In Review)", font: "Arial", bold: true, size: 20, color: "F59E0B" })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Hoàn thành (Done)", font: "Arial", bold: true, size: 20, color: "10B981" })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.statusDistribution?.TODO?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.statusDistribution?.IN_PROGRESS?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.statusDistribution?.INREVIEW?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: filteredReportStats.overallStats.statusDistribution?.DONE?.toString() || "0", font: "Arial", size: 20, bold: true })] })] }),
+                  ]
+                }),
+              ]
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "C. QUẢN LÝ THỜI GIAN (TIME TRACKING)",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 300, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tổng giờ dự kiến", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Tổng giờ đã làm (Logged)", font: "Arial", bold: true, size: 20 })] })] }),
+                    new TableCell({ shading: { fill: "F8FAFC" }, margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ children: [new TextRun({ text: "Độ lệch thời gian", font: "Arial", bold: true, size: 20 })] })] }),
+                  ]
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${filteredReportStats.overallStats.totalEstimatedHours || 0} giờ`, font: "Arial", size: 20 })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${filteredReportStats.overallStats.totalLoggedHours || 0} giờ`, font: "Arial", size: 20, color: "3B82F6", bold: true })] })] }),
+                    new TableCell({ margins: { top: 100, bottom: 100, left: 100, right: 100 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ 
+                      text: `${(filteredReportStats.overallStats.totalLoggedHours || 0) - (filteredReportStats.overallStats.totalEstimatedHours || 0)} giờ`, 
+                      font: "Arial", 
+                      size: 20, 
+                      color: ((filteredReportStats.overallStats.totalLoggedHours || 0) > (filteredReportStats.overallStats.totalEstimatedHours || 0)) ? "EF4444" : "10B981", 
+                      bold: true 
+                    })] })] }),
+                  ]
+                }),
+              ]
+            }),
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "D. QUẢN LÝ THỜI GIAN THEO THÀNH VIÊN",
+                  font: "Arial",
+                  bold: true,
+                  size: 22,
+                  color: SLATE_COLOR,
+                }),
+              ],
+              spacing: { before: 300, after: 150 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: BRAND_COLOR },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+              },
+              rows: [
+                // Header row
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ children: [new TextRun({ text: "Thành viên", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Giờ dự kiến", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Giờ đã làm", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    }),
+                    new TableCell({
+                      shading: { fill: "F8FAFC" },
+                      margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Độ lệch", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] })]
+                    })
+                  ]
+                }),
+                // Data rows
+                ...(filteredReportStats.memberStats || []).map(member => 
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [
+                          new Paragraph({ children: [new TextRun({ text: member.name || "N/A", font: "Arial", bold: true, size: 18, color: SLATE_COLOR })] }),
+                        ]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${member.estimatedHours || 0} giờ`, font: "Arial", size: 18 })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${member.loggedHours || 0} giờ`, font: "Arial", size: 18, color: "3B82F6", bold: true })] })]
+                      }),
+                      new TableCell({
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ 
+                            text: `${(member.loggedHours || 0) - (member.estimatedHours || 0)} giờ`, 
+                            font: "Arial", size: 18, 
+                            color: ((member.loggedHours || 0) > (member.estimatedHours || 0)) ? "EF4444" : "10B981", 
+                            bold: true 
+                        })] })]
+                      })
+                    ]
+                  })
+                )
+              ]
+            })
+          ] : []),
 
           // Footer info
           new Paragraph({

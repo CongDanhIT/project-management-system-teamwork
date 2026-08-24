@@ -1,8 +1,0 @@
-feat(ai): nâng cấp danh sách model AI và tinh chỉnh prompt tạo task
-
-- Backend & Frontend: Thay thế model Qwen3 80B miễn phí bằng model Google Gemma 4 31B (Bản trả phí) trên OpenRouter nhằm tăng tính ổn định cho quá trình phân tích dữ liệu.
-- Backend (AI Service): Cập nhật prompt (câu lệnh) cho AI Tool Calling khi tạo công việc:
-  + Bắt buộc trả về định dạng ngày tháng `YYYY-MM-DD` cho `startDate` và `dueDate`.
-  + Hỗ trợ thêm trường `endDate` như một alias (tên gọi khác) cho `dueDate`.
-  + Nhấn mạnh nghiêm ngặt việc truyền ID (ObjectId 24 ký tự) cho `assignedTo` thay vì dùng tên người dùng thô.
-- Backend (Embedding): Cập nhật chú thích hàm rõ ràng hơn để dễ bảo trì.

@@ -33,7 +33,7 @@ export const AI_MODELS = {
     OPENROUTER_LLAMA_3_3_70B: "meta-llama/llama-3.3-70b-instruct:free",
     OPENROUTER_QWEN3_80B: "qwen/qwen3-next-80b-a3b-instruct:free",
     OPENROUTER_LAGUNA_M1: "poolside/laguna-m.1:free",
-    
+
     // OpenRouter Paid Models
     OPENROUTER_GEMMA_4_31B_PAID: "google/gemma-4-31b-it",
 };
@@ -433,7 +433,7 @@ export const applyAIProjectPlanService = async (
                 });
 
                 await task.save({ session });
-                
+
                 // [AI-V2-RAG] Sinh vector cho task vừa tạo bằng AI (Chạy ngầm độc lập với transaction)
                 embedTaskService({ title: task.title, description: task.description, status: task.status })
                     .then(async (embedding) => {
@@ -683,10 +683,10 @@ QUY TẮC VẬN HÀNH:
                         targetProjectId, targetPhaseId, status, assignedTo, taskCode, priority, title,
                         dueDateFrom, dueDateTo, createdFrom, createdTo
                     });
-                    
+
                     const effectiveProjectId = targetProjectId || projectId;
                     const query: any = { deletedAt: null };
-                    
+
                     if (effectiveProjectId) query.projectId = effectiveProjectId;
                     else if (workspaceId) query.workspaceId = workspaceId; // Fallback to workspace scope
                     else return { error: "⚠️ Lỗi ngữ cảnh: Không xác định được Workspace ID hay Project ID." };
@@ -989,11 +989,11 @@ QUY TẮC VẬN HÀNH:
 
                             if (updatePayload.status === "COMPLETED") updatePayload.status = "DONE";
                         }
-                        
+
                         if (updates.startDate) {
                             updatePayload.startDate = new Date(updates.startDate);
                         }
-                        
+
                         if (updates.dueDate) {
                             updatePayload.dueDate = new Date(updates.dueDate);
                         }
@@ -1010,13 +1010,13 @@ QUY TẮC VẬN HÀNH:
                     if (bulkOps.length > 0) {
                         const bulkResult = await TaskModel.bulkWrite(bulkOps);
                         logger.info("[AI-Tool] updateTask bulkWrite result", { matchedCount: bulkResult.matchedCount, modifiedCount: bulkResult.modifiedCount });
-                        
+
                         // Lấy lại danh sách các task đã cập nhật để xử lý embedding và trả về kết quả
                         const updatedTasks = await TaskModel.find({ $or: taskIdentifiers }).lean();
-                        
+
                         for (const task of updatedTasks) {
                             updatedTasksInfo.push({ success: true, taskCode: task.taskCode, title: task.title });
-                            
+
                             // [AI-V2-RAG] Cập nhật lại vector cho task (chạy ngầm)
                             embedTaskService({ title: task.title, description: task.description, status: task.status })
                                 .then(async (embedding) => {
@@ -1249,11 +1249,11 @@ QUY TẮC VẬN HÀNH:
                         title: { $regex: searchStr, $options: "i" },
                         deletedAt: null
                     };
-                    
+
                     if (effectiveProjectId) query.projectId = effectiveProjectId;
                     else if (workspaceId) query.workspaceId = workspaceId;
                     else return { error: "⚠️ Lỗi ngữ cảnh: Không có workspaceId hoặc projectId." };
-                    
+
                     if (targetPhaseId) query.phaseId = targetPhaseId;
 
                     const tasks = await TaskModel.find(query).select("title taskCode status priority assignedTo").populate("assignedTo", "name").limit(15).lean();
@@ -1284,11 +1284,11 @@ QUY TẮC VẬN HÀNH:
                     const queryVector = await generateEmbeddingService(query);
 
                     // 2. Tạo filter cứng (Metadata Filtering)
-                    const filter: any = { 
-                        projectId: new mongoose.Types.ObjectId(effectiveProjectId), 
-                        deletedAt: null 
+                    const filter: any = {
+                        projectId: new mongoose.Types.ObjectId(effectiveProjectId),
+                        deletedAt: null
                     };
-                    
+
                     if (status) {
                         const s = String(status).toUpperCase().trim();
                         if (["TODO", "IN_PROGRESS", "INREVIEW", "DONE", "COMPLETED"].includes(s)) {
@@ -1403,7 +1403,7 @@ export const AdvancedInsightsSchema = z.object({
 
 export type AdvancedInsights = z.infer<typeof AdvancedInsightsSchema>;
 
-export const generateAdvancedInsightsService = async (logsData: any[], contextData?: any, modelId: string = AI_MODELS.GROQ_LLAMA_3_3_70B): Promise<AdvancedInsights> => {
+export const generateAdvancedInsightsService = async (logsData: any[], contextData?: any, modelId: string = AI_MODELS.GROQ_LLAMA_3_3_70B, timeFrameText: string = "30 ngày qua"): Promise<AdvancedInsights> => {
     try {
         logger.info("[AI-Groq] Đang khởi động quy trình Multi-Agent Self-Reflection cho phân tích chuyên sâu", { logCount: logsData.length, hasContext: !!contextData });
 
@@ -1444,7 +1444,7 @@ export const generateAdvancedInsightsService = async (logsData: any[], contextDa
 Bạn là một Chuyên gia Phân tích Dữ liệu Dự án Cao cấp (Senior Project Data Consultant).
 Nhiệm vụ: Dựa vào thông tin bối cảnh dự án và lịch sử hoạt động (Activity Logs) dưới đây (dạng JSON), hãy thực hiện một cuộc kiểm toán (audit) toàn diện và đưa ra một "Báo cáo phân tích chuyên sâu" cực kỳ chi tiết.
 ${contextStr}
-Dữ liệu log (Lịch sử hoạt động 30 ngày qua):
+Dữ liệu log (Lịch sử hoạt động trong ${timeFrameText}):
 ${promptStr}
 
 YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
@@ -1454,7 +1454,7 @@ YÊU CẦU CHI TIẾT VỀ NỘI DUNG:
 4. **Dự báo rủi ro**: Dựa trên nhịp độ hiện tại, dự án có khả năng trễ hạn không? Có rủi ro về chất lượng hay sự thiếu hụt nhân sự không?
 5. **Góc nhìn Chuyên Sâu (Hybrid Architecture)**: LƯU Ý QUAN TRỌNG: Dữ liệu log trên ĐÃ ĐƯỢC LỌC qua thuật toán "Weighted Context Filtering" và "Z-Score Anomaly Detection 2 Vòng". Các log xuất hiện có nghĩa là nó đã lặp lại nhiều lần hoặc mang trọng số rủi ro cao. Đặc biệt, nếu log có \`type: "EXTREME_ANOMALY"\`, đó là một sự cố CỰC KỲ BẤT THƯỜNG (ví dụ do bị sửa/xóa liên tục bởi một nhóm nhỏ) mà thuật toán đã tách ra. BẠN PHẢI CHÚ Ý NGAY LẬP TỨC vào các EXTREME_ANOMALY này và ghi chép chúng vào trường \`criticalIncidents\` để cảnh báo người dùng. Nếu không có EXTREME_ANOMALY, hãy để mảng \`criticalIncidents\` rỗng. Hãy sử dụng không gian \`deep_insights\` để suy luận vượt ra khỏi cấu trúc thông thường, tìm ra các MỐI LIÊN HỆ NGẦM, hoặc CHUẨN ĐOÁN LÕI (Root-cause) mà dữ liệu rời rạc không thể hiện rõ.
 6. **Văn phong tự nhiên & Dễ hiểu**: TUYỆT ĐỐI KHÔNG bê nguyên xi các từ khóa lập trình (như \`EXTREME_ANOMALY\`, \`UPDATE_PROJECT\`, \`CREATE_TASK\`, \`zScore\`, \`type\`) vào văn bản. Hãy dịch chúng thành ngôn ngữ quản trị dự án. Ví dụ: thay vì "Sự kiện UPDATE_PROJECT có type EXTREME_ANOMALY với zScore 5.2", hãy viết: "Hệ thống ghi nhận sự thay đổi bất thường về cấu trúc dự án ở mức độ nghiêm trọng...".
-7. **Khung thời gian (Timeframe)**: Dữ liệu bạn đang phân tích CHỈ LÀ CỦA 30 NGÀY GẦN NHẤT (1 tháng). TUYỆT ĐỐI KHÔNG được tự ý viết là "trong 2 tháng qua" hay khoảng thời gian khác.
+7. **Khung thời gian (Timeframe)**: Dữ liệu bạn đang phân tích CHỈ LÀ CỦA ${timeFrameText.toUpperCase()}. TUYỆT ĐỐI KHÔNG được tự ý viết là "trong 2 tháng qua" hay khoảng thời gian khác nếu không khớp với ${timeFrameText}.
 
 QUY TẮC TRẢ VỀ:
 - CHỈ TRẢ VỀ DUY NHẤT một khối JSON hợp lệ.
@@ -1526,7 +1526,7 @@ Cấu trúc JSON bắt buộc:
         if (finalJsonMatch) {
             finalCleanJson = finalJsonMatch[0];
         }
-        
+
         const object = JSON.parse(finalCleanJson);
         const validated = AdvancedInsightsSchema.parse(object);
 
@@ -1545,7 +1545,7 @@ Cấu trúc JSON bắt buộc:
 export const autoTagTaskService = async (taskTitle: string, taskDescription: string, availableTags: { _id: string, name: string }[]): Promise<string[]> => {
     try {
         if (!availableTags || availableTags.length === 0) return [];
-        
+
         const tagsString = availableTags.map(t => `- ${t.name} (ID: ${t._id})`).join("\n");
         const prompt = `Bạn là một chuyên gia phân loại công việc. Nhiệm vụ của bạn là đọc Tiêu đề và Mô tả công việc, sau đó chọn ra các nhãn phù hợp nhất từ danh sách cho sẵn.
 
@@ -1587,10 +1587,10 @@ Nếu không có nhãn nào phù hợp, trả về:
         logger.info(`[AI-AutoTag] Đã chọn tags: ${JSON.stringify(selectedTagIds)}`);
         return selectedTagIds;
     } catch (error: any) {
-        logger.error("[AI-Groq] Lỗi khi auto tag", { 
-            error: error?.message || "Lỗi không xác định", 
-            taskTitle, 
-            stack: error?.stack 
+        logger.error("[AI-Groq] Lỗi khi auto tag", {
+            error: error?.message || "Lỗi không xác định",
+            taskTitle,
+            stack: error?.stack
         });
         return []; // Fail-safe
     }

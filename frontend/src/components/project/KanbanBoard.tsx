@@ -44,14 +44,14 @@ const defaultColumns: { id: TaskStatus; title: string }[] = [
   { id: TaskStatus.DONE, title: 'Hoàn thành' },
 ];
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
-  workspaceId, 
-  projectId, 
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({
+  workspaceId,
+  projectId,
   phaseId,
-  onTaskClick, 
-  onAddTaskClick, 
-  isAdminOrOwner, 
-  isProjectCompleted 
+  onTaskClick,
+  onAddTaskClick,
+  isAdminOrOwner,
+  isProjectCompleted
 }) => {
   const queryClient = useQueryClient();
   const { data: fetchedTasks, isLoading: loading } = useQuery({
@@ -134,7 +134,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       const taskId = active.id as string;
       const task = tasks.find(t => t._id === taskId);
-      
+
       if (task && dragStartedTaskSnapshot) {
         const originalStatus = dragStartedTaskSnapshot.status;
         const targetStatus = task.status;
@@ -146,7 +146,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           toast.info("Công việc này cần được phê duyệt. Hãy chuyển sang 'Đang duyệt' để thông báo cho Quản trị viên.", {
             duration: 5000,
           });
-          
+
           // Hoàn tác UI về trạng thái cũ
           setTasks(prev => {
             const reverted = [...prev];
@@ -159,7 +159,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
         try {
           const updatedTaskFromApi = await taskService.updateTaskStatus(workspaceId, projectId, taskId, targetStatus);
-          
+
           // 1. Cập nhật cache cho Project Tasks (Dùng cho Board hiện tại)
           queryClient.setQueryData(['project-tasks', workspaceId, projectId], (oldData: any) => {
             if (!oldData || !oldData.tasks) return oldData;
@@ -192,17 +192,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           queryClient.invalidateQueries({ queryKey: ['workspace-analytics-history', workspaceId] });
           queryClient.invalidateQueries({ queryKey: ['projectAnalytics', workspaceId, projectId] });
           queryClient.invalidateQueries({ queryKey: ['projectAnalyticsHistory', workspaceId, projectId] });
-          
+
           // 5. Invalidate Table View specifically
-          queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] }); 
+          queryClient.invalidateQueries({ queryKey: ['project-root-tasks', workspaceId, projectId] });
           queryClient.invalidateQueries({ queryKey: ['project-all-subtasks', workspaceId, projectId] });
-          
+
           queryClient.invalidateQueries({ queryKey: ['project-tasks', workspaceId, projectId] }); // Ensure absolute sync
 
         } catch (error: any) {
           const errorMessage = error.response?.data?.message || "Không thể cập nhật trạng thái công việc.";
           toast.error(errorMessage);
-          
+
           setTasks(prev => {
             const reverted = [...prev];
             const idx = reverted.findIndex(t => t._id === taskId);
@@ -241,8 +241,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end pr-6">
-        <Button 
-          variant={isSmartScannerActive ? "default" : "outline"} 
+        <Button
+          variant={isSmartScannerActive ? "default" : "outline"}
           className={cn("gap-2 rounded-full", isSmartScannerActive && "bg-brand-primary text-white shadow-glow hover:bg-brand-primary/90")}
           onClick={() => setIsSmartScannerActive(!isSmartScannerActive)}
         >
@@ -272,14 +272,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
 
         {createPortal(
-            <DragOverlay dropAnimation={dropAnimation}>
-              {activeTask ? (
-                <div className="w-[300px]">
-                  <TaskCard task={activeTask} />
-                </div>
-              ) : null}
-            </DragOverlay>,
-            document.body
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeTask ? (
+              <div className="w-[300px]">
+                <TaskCard task={activeTask} />
+              </div>
+            ) : null}
+          </DragOverlay>,
+          document.body
         )}
       </div>
     </div>

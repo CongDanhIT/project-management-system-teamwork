@@ -22,6 +22,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { DatePickerWithRange } from '@/components/ui/date-picker-with-range';
+import { DateRange } from "react-day-picker";
 
 interface AdvancedInsightsDrawerProps {
   isOpen: boolean;
@@ -56,14 +58,48 @@ export function AdvancedInsightsDrawer({
     enabled: !!workspaceId && isOpen,
   });
 
-  // Tính toán kỳ phân tích (7 ngày gần nhất)
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(endDate.getDate() - 7);
+  // Trạng thái bộ lọc thời gian
+  const [dateFilterType, setDateFilterType] = useState<string>('30');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>({
+    from: (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      return d;
+    })(),
+    to: new Date()
+  });
+
+  const getEffectiveDateRange = () => {
+    const to = new Date();
+    if (dateFilterType === '7') {
+      const from = new Date();
+      from.setDate(from.getDate() - 7);
+      return { from, to };
+    }
+    if (dateFilterType === '15') {
+      const from = new Date();
+      from.setDate(from.getDate() - 15);
+      return { from, to };
+    }
+    if (dateFilterType === '30') {
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      return { from, to };
+    }
+    if (dateFilterType === 'custom' && customDateRange?.from && customDateRange?.to) {
+      return customDateRange as { from: Date, to: Date };
+    }
+    // Default 30
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    return { from, to };
+  }
+
+  const effectiveRange = getEffectiveDateRange();
 
   const analysisPeriod = {
-    from: startDate.toLocaleDateString('vi-VN'),
-    to: endDate.toLocaleDateString('vi-VN')
+    from: effectiveRange.from.toLocaleDateString('vi-VN'),
+    to: effectiveRange.to.toLocaleDateString('vi-VN')
   };
 
   const project = projectData?.project;
@@ -80,15 +116,15 @@ export function AdvancedInsightsDrawer({
 
   // Use Tanstack Query to fetch the insights, enabled only when the drawer is open AND user clicks start
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['advanced-insights', workspaceId, projectId, selectedModel],
+    queryKey: ['advanced-insights', workspaceId, projectId, selectedModel, dateFilterType, customDateRange],
     queryFn: async () => {
       const response = await api.get(
-        `/analytics/workspace/${workspaceId}/project/${projectId}/advanced-insights?modelId=${selectedModel}`
+        `/analytics/workspace/${workspaceId}/project/${projectId}/advanced-insights?modelId=${selectedModel}&startDate=${effectiveRange.from.toISOString()}&endDate=${effectiveRange.to.toISOString()}`
       );
       return response.data;
     },
     enabled: isOpen && !!workspaceId && !!projectId && hasStartedAnalysis,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // Disable cache to always fetch fresh data during development
   });
 
   const [isExporting, setIsExporting] = useState(false);
@@ -107,13 +143,21 @@ export function AdvancedInsightsDrawer({
       const workspace = workspaceData?.workspace;
       const currentUser = useAuthStore.getState().user;
 
+      const insightsData = data.data.insights || data.data;
+      const reportStatsData = data.data.reportStats;
+      const filteredReportStatsData = data.data.filteredReportStats;
+
       await exportAIInsightsToWord({
         projectName: project?.name || "Dự án",
         workspaceName: workspace?.name || "N/A",
         description: project?.description,
         reporterName: currentUser?.name || "N/A",
         analysisPeriod: analysisPeriod,
-        data: data.data
+        data: {
+          insights: insightsData,
+          reportStats: reportStatsData,
+          filteredReportStats: filteredReportStatsData
+        }
       });
     } catch (error) {
       console.error("Lỗi khi xuất file Word:", error);
@@ -142,13 +186,30 @@ export function AdvancedInsightsDrawer({
                   </span>
                 </SheetTitle>
                 <SheetDescription className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                  Nhận định tự động từ Llama 3 70B dựa trên nhật ký hoạt động 30 ngày gần nhất và dữ liệu tiến độ từ snapshot.
+                  Nhận định tự động từ Llama 3 70B dựa trên nhật ký hoạt động {dateFilterType === 'custom' ? 'khoảng thời gian tuỳ chỉnh' : `${dateFilterType} ngày gần nhất`} và dữ liệu tiến độ từ snapshot.
                 </SheetDescription>
               </div>
             </div>
 
             {/* Export Button & Model Select */}
-            <div className="flex items-center gap-3 relative z-10">
+            <div className="flex items-center gap-3 relative z-10 flex-wrap justify-end">
+              <div className="flex items-center gap-2">
+                <Select value={dateFilterType} onValueChange={(val) => val && setDateFilterType(val as string)}>
+                  <SelectTrigger className="h-11 w-[150px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl font-bold focus:ring-indigo-500 shadow-sm">
+                    <SelectValue placeholder="Thời gian" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-800 shadow-xl font-medium">
+                    <SelectItem value="7" className="cursor-pointer">7 Ngày gần nhất</SelectItem>
+                    <SelectItem value="15" className="cursor-pointer">15 Ngày gần nhất</SelectItem>
+                    <SelectItem value="30" className="cursor-pointer">30 Ngày gần nhất</SelectItem>
+                    <SelectItem value="custom" className="cursor-pointer">Tuỳ chỉnh</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilterType === 'custom' && (
+                  <DatePickerWithRange date={customDateRange} setDate={setCustomDateRange} />
+                )}
+              </div>
+
               <Select value={selectedModel} onValueChange={(val) => val && setSelectedModel(val as string)}>
                 <SelectTrigger className="h-11 w-[220px] border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl font-bold focus:ring-indigo-500 shadow-sm">
                   <SelectValue placeholder="Chọn Model AI" />
@@ -245,7 +306,7 @@ export function AdvancedInsightsDrawer({
                 Bắt Đầu Phân Tích
               </Button>
             </div>
-          ) : isLoading || isFetching ? (
+          ) : isLoading || (isFetching && !data) ? (
             <div className="flex flex-col items-center justify-center h-full space-y-6 animate-in fade-in duration-1000">
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/20 blur-[40px] opacity-20 rounded-full" />
@@ -274,18 +335,24 @@ export function AdvancedInsightsDrawer({
           ) : data && data.success && data.data ? (
             <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-8 duration-700 pb-10">
               
-              {/* 0. CRITICAL INCIDENTS - Báo động đỏ nếu có EXTREME_ANOMALY */}
-              {data.data.criticalIncidents && data.data.criticalIncidents.length > 0 && (
-                <div className="relative group animate-in slide-in-from-bottom-4 duration-500">
-                  <div className="relative bg-white dark:bg-card rounded-[32px] p-8 border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-5">
-                      <AlertTriangle className="w-48 h-48 text-red-500" />
-                    </div>
-                    
-                    <div className="flex items-center gap-3 mb-6 relative z-10">
-                      <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20">
-                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                      </div>
+              {(() => {
+                const insightsData = data.data.insights || data.data;
+                const reportStats = data.data.reportStats;
+                
+                return (
+                  <>
+                    {/* 0. CRITICAL INCIDENTS - Báo động đỏ nếu có EXTREME_ANOMALY */}
+                    {insightsData.criticalIncidents && insightsData.criticalIncidents.length > 0 && (
+                      <div className="relative group animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="relative bg-white dark:bg-card rounded-[32px] p-8 border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">
+                          <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <AlertTriangle className="w-48 h-48 text-red-500" />
+                          </div>
+                          
+                          <div className="flex items-center gap-3 mb-6 relative z-10">
+                            <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20">
+                              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                            </div>
                       <div>
                         <h3 className="text-xl font-black text-red-600 dark:text-red-400 tracking-tight">
                           Cảnh Báo Nghiêm Trọng (Extreme Anomaly)
@@ -295,7 +362,7 @@ export function AdvancedInsightsDrawer({
                     </div>
                     
                     <div className="relative z-10 space-y-4">
-                      {data.data.criticalIncidents.map((incident: string, i: number) => (
+                      {insightsData.criticalIncidents.map((incident: string, i: number) => (
                         <div key={i} className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 text-[15px] leading-relaxed text-red-700 dark:text-red-300 font-medium flex gap-4 items-start">
                           <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
                           <p>{incident}</p>
@@ -307,7 +374,7 @@ export function AdvancedInsightsDrawer({
               )}
 
               {/* 1. DEEP INSIGHTS - Thẻ Tự do suy luận siêu việt (Nổi bật nhất) */}
-              {data.data.deep_insights && (
+              {insightsData.deep_insights && (
                 <div className="relative group">
                   <div className="relative bg-white dark:bg-card rounded-[32px] p-8 border border-primary/20 shadow-sm overflow-hidden">
                     {/* Background Pattern */}
@@ -329,7 +396,7 @@ export function AdvancedInsightsDrawer({
                     
                     <div className="relative z-10 text-[16px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
                       <p className="italic border-l-4 border-violet-500 pl-4 py-1">
-                        "{data.data.deep_insights}"
+                        "{insightsData.deep_insights}"
                       </p>
                     </div>
                   </div>
@@ -349,9 +416,9 @@ export function AdvancedInsightsDrawer({
                       <p className="text-xs text-slate-500">Velocity Analysis</p>
                     </div>
                   </div>
-                  <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
-                    {data.data.velocity_analysis}
-                  </p>
+                  <div className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                    {insightsData.velocity_analysis}
+                  </div>
                 </div>
 
                 {/* Risk */}
@@ -365,9 +432,9 @@ export function AdvancedInsightsDrawer({
                       <p className="text-xs text-slate-500">Risk Forecast</p>
                     </div>
                   </div>
-                  <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
-                    {data.data.risk_forecast || "Chưa có đủ dữ liệu để dự báo rủi ro tiềm ẩn."}
-                  </p>
+                  <div className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                    {insightsData.risk_forecast || "Chưa có đủ dữ liệu để dự báo rủi ro tiềm ẩn."}
+                  </div>
                 </div>
               </div>
 
@@ -384,15 +451,16 @@ export function AdvancedInsightsDrawer({
                       <p className="text-xs text-slate-500">Bottlenecks & Blockers</p>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    {Array.isArray(data.data.bottlenecks) && data.data.bottlenecks.length > 0 ? (
-                      data.data.bottlenecks.map((item: string, i: number) => (
-                        <div key={i} className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
-                          {item}
+                  <div className="space-y-3">
+                    {Array.isArray(insightsData.bottlenecks) && insightsData.bottlenecks.length > 0 ? (
+                      insightsData.bottlenecks.map((item: string, i: number) => (
+                        <div key={i} className="flex gap-3 items-start group/item">
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-2 flex-shrink-0 group-hover/item:scale-150 transition-transform" />
+                          <p className="text-[15px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">{item}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-[15px] text-slate-500 italic">Không có điểm nghẽn nghiêm trọng nào được phát hiện.</p>
+                      <p className="text-[15px] italic text-slate-500">Không có điểm nghẽn nghiêm trọng nào được phát hiện.</p>
                     )}
                   </div>
                 </div>
@@ -409,8 +477,8 @@ export function AdvancedInsightsDrawer({
                     </div>
                   </div>
                   <div className="space-y-4">
-                    {Array.isArray(data.data.team_performance) && data.data.team_performance.length > 0 ? (
-                      data.data.team_performance.map((item: string, i: number) => (
+                    {Array.isArray(insightsData.team_performance) && insightsData.team_performance.length > 0 ? (
+                      insightsData.team_performance.map((item: string, i: number) => (
                         <div key={i} className="flex gap-4 items-start">
                           <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                           <p className="text-[14px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
@@ -440,18 +508,29 @@ export function AdvancedInsightsDrawer({
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 gap-4">
-                    {(data.data.recommendations || []).map((rec: string, index: number) => (
-                      <div key={index} className="flex items-start gap-5 p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 shadow-sm transition-all group">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-                          <span className="font-black text-sm">{index + 1}</span>
+                  <div className="space-y-4 relative z-10">
+                    {(insightsData.recommendations || []).map((rec: string, index: number) => (
+                      <div 
+                        key={index} 
+                        className="group/rec flex items-start gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all hover:shadow-md"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm border border-indigo-100 dark:border-indigo-500/20 group-hover/rec:bg-indigo-500 group-hover/rec:text-white transition-colors">
+                          {index + 1}
                         </div>
-                        <span className="text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium mt-1">{rec}</span>
+                        <p className="text-[15px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium pt-1">
+                          {rec}
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
+              
+              {/* Optional Table for reportStats can go here later */}
+
+            </>
+          );
+        })()}
             </div>
           ) : null}
         </div>

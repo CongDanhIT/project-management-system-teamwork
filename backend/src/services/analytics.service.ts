@@ -2,16 +2,24 @@ import mongoose from "mongoose";
 import ActivityLogModel, { ActivityActionEnum, ActivityEntityTypeEnum } from "../models/activity-log.model";
 import logger from "../utils/logger";
 
-export const aggregateProjectActivityLogsService = async (projectId: string) => {
+export const aggregateProjectActivityLogsService = async (projectId: string, startDate?: string, endDate?: string) => {
     try {
-        // Chỉ lấy logs trong 30 ngày gần nhất để giảm context size
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        let fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 30); // Default 30 days
+        let toDate = new Date();
+
+        if (startDate) {
+            fromDate = new Date(startDate);
+        }
+        if (endDate) {
+            toDate = new Date(endDate);
+            toDate.setHours(23, 59, 59, 999);
+        }
 
         // Lấy tối đa 1000 logs gần nhất (bao quát toàn bộ hoạt động trong dự án)
         const logs = await ActivityLogModel.find({
             projectId,
-            createdAt: { $gte: thirtyDaysAgo }
+            createdAt: { $gte: fromDate, $lte: toDate }
         })
         .sort({ createdAt: -1 })
         .limit(1000)
